@@ -347,6 +347,8 @@ The name of the directive is `ngStyle`, and **we can also bind to a property of 
 
 ```html
 <p [ngStyle]="{'backgroundColor': getColor()}">Hello dear user</p>
+
+<p [ngStyle]="{'backgroundColor': isAuth ? 'green' : 'red'}">Hello dear user</p>
 ```
 
 the property ngStyle expects to get an object with key value pairs. `getColor()` is executed in the ts file and return the appropriate color for each user. E.g: if the gender of the user changes at runtime, the getColor() method could return another color at runtime.
@@ -567,7 +569,7 @@ the `nativeElement` property must be accessed to get access to the `html element
 
 Note: **don't change the DOM assigning a new value for the `html element` from the `.ts` file**!!
 
-there are other tools to change the DOM.
+there are other tools to change the DOM: `renderer2`, and `@HostBinding()` for directives.
 
 
 
@@ -638,5 +640,490 @@ Projecting content (html passed the opening and closing tags of the children):
 
 
 
-## Section 6: Course project: Components & data binding:
+## Section 7: Directives: deep dive:
+
+Structural directives change the DOM around the element they're placed on.
+
+![](images/directives-2.png)
+
+How to filter an array in an `*ngFor` directive, in the template?
+
+````typescript
+//this DOES NOT work. Only ONE structural directive is allowed
+*ngFor="let event of events"
+*ngIf="event.date > today"
+````
+
+a `custom pipe` is the right tool.
+
+#### Custom attribute directive:
+
+The `selector` is a must, in the `@Directive` decorator: in this case, the `selector` is `[appBasicHiglight]`, to target the `appBasicHighlight` attribute place on an `html element`.  If the selector would have the square brakets, it would target , `<appBasicHighlight>` tag.
+
+The `html element` the directive sits on, can be injected into the directive in the constructor:
+
+Basic directive, following BAD PRACTICES, changing the DOM directly with `elementRef`:
+
+`````typescript
+//basic-highlight.directive.ts----BAD PRACTICES
+@Directive({
+	selector: '[appBasicHighlight]'
+})
+export class BasicHighlight implements OnInit{
+	constructor(private elementRef: ElementRef){}
+	
+	ngOninit(){
+		this.elementRef.nativeElement.style.backgroundColor = 'red'
+	}
+}
+
+//html
+<h1 appBasicHighlight>Hello world</h1>
+
+`````
+
+It uses the `ElementRef` but doesn't use `ViewChild`, it just injects it in the constructor.
+
+The directive must be imported and declared in `app.module.ts` file.
+
+
+
+Directive using GOOD PRACTICES, changing the DOM with `renderer2`:
+
+````typescript
+//basic-highlight.directive.ts----GOOD PRACTICES
+@Directive({
+	selector: '[appBasicHighlight]'
+})
+export class BasicHighlight implements OnInit{
+	constructor(private elementRef: ElementRef, renderer2: Renderer2){}
+	
+	ngOninit(){
+		this.renderer2.setStyle(this.elementRef.nativeElement, 'backgroundColor','red', flags?)
+	}
+}
+
+//html
+<h1 appBasicHighlight>Hello world</h1>
+````
+
+**To change the DOM = use `renderer2` API**, this runs in serviceWorkers environment and in node(?).
+
+
+
+###### Reactive directives with `@HostListener()` 
+
+The `renderer2` approach works, but I can't react to events, like a mouse hovering on the element.
+
+`@HostListener()`  is a decorator that declares a DOM event to listen for, and provides a handler method to run when that event occurs.
+
+`````typescript
+//basic-highlight.directive.ts----GOOD PRACTICES
+@Directive({
+	selector: '[appBasicHighlight]'
+})
+export class BasicHighlight {
+	constructor(private elementRef: ElementRef, renderer2: Renderer2){}
+	
+    //changes the background color to red when the element is hovered
+    @HostListener('mouseenter') mouseOver() {
+        this.renderer2.setStyle(this.elementRef.nativeElement, 'backgroundColor','red');   
+     }
+    
+    //changes the background color to transparent when the element is not hovered
+    @HostListener('mouseleave') mouseNotOver() {
+        this.renderer2.setStyle(this.elementRef.nativeElement, 					      'backgroundColor','transparent');
+     }
+    
+}
+
+//html
+<h1 appBasicHighlight>Hello world</h1>
+`````
+
+`mouseenter` and `mouseleave` are native events on html elements. But  `mouseOver()` and `mouseNotOver`  are just the names of the methods executed when the mentioned events are triggered.
+
+
+
+###### Reactive directives with `@HostBinding()`      -better than `Renderer2` -
+
+The `@HostBinding()` decorator must be provided an argument pointing an attribute of the host element. Could be the `style.backgroundColor` , `disabled`, `class`, etc. 
+
+`@HostBinding()` binds an attribute of  the `html host element` to a property of the directive. 
+
+`````typescript
+//Using @HostBinding----GOOD PRACTICES
+@Directive({
+	selector: '[appBasicHighlight]'
+})
+export class BasicHighlight {
+	constructor(){}
+    
+    //bind an html attribute to a property of the directive. Pass the html attribute you want to bind to, inside quotation marks, and define the initial value of the directive property
+    @HostBinding('style.backgroundColor') backgroundColor = 'transparent';
+	
+    //listen to events: changes the background color to red when the element is hovered
+    @HostListener('mouseenter') mouseOver() {
+        this.backgroundColor = 'red'   
+     }
+    
+    //listen to events: changes the background color to transparent when the element is not hovered
+    @HostListener('mouseleave') mouseNotOver() {
+       this.backgroundColor = 'transparent'
+     }
+    
+}
+
+//html
+<h1 appBasicHighlight>Hello world</h1>
+`````
+
+
+
+####  Binding to directive properties
+
+It's nice to pass data to the directive from the template, to configure it, using `@Inputs` inside the directive:
+
+``````typescript
+// Adding Inputs ----GOOD PRACTICES
+@Directive({
+	selector: '[appBasicHighlight]'
+})
+export class BasicHighlight implements OnInit{
+    @Input() defaultColor = 'transparent';
+    @Input() highlightColor = 'red';
+    
+    @HostBinding('style.backgroundColor') backgroundColor:string;
+	
+    constructor(){}
+    
+    ngOnInit() {
+        this.backgroundColor = this.defaultColor;
+    }
+	
+    @HostListener('mouseenter') mouseOver() {
+        this.backgroundColor = this.highlighColor;   
+     }
+
+    @HostListener('mouseleave') mouseNotOver() {
+       this.backgroundColor = this.defaultColor;
+     }
+    
+}
+
+//html
+<h1 appBasicHighlight [defaultColor]="'transparent'" [highlightColor]="'red'">Hello world</h1>
+
+//or
+
+//html
+<h1 appBasicHighlight defaultColor="transparent" highlightColor="red">Hello world</h1>
+``````
+
+How does Angular know if the binded attributes are inputs if directives, or just normal attributes of the `html element` ? it just figures it out by itself, by looking first at the directives placed on the element, and looks for its inputs.
+
+A neat way to add an `@Input` is to use an alias, so the name of the input is the same as the directive, like what happens with `ngClass` when it's input called `ngClass` is binded like: `[ngClass]` in the template. So, the directive is placed and the `ngClass` input is binded at the same time. Super!
+
+`````typescript
+//use Alias for inputs----GOOD PRACTICES
+@Directive({
+	selector: '[appBasicHighlight]'
+})
+export class BasicHighlight implements OnInit{
+    @Input() defaultColor = 'transparent';
+    @Input('appBasicHihlight') highlightColor = 'red';
+    
+    @HostBinding('style.backgroundColor') backgroundColor:string;
+	
+    constructor(){}
+    
+    ngOnInit() {
+        this.backgroundColor = this.defaultColor;
+    }
+	
+    @HostListener('mouseenter') mouseOver() {
+        this.backgroundColor = this.highlighColor;   
+     }
+
+    @HostListener('mouseleave') mouseNotOver() {
+       this.backgroundColor = this.defaultColor;
+     }
+    
+}
+
+//html
+<h1 [appBasicHighlight]="'red'" [defaultColor]="'transparent'">Hello world</h1>
+
+//or
+
+//html
+<h1 appBasicHighlight="red" defaultColor="transparent">Hello world</h1>
+`````
+
+
+
+#### Structural directives behind the scenes
+
+The star `*` before the `ngFor` is sugar syntax, and Angular translates that into a more complex code, that has property binding, so we can pass data to the directive:
+
+`ng-template` is a container.
+
+`````html
+<h1 *ngIf="showTitle">Hello World!</h1>
+
+//translated by Angular to:
+
+<ng-template [ngIf]="showTitle">
+	<h1>Hellos World</h1>
+</ng-template>
+`````
+
+
+
+#### Custom structural directive: unless
+
+The directive needs access to the `TemplateRef` to know **what** to render, and the `ViewContainerRef` to know **where** to render it.
+
+`ViewContainerRef` represents a container where one or more views can be attached to a component.
+
+`createEmbeddedView()` instantiates an embedded view and inserts it into this container.
+
+`TemplateRef` represents an embedded template, like `<div><h1>Hello World</h1></div>`, and it's basically the `html element` the directive sits on, and the nested `html elements`. 
+
+``````typescript
+//custom structural directive
+@Directive({
+	selector: '[appUnless]'
+})
+export class BasicHighlight implements OnInit{
+    //I use a setter, which is a method where I can run an if else block. The value of the property 'unless' is not used in the end.
+    @Input('appUnless') set unless(condition:boolean) {
+        //if the condition is false, I wanna attach content to the DOM
+        if (!condition) {
+            this.vcRef.createEmbeddedView(this.templateRef);
+        } else {
+            this.vcRef.clear();
+        }
+    }
+  
+    constructor(private templateRef: TemplateRef, private vcRef: ViewContainerRef){} 
+ 
+}
+
+//html. When `showTitle` is false, the title will be displayed
+<h1 *appUnless="showTitle">Hello world</h1>
+
+``````
+
+**The selector of the directive and the alias of the `@Input` must match, in order to be able to bind that property from the template passing the condition.**
+
+
+
+#### Structural directives: *ngSwitch
+
+More than 2 conditions? use `*ngSwitch` to react to different conditions
+
+````
+<div *ngSwitch="10">
+	<p *ngSwitchCase="10" >The number is 10</p>
+	<p *ngSwitchCase="20" >The number is 20</>
+	<p *ngSwitchDefault >Another number</p>
+</div>
+````
+
+
+
+Note: I tried removing `jQuery` and add a directive to the mobile toggle button of the recipe book app and it didn't work because there are 2 different `html elements` that need to be linked and be added/removed classes. So, I ditched directives and used a variable `isToggleOpen` in the `.ts` component, and used `[ngClass]` to add or remove classes in the the 2 `html elements`.
+
+
+
+## Section 9: Services and dependency injection
+
+When to use services:
+
+1) Duplication of code
+
+2) Data management
+
+3) Comunicate between components (via `Subjects`)
+
+
+
+Services are just classes, but they are not instantiated manually inside components, like:
+
+````typescript
+//DONT!! component.ts
+
+const myLoggingService = new LoggingService();
+
+myLoggingService.someMethod;
+````
+
+Angular has a better way ton instantiate the class, with dependency injection, following a singleton pattern, where just one single object is created by Angular for the whole app or some parts. So, the state of the app can be kept there, and is decoupled from the components. 
+
+As object are reference types (not primitives, like strings and numbers), so the when an object is created, then references are passed to 
+
+#### How to consume a service in a component?
+
+`````typescript
+//component.ts
+
+@Component({
+    //pass just the type of the service. The service object scope is just this component, not too useful.
+    providers:[LoggingService]
+})
+
+export class someComponent {
+    //use the typescript shortcut with `private` or `public`, to create a property that is assigned the value of the argument of the same name passed in the constructor.
+    constructor(private loggingService: LoggingService)
+}
+`````
+
+
+
+What is an injector: a middleman
+
+What does it do?
+
+**So now its the dependency injection’s responsibility to:**
+
+1. Create the objects
+2. Know which classes require those objects
+3. And provide them all those objects
+
+
+
+A provider tells an injector *how to create the service*. Each component can use it's own, or the parent's:
+
+Injectors are inherited, which means that if a given injector can't resolve a dependency, it asks the parent injector to resolve it. A component can get services from its own injector, from the injectors of its component ancestors, from the injector of its parent NgModule, or from the `root` injector.
+
+The instance of the class (object) is injected at runtime in the component.
+
+
+
+#### Where to configure the injectors?
+
+You can configure injectors with providers at different levels of your app, by setting a metadata value in one of three places:
+
+- In the `@Injectable()` decorator for the service itself.
+- In the `@NgModule()` decorator for an NgModule.
+- In the `@Component()` decorator for a component.
+
+The `providers` array tells the injector _which_ instance of the service we want.
+
+
+
+#### What is the scope of the singleton service object create?
+
+Services are singletons *within the scope of an injector*. That is, there is at most one instance of a service in a given injector. In the first example, the scope of the injector is the component, so **the scope of the object is the component, and all its children**. For example: `users-list.component.ts` has a providers array, then, `user.component.ts` will have the same service class instance.
+
+If an object living in a service is passed to components, and it's not cloned, the component can mutate the object. Will the `ngOnChanges` run when changes happen inside the object, if the reference (pointer) is always the same?? No.
+
+![](images/services.png)
+
+the inheritance of a service instance to child components is overwritten if the child components have `providers` in the `@Component()` metadata.
+
+ To make a service injectable into another one, two conditions must happen:
+
+1) The injected service must be provided in the `AppModule` via `providers` there, or use `@Injectable({ providedIn: 'root' })` in the service. There are these 2 ways. 
+
+2)  And , the receiving service must have `@Injectable()` decorator (without the need of any extra metadata).
+
+
+
+Advantage of using `@Injectable({ providedIn: 'root' })`:
+
+Services <strong>can be loaded lazily </strong>by Angular (behind the scenes) and redundant code can be removed automatically. This can lead to a better performance and loading speed - though this really only kicks in for bigger services and apps in general.
+
+
+
+#### Cross component communication via `Subjects`
+
+communication between to adjacent components can be done with an `@Output` and `@Input` in a rigid and cumbersome way. But with services, and event in a component can be listened into another one via `services` and `Subjects` !. 
+
+Note: `EventEmmiter` can also be used, but it's not as efficient as `Subjects`.
+
+
+
+## Section 10: Course project: Services and dependency injection
+
+When keeping state inside services, 2 things can be done to avoid bugs:
+
+1)  `private` can be added in front of them so, they're not accessible like this:
+
+`````typescript
+//component.ts
+myServiceInstance.propery1 = some new value
+`````
+
+2) clone objects when returning them inside methods:
+
+````typescript
+getUsers() {
+	return [...this.users]
+	//or
+	this.users.slice();(it returns a brand new array, not a reference to the original one)
+}
+````
+
+Good practice: initialize (define) the variables in `ngOninit`, and previously declare them in the component:
+
+````typescript
+@Component({some metadata here})
+export class Users implements OnInit {
+	private users = [];
+	constructor(private usersService: UsersService){}
+		
+	ngOnInit() {
+		this.users = this.usersService.getUsers();
+        this.usersChanged.subscribe(users => {
+            this.users = users;
+        });
+	}
+}
+````
+
+the `getUsers()` method can be avoided if a `BehaviorSubject` is used in the service instead.
+
+When using `<a>` as buttons, get rid off the `href`, so it doesn't do something else, and just execute the method linked to it.
+
+How to add a list of ingredients to an array, in one go?? ingredients = [{}, {}], and newIngredients = [{}, {}, {}]
+
+````
+this.ingredients.push(...newIngredients)
+````
+
+the spread operators allows us to take each object if the array, and add them to an array. If `push(newIngredients)` is done, the default result is [{}, {}, [{}, {}, {}]], nested arrays!!
+
+Other option is the good and old for `loop`, or `.forEach` and push on every iteration.
+
+
+
+## Section 11: Routing
+
+One `index.html`, different content for each route, so the user sees multiple pages, but it's just one, changed at runtime by angular router.
+
+The first step is to let angular know what are the routes, at the app level, in `app.module.ts`:
+
+````
+//app.module.ts
+
+import { Routes, RouterModule } from '@angular/router';
+
+//define the array
+const routes: Routes  = [
+	{ path: 'users', component: UsersComponent},
+	{ path: '', component: HomeComponent}
+]
+
+//pass the array
+@NgModule({
+	imports: [
+		RouterModule.forRoot(routes)
+	]
+})
+
+````
+
+So, for each route, a component is loaded (and it's children, of course), and it's placed thanks to the directive `<router-outlet>` placed on the template.
 
