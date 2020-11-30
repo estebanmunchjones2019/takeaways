@@ -1105,13 +1105,13 @@ One `index.html`, different content for each route, so the user sees multiple pa
 
 The first step is to let angular know what are the routes, at the app level, in `app.module.ts`:
 
-````
+````typescript
 //app.module.ts
 
 import { Routes, RouterModule } from '@angular/router';
 
 //define the array
-const routes: Routes  = [
+const appRoutes: Routes  = [
 	{ path: 'users', component: UsersComponent},
 	{ path: '', component: HomeComponent}
 ]
@@ -1119,11 +1119,759 @@ const routes: Routes  = [
 //pass the array
 @NgModule({
 	imports: [
-		RouterModule.forRoot(routes)
+		RouterModule.forRoot(appRoutes)
 	]
 })
 
 ````
 
-So, for each route, a component is loaded (and it's children, of course), and it's placed thanks to the directive `<router-outlet>` placed on the template.
+So, for each route on the address bar of the browser, a component is loaded (and it's children, of course), and it's placed thanks to the directive `<router-outlet>` placed on the template.
+
+How to add links in the app to navigate to those routes? just add `routerLink` directives on the template.
+
+DON'T use `href="/users"` because that will RELOAD the app!
+
+````typescript
+//component.ts
+
+<a routerLink="/users">Users</a>
+//or
+<a [routerLink]="'/users'"></a>
+//or
+<a [routerLink]="['/user', extraParams]"></a>
+````
+
+The `RouterLink` directive prevents the default request to the server, looks for the inputs passed to it, and checks if there's a route declared in the app that matches that one, and loads a component.
+
+
+
+#### Absolute vs relative paths
+
+If  the user is at `/admin` and clicks `routerLink="/users"`, the app navigates to `/users`, BUT if he clicks `routerLink="users"`, the app will navigate to `/admin/users`, so it will append the relative path to the current route when clicking the link.
+
+`routerLink="./users"` is the same as `routerLink="users"`
+
+A segement can also be deleted by going up with `..`, like this: `routerLink="../users"` will navigate to `/users` route if clicked when on `/admin` (the `admin` segment is deleted).
+
+How to have visual indication in the page of which route the user is on?
+
+`RouterLinkActive` is a directive that attaches a given class to a link element (or `<li>` wrapping element) when its route is active.
+
+`````html
+<li  routerLinkActive="active">
+	<a routerLink="/users">Users</a>
+</li>
+`````
+
+by default, the directive considers that the link to `/` is also active, so the home link is also marked as active when on `/users`.  The empty path segment is part of all paths. How to solve it? add `[routerLinkOptions]="{exact: true }"
+
+
+
+#### Programatic Navigation
+
+Sometimes, before navigating, some code needs to run, like for example, an http call to a payment platform, and then, redirecting the user to a success page.
+
+So, the navigation happens from inside the `.ts` file, and the router must be injected:
+
+````typescript
+//component.ts
+
+import { Router } from '@angular/router';
+
+constructor(private router: Router) {}
+
+this.router.navigate(['/users'])
+````
+
+This `router` navigation assumes that relatives paths are relative to the root, making them absolute paths, so the `relativeTo` value must be specified. The `routerLink` navigates relative to the current route by default.
+
+So, when using the `router` and relative paths, also inject the `ActivatedRoute` class, so we can have a reference for relative navigation:
+
+````typescript
+//component.ts
+
+import { Router, route } from '@angular/router';
+
+constructor(private router: Router, private route: ActivatedRoute) {}
+
+this.router.navigate(['users'], relativeTo: this.route)
+````
+
+
+
+#### Dynamic segments in the path: parameters
+
+Defining a parameter in when declaring the routes of the app, it's easy to pick it up inside the `.ts` file:
+
+`````typescript
+//app.module.ts
+
+const apRoutes: Routes = [
+	{path: '/user/:id', component: UserComponent}
+]
+`````
+
+Now, if navigating to `/user/1`, when accessing the `id` parameter in the `.ts` file, this will have a value of `1`, and then, I can display the correct data for that user inside `UserComponent`.
+
+`````typescript
+//component.ts
+
+import { ActivatedRoute } from '@angular/router';
+
+constructor(private route: ActivatedRoute){}
+
+ngOnInit() {
+    //get the snapshot, and not get notified of changes
+	this.id = this.route.snapshot.params.['id'];
+    
+    //get an observable, and see for future changes on the param
+	this.route.params.subscribe(params => {
+    	this.id = params.['id'];
+	})
+}
+
+
+`````
+
+````typescript
+//ActivatedRouteSnapshot is an interface with metadata
+
+interface ActivatedRouteSnapshot {
+  params: Params
+  ...
+}
+````
+
+If we have `/user/:id/:name`, to access `name`, follow the same approach as above.
+
+The subscription to params is important, because if the component was already loaded and the parameters can be changed from inside the component (via `routerLink` or `router.navigate`), Angular will not destroy and create the component by default, and hence, will not reflect changes on the view.
+
+Observables let the main code run when waiting for async event to happen. When it does happen, there are instructions already set that run.
+
+Angular automatically unsubscribe from the `route.params` observable, because it's a built in one,
+
+
+
+#### Shorter code for getting the params:
+
+If the subscription is gonna be added anyways, just initialize the `user` property inside the callback of the subscription:
+
+`````typescript
+//component.ts
+
+ngOnInit() {
+    this.route.params.subscribe((params: Params) => {
+      this.user = {
+        id: params['id'],
+        name: params['name']
+      }
+	}
+}
+`````
+
+
+
+#### Query params and fragments: passing key value pairs via routing to communicate between components
+
+How to get this url? `/server/1/server1/?allowEdit=false#loading`
+
+###### Passing query params and a fragment with `routerLink`:
+
+The `RouterLink` directive has a bindable property called `queryParams` and `fragment`:
+
+````typescript
+[routerLink]="['/servers', 1, 'server1']"
+[queryParams]="{allowEdit: false}"
+[fragment]="'loading'" or fragment="loading"
+````
+
+
+
+###### Passing query params and a fragment with `router.navigate`:
+
+````typescript
+this.router.navigate(['/server', 1, 'server1'], {queryParams: {allowEdit: false}, fragment: loading});
+````
+
+
+
+###### Retrieving the data inside components
+
+`````
+ngOnInit(){
+	this.route.snapshot.queryParams;
+	this.route.snapshot.fragment;
+	//or
+	this.route.queryParams.subscribe();
+	this.route.fragment.subscribe();
+}
+`````
+
+When reading values from parameters, like `servers/1` the numbers is converted to a string `"1"` so, that can be converted to a number again adding a `+` before the variable when picked up:
+
+````typescript
++this.route.snapshot.params['id'];
+````
+
+
+
+#### Nested routing
+
+How about having a router inside a router, to display different views inside a main component already loaded via routing?
+
+````typescript
+//app.module.ts
+
+const routes: Routes = [
+    {path: 'servers', component: ServersComponent, children: [
+        {path: ':id', component: ServerComponent},
+        {path: ':id/edit' component: ServerEditComponent}
+    ]}
+]
+````
+
+and just add a `<router-outlet>` where inside the ServersComponent, to display the nested views.
+
+
+
+#### Query params are lost when navigating again (e.g using a relative path):
+
+How to preserve this query params and fragment? 
+
+````typescript
+this.router.navigate(['edit'],{relativeTo: this.route, queryParamsHandling: 'preserve'},:
+````
+
+`````typescript
+type QueryParamsHandling = 'merge' | 'preserve' | '';
+`````
+
+
+
+#### Wrong route? display a 404 page:
+
+The routes are parsed from top to bottom, in the `routes` array declared in `app.module.ts`:
+
+````typescript
+//app.module.ts
+
+const routes: Routes = [
+	{path: '', component: HomeComponent},
+	{path: 'not-found', component: 404Component},
+	{path: '**', redirectTo: ''  or redirectTo: 'not-found'}
+]
+````
+
+if a route `/foo` is loaded, it will match the last object in the array. A redirection to `""` or `"not-found"` are good options. Make sure to place the `wildcard` at the end of the array.
+
+
+
+#### Moving the routing config to `app-routing.module.ts`
+
+In order not to bloat the `app.module.ts` file, it's better to create a new module and set up the routing config there:
+
+``````typescript
+//app-routing.module.ts
+//import all the components loaded via routing
+const appRoutes: Routes = [routes here];
+
+@NgModule({
+    //no need to declare the components loaded via routing, 
+	imports: [
+		RouterModule.forRoot(appRoutes)
+	],
+    exports: [
+        RouterModule
+    ]
+})
+export class AppRoutingModule {}
+``````
+
+The `exports` array makes Modules available when the `AppRoutingModule` is imported by other module.
+
+````typescript
+//app.module.ts
+//import all the components, event the ones loaded via routing
+@NgModule({
+    declarations: [all the components, even the ones loaded via routing]
+    imports: [AppRoutingModule]
+})
+````
+
+
+
+#### Protect views with guards
+
+A service which implements `CanActivate` interface is all we need to  protect the routes. It must be declared in providers, like the rest of the services. `@Injectable()` is added because the guard needs to injects other service to check if the user is logged in and so on.
+
+`````typescript
+//auth-guard.service.ts
+
+@Injectable()
+export class AuthGuardService implements CanActivate {
+    
+    //inject another services in the constructor
+    constructor(private authService: AuthService,
+                private router: Router){}
+    
+    canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<boolean | UrlTree> | Promise<boolean | UrlTree> | boolean | UrlTree {
+        return this.authService.isAuth.then(authState => { //isAuth() returns a promise
+            if (authState) {
+                return true;
+            } else {
+                this.router.navigate(['']);
+            }
+        })
+    }
+}
+`````
+
+
+
+````typescript
+//app-routing.module.ts
+
+const appRoutes = [
+    {path: 'users', canActivate: [AuthGuard], component: UsersComponent, }
+]
+````
+
+
+
+The arguments passed to the `canActivate()` method are passed by Angular when the method is called.
+
+Asynchronous code can be executed inside the method, to reach a server, for example, and that's why it can return an `Observable` or a `Promise`.
+
+If a route is applied to a parent route, **the guard is applied to all the child routes as well!**
+
+If the main `return` is missing inside `canActivate` the `return` statements inside the if block will return a `Promise`.
+
+####  How to protect just the child routes, but not the parent?
+
+Use `CanActivateChild` interface:
+
+````typescript
+//auth-guard.service.ts
+
+@Injectable()
+export class AuthGuardService implements CanActivateChild {
+    
+    //inject another services in the constructor
+    constructor(private authService: AuthService,
+                private router: Router){}
+    
+    canActivateChild(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<boolean | UrlTree> | Promise<boolean | UrlTree> | boolean | UrlTree {
+        return this.authService.isAuth.then(authState => { //isAuth() returns a promise
+            if (authState) {
+                return true;
+            } else {
+                this.router.navigate(['']);
+            }
+        })
+    }
+}
+````
+
+
+
+```typescript
+//app-routing.module.ts
+
+const appRoutes = [
+    {path: 'users', canActivateChild: [AuthGuard], component: UsersComponent, children:  	[children here] }
+]
+```
+
+**The same guard can have `canActivate` and `canActivateChild` methods**, and be used in different routes. e.g: I could protect the `/servers` parent route but not the children, and not protect the `/users` route but the children.  
+
+
+
+#### Preventing leaving a view with CanDeactivate interface
+
+If editing something, and the user accidentally tries to leave the page, it would be nice to ask him if he really wants to leave. Having a guard preventing leaving that route is the solution,
+
+For example, inside `EditServerComponent` there are inputs that can be checked if they were changed and saved in the "database", and it's in a component, not a service that could be injected into the guard (like the `AuthService`). How to solve this issue?
+
+Two methods should run: one inside the component, called `canComponentDeactivate`, to access the `changesSaved` variable, and returns an observable. The other method should be the classic `canDeactivate`  
+
+Two interfaces are required, for each method: the built in `CanDeactivate` interface and the custom `CanComponentDeactivate`. 
+
+The `CanComponentDeactivate` interface must be exported in order to apply inside the component, and then we're sure the components has a `canComponentDeactivate()` method. 
+
+The `canActivate()` method is always called by Angular and it will provide the arguments, and one of them is component itself, that can be used inside the `canDeactivate()` method, calling its method `canComponentDeactivate()`.
+
+`@Injectable()` is not necessary because any services are injected.
+
+`````typescript
+//can-deactivate.guard.ts
+
+//export the interface that's gonna be imported by the component
+export interface CanComponentDeactivate {
+    canComponentDeactivate: () => Observable<boolean> | Promise<boolean> | boolean;
+}
+
+//export the guard now. The component is passed to the method by angular.
+export class CanDeactivateGuard implements CanDeactivate<CanComponentDeactivate> {
+    canDeactivate(
+    	component: CanComponentDeactivate,
+    	currentRoute: ActivatedRouteSnapshot,
+    	currentState: RouterStateSnapshot,
+    	nextState: RouterStateSnapshot
+  ): Observable<boolean>|Promise<boolean>|boolean) {
+            return component.canComponentDeactivate()
+        }
+}
+`````
+
+````typescript
+//app-routing.module.ts
+
+const appRoutes = [
+    { path: 'servers', component: ServersComponent, children:[
+        { path: ':id', component: ServerComponent },
+        { path: ':id/edit', component: EditServerComponent, canDeactivate: [CanDeactivateGuard]}
+    ]} 
+]
+
+providers: [CanDeactivateGuard];
+````
+
+`````typescript
+//edit-server.component.ts
+import { CanComponentDeactivate } from 'somewhere';
+
+//time to import and extend the interface
+export class EditServerComponent extends CanComponentDeactivate {
+    canComponentDeactivate {
+        if (!this.allowEdit) {
+            return true;
+        }
+        if (changes were made and not saved) {
+            return confirm('Changes not saved, do you really wanna leave?')
+        } else {
+            return true;
+        }
+        
+    }
+}
+`````
+
+
+
+#### Passing static `data` when defining a route:
+
+```typescript
+//app-routing.module.ts
+
+const appRoutes: Routes = [
+    { path:  'not-found', component: ErrorComponent, data: {message: 'Page not found'}}
+]
+```
+
+`````typescript
+//error.component.ts
+
+ngOnInit() {
+    //get the snapshot
+    this.message = this.route.snapshot.data['message'];
+    //or react to future changes of data
+    this.route.data.subscribe(data => {
+        this.message = data.message;
+    })
+}
+`````
+
+So, the `ErrorComponent` could be reused in other routes and be passed another `message` .
+
+
+
+#### Passing dynamic data (async  one) via a `Resolver`:
+
+The resolver runs some code before the route is loaded. The difference with a resolver, is that this resolver will NOT decide if the route can be loaded or not, but can fetch data from a server (e.g) to load the route.
+
+Another alternative to a resolver could be showing a spinner and get data on `ngOnInit()`.
+
+ As the `resolve()` method runs every time before the route is loaded, it's enough accessing the `route: ActivatedRouteSnapshot`  parameter passed the the method if we want to access some params. No need of subscriptions and react to changes to params.
+
+````typescript
+//server-resolver.service.ts
+
+@Injectable({
+    providedIn: 'root'
+})
+export class ServerResolver extends Resolve<Server> {
+    constructor(serversService: ServerService){}
+    
+    resolve(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<Server> | Promise<Server> | Server {
+        return this.serversService.getServer(+route.params['id']);
+    }
+}
+````
+
+````typescript
+//app-routing.module.ts
+
+const appRoutes:Routes = [
+    children: [
+    	{path: ':id', component: ServerComponent, resolve: {server: ServerResolver}} 
+	]
+]
+````
+
+The `data` property inside the `route: ActivatedRoute` object is used to retrieve the data returned by the resolver.
+
+```typescript
+//server.component.ts
+
+export class ServerComponent extends OnInit {
+    constructor(private route: ActivatedRoute, private serversService: ServersService)
+    ngOnInit() {
+      this.route.data.subscribe(data: Data => {
+          this.server = this.serversService.getServer(+data['server']);
+      })
+    }
+}
+```
+
+
+
+#### Location strategies
+
+When the app is deployed, e.g to Firebase, the server (not the Angular App) parses the url before deciding what to do. When configuring a project on Firebase as a SPA, the server always serves the index.html file for all routes, letting the App decide what to do with the url.
+
+Some older browser don't let Angular parse the url, so the `#` can be used. Not recommended anymore.
+
+```typescript
+//app-routing.module.ts
+
+RouterModule.forRoot(appRoutes, {useHash: true})
+```
+
+This modifies the url as follows: `localhost:4200/#/server` and the web server can only sees the segment before the `#` so it always servers `index.html`. Then, the segments after the `#` are parsed by Angular. OLD SCHOOL, don't do it.
+
+
+
+## Section 12 - Course project routing -
+
+Watch out when redirecting the `""` route: 
+
+The path-matching strategy, one of _'prefix' or 'full'_. **Default is 'prefix'**.
+
+By default, the router checks URL elements from the left to see if the URL matches a given path, and stops when there is a match. For example, '/team/11/user' matches 'team/:id'.
+
+The path-match strategy 'full' matches against the entire URL. It is **important to do this when redirecting empty-path routes**. Otherwise, because an **empty path is a prefix of any URL**, the router would apply the redirect even when navigating to the redirect destination, **creating an endless loop**.
+
+Tip: remove the `href=#` from the `<a>` elements that have `routerLink` to avoid reloading the page when navigating. To get the clickable cursor, just add `syle="cursor: pointer;"`
+
+
+
+#### Loading individual recipes via child routing
+
+When a specific recipe from the list is clicked, a service would act as a bridge between the list of recipes and the `RecipeDetailComponent` and this service can be accessed from `RecipeDetailComponent`, of course. But there's a better way: passing the selected recipe via params, using routing!
+
+
+
+Tip: make sure the `new` route path is before the `:id` route in `app-routing.module.ts` because then, when loading `recipe/new` the `RecipeDetailComponent` will try to find a recipe from the service, that has an `id = 'new'` throwing an error.
+
+````typescript
+//app-routing.module.ts
+
+const appRoutes:Routes = [
+    { path: 'recipes', component: RecipesComponent, children: [
+        {path: 'new', component: RecipeEditComponent},
+        {path: ':id', component: RecipeDetailComponent},
+        {path: ':id/edit', component: RecipeEditComponent}
+    ]}
+]
+````
+
+No conflict happens between the last 2 child routes. I thought that there will be conflict with them. 
+
+
+
+###### 2 Cases of conflicts with routes
+
+There's only conflict when **the shape is the same**, so the most restrictive case should be put before, like in the case of `new` and `:id`. If routes have different number of segments, like `:id` and `:id/edit`, there is no conflict.
+
+The other conflict with routes is when redirecting the `""` route and having the default `pathMatch: "prefix"`.
+
+
+
+#### Navigating with relative paths
+
+When clicking the `New Recipe` button from inside the `RecipeListComponent`, no matter if the url is `/recipes/1/edit`, I'll be navigated to `recipes/new` because the `RecipeListComponent` is loaded via routing, with the route `/recipes`.
+
+````typescript
+//recipe-list.component.ts
+this.router.navigate(['/new'], relativeTo: this.route);
+````
+
+
+
+## Section 13 - Understanding Observables -
+
+The observable is an object that can emit data packages over time, more than once. E.g `this.route.params`
+
+Observables are a contract to which we subscribe to be informed about changes in data.
+
+The observer is the code inside the subscription.
+
+3 types of data packages:
+
+- Data
+- Errors
+- Completion
+
+Some observables never complete, like a `Subject` attached to a button. 
+
+On the other hand, an `http request` completes when the response is gotten.
+
+They're used to handle async tasks: we don't know when they'll happen. The app keeps running, but we know how to react to these events, leaving instructions in the code.
+
+
+
+#### Custom observable to understand the internals
+
+Observables are not part of JavaScript, so they need to be imported through `rxjs` library from `npm`.
+
+Quick example with built in observable ship with `interval`  rxjs function.
+
+````typescript
+//home.component.ts
+
+ngOnInit() {
+    interval(1000).subscribe(count => {
+        console.log(count);
+    })
+}
+````
+
+If initialize the app, the console.log() starts showing values. If I go to another route, and the `HomeComponent` is destroyed, it keeps logging values because there's no `unsubscribe`. And what's worse, if I go back to `home`, now I have double logging, because a new subscription was fired! We have a memory leak!
+
+The subscription can be stored in a variable and then can be unsubscribed inside `ngOnDestroy`.
+
+All the built in observables in Angular don't need to be unsubscribed because Angular does it for us.
+
+
+
+The custom one:
+
+THE API CHANGED!
+
+````typescript
+//component.ts
+//emit and handle new values
+
+customIntervalSubs: Subscription;
+
+ngOnInit() {
+	const customInterval = new Observable(subscriber => {
+		let count = 0;
+		setInterval(() => {
+			subscriber.next(count);
+			count++;
+		},1000)
+	})
+    
+    const customIntervalSubs = customInterval.subscribe(data => {
+        console.log(data);
+    });
+}
+
+ngOnDestroy() {
+    this.customIntervalSubs.unsubscribe();
+}
+````
+
+
+
+The `subscriber` object has three main methods:
+
+- next()
+- error()
+- complete()
+
+The observable and the observer can communicate because the observer is passed as a argument (`subscriber`) inside the observable.
+
+
+
+How to throw an error?
+
+
+
+#### Difference between Suject.next()  and Event.emit()
+
+Observables are lazy computations, like functions, they don't execute if there aren't any parts of the app interested, or called (functions). But Events emit values regardless if there are parts interested in them.
+
+
+
+#### Emitting error and completion
+
+````typescript
+//component.ts
+//emmit and handle errors and completion
+
+customIntervalSubs: Subscription;
+
+ngOnInit() {
+	const customInterval = new Observable(subscriber => {
+		let count = 0;
+		setInterval(() => {
+			subscriber.next(count);
+            
+            if(count === 2) {
+                //any argments are passed on completion
+                subscriber.complete();
+            }
+            
+            //this never gets executed if the above completed code is uncommented
+            if (count > 3) {
+                subscriber.error(new Error('count greater than 3'));
+            }
+			count++;
+		},1000)
+	})
+    
+    const customIntervalSubs = customInterval.subscribe(data => {
+        console.log(data);
+    }, error => {
+        alert(error.message);
+    }, () => {
+        //clean up work or something
+        alert('the obersable has completed');
+    });
+}
+
+ngOnDestroy() {
+    this.customIntervalSubs.unsubscribe();
+}
+````
+
+
+
+The anonymous function, which is the 3rd argument of the `subscribe()` method, is not fired when the error happens, it just runs on completion (even when the observable is done after an error).
+
+The errors cancels the observable, but doesn't complete it.
+
+**Customs observables are rarely needed. We use built in ones.**
+
+
+
+#### Operators: massaging data
+
+Every Observable has a pipe method, that allow us to use operators like `map`, to modify data.
+
+````typescript
+//pipe and map
+
+customInterval.pipe(map((data: number) => {
+	return 'The count is' + data;
+}))
+````
+
+ You can chain operators, by adding them to the pipe arguments, separated by a coma: 
+
+````typescript
+.pipe(operator1, operator2, etc);
+````
 
