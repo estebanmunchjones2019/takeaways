@@ -2,6 +2,10 @@
 
 
 
+[TOC]
+
+
+
 ## Section 2: The basics
 
 main.ts file is the first ts file run on developement in the browser:
@@ -1859,7 +1863,17 @@ The errors cancels the observable, but doesn't complete it.
 
 #### Operators: massaging data
 
-Every Observable has a pipe method, that allow us to use operators like `map`, to modify data.
+Operators are **functions**. There are two kinds of operators:
+
+**Pipeable Operators** are the kind that can be piped to Observables using the syntax `observableInstance.pipe(operator())`. These include, [`filter(...)`](https://rxjs.dev/api/operators/filter), and [`mergeMap(...)`](https://rxjs.dev/api/operators/mergeMap). When called, they do not *change* the existing Observable instance. Instead, they return a *new* Observable, whose subscription logic is based on the first Observable.
+
+*A Pipeable Operator is a function that takes an Observable as its input and returns another Observable. It is a pure operation: the previous Observable stays unmodified.*
+
+A Pipeable Operator is essentially a pure function which takes one Observable as input and generates another Observable as output. Subscribing to the output Observable will also subscribe to the input Observable.
+
+**Creation Operators** are the other kind of operator, which can be called as standalone functions to create a new Observable. For example: `of(1, 2, 3)` creates an observable that will emit 1, 2, and 3, one right after another. Creation operators will be discussed in more detail in a later section.
+
+
 
 ````typescript
 //pipe and map
@@ -1875,3 +1889,527 @@ customInterval.pipe(map((data: number) => {
 .pipe(operator1, operator2, etc);
 ````
 
+
+
+#### Subjects: a better performing option to EventEmitters for cross-component communication (via services)
+
+A Subject is a special type of Observable that allows values to be multicasted to many Observers. Subjects are like EventEmitters.
+
+![](images/subject.png)
+
+So, a `Subject` has a trigger to inform many part of the app on demand. The next() method is now callable from "outside" the observable. And operators can be used to massage the data (not doable on an EventEmitter).
+
+
+
+
+
+Both EventEmitters and Subjects need to be subscribed to get informed:
+
+`````typescript
+//service.ts
+
+someEventEmitter.emit(true);
+someSubject.next(true);
+`````
+
+````typescript
+//interested.component.ts
+
+someEventEmitter.subscribe(data => //do something);
+someSubject.subscribe(data => //do something);
+````
+
+
+
+## Section 15 - Forms -
+
+Normal forms reach to the server upon submit, reloading the page, but with Angular, the default request to the server should be blocked, and data can be massaged, validated and submitted to a server via injecting the `HttpClient` service and calling `.post`. Visual validation indication can also be displayed for the user. 
+
+A normal html form with a submission button looks like this:
+
+````html
+<form action="/action_page.php">
+  <label for="fname">First name:</label><br>
+  <input type="text" id="fname" name="fname" value="John"><br>
+  <label for="lname">Last name:</label><br>
+  <input type="text" id="lname" name="lname" value="Doe"><br><br>
+  <input type="submit" value="Submit">
+</form>
+````
+
+
+
+#### Template driven Forms
+
+No `action` or `method` attributes are present in the form, to avoid the http request.
+
+Angular creates a form object which is inferred from the template, via the default added `NgForm` directive (with an `ngForm` selector) to all `<form>`.
+
+`````typescript
+//app.module.ts
+
+import { FormsModule } from '@angular/forms';
+
+@NgModule({
+  imports: [
+    FormsModule
+  ]  
+})
+`````
+
+All `<form>` in the template are automatically added a `ngForm` directive by Angular, that makes possible to access the form object in the `.ts` file via binding a local reference to the directive, and passing the local reference to the `.ts` file via a method or using `@ViewChild`.
+
+Angular doesn't add any inputs to the object (as controls) by default, they must be registered manually.
+
+````html
+<form>
+	<input 
+    ngModel
+    name="firstName">
+</form>
+````
+
+`ngModel` directive and the `name` of the control, is all we need to add the inputs.
+
+`name` is a built in html form attribute.
+
+
+
+#### Where to put an click listener that executes a e.g `onSubmit()` method in the template? 
+
+Not on the button, but **on the form tag** . When the button is clicked, the `submit` event is fired, and the `ngForm`  directive (automatically added by Angular to all `<form>` ) fires another event called `ngSubmit` that can be picked up in the form, if we have an event binding `(ngSubmit)`.
+
+````typescript
+//component.html
+
+<form (ngSubmit)="onSubmit(f)" #f="ngForm">
+````
+
+`````typescript
+//component.ts
+
+onSubmit(f: NgForm) {
+    console.log(f.value.firstName);
+}
+`````
+
+
+
+The form object can be sent to the `onSubmit()` method to extract the values of the inputs and validation status, to send them via http request. The object can be passed to the `.ts` file via a method or `@ViewChild`. How is it passed? 
+
+Angular docs:
+
+As soon as you import the `FormsModule`, this directive (ngForm) becomes active by default on all `<form>` tags. You don't need to add a special selector.
+
+You optionally export the directive into a local template variable using `ngForm` as the key (ex: `#myForm="ngForm"`).
+
+
+
+#### TD: Alternative approach: use `@ViewChild()` to get the object
+
+````typescript
+//component.ts
+
+@ViewChild('f') form: NgForm;
+
+onSubmit() {
+    console.log(this.form)
+}
+````
+
+The benefit of this approach is that the object can be accessed before submission to show validation messages.
+
+
+
+#### TD: Adding validation to TD forms
+
+````html
+<form>
+	<input
+    required
+    email>
+</form>
+````
+
+`required` is a directive selector, even though is usually a built in html attribute.
+
+`email` is also another directive selector.
+
+There's a `valid` property inside the `NgForm` object that can be used to disable the submit button.
+
+To see each field validity, go to `controls.email.valid` to see validity of the `name="email"` field.
+
+Each field is added some css classes, like `ng-dirty`, `ng-touched`, `ng-pristine`, `ng-valid`, `ng-invalid`, depending on the state of the individual controls.
+
+
+
+#### How to disable the submit button when the whole form is invalid?
+
+````html
+<button 
+[disable]="!f.valid">
+Submit</button>
+````
+
+
+
+How to style invalid fields after touching them?
+
+````css
+input.ng-invalid.ng-touched {
+    border: 1px solid red;
+}
+````
+
+
+
+#### Local references placed on inputs, and showing validation error messages
+
+Besides the `#f`  (could be `#anyName`) form local reference, other local references can be placed inside inputs and be binded to a directive (`ngModel`), to avoid having to dig deep into the `#f` reference in order to get the state of each control. This is OPTIONAL.
+
+````html
+<form>
+	<input 
+	#email="ngModel"
+           
+ 	email
+    required
+    name="email"
+    ngModel>
+    <span *ngIf="!email.valid && email.touched">
+        Please, enter a valid email
+    </span>
+````
+
+
+
+#### How to add default values for a `<select>` or other inputs?
+
+```html
+<form>
+	<label for="sex">Sex</label>
+	<select
+    id="sex"
+	name="sex"
+	
+	[ngModel]="M">
+	
+		<option>M</option>
+		<option>F</option>
+```
+
+`[ngModel]="someValue"` is **property binding** (NOT two way binding);
+
+
+
+#### How to live output some data the user entered, before submission?
+
+Just use two way binding:
+
+````html
+//component.html
+
+<input
+[(ngModel)]="firstName"
+>
+<p>{{ firstName }}</p>
+````
+
+````typescript
+//component.ts
+
+export class Component {
+    firstName;
+}
+````
+
+
+
+Recap of `NgModel` directive usage in forms:
+
+1) `ngModel`, just the selector,  for creating a FormControl
+
+2) `[ngModel]` , property binding, for creating a FormControl & define a default value
+
+3) `[(ngModel)]` two way data binding, for for creating a FormControl & output the same value somewhere else live.
+
+
+
+#### TD: FormGroups  
+
+What if I wanna grup inputs and validate them as a whole?
+
+`NgModelGroup` directive is the answer!
+
+Apply it to wrapping divs:
+
+````html
+<div ngModelGroup="names">
+	<input>
+	<input>
+</div>
+````
+
+Then, the `NgForm` object will have a control named `names` with it's properties, like `valid` and the same for `value`. 
+
+How to access that part of the object in the template without working with the full `NgForm` object?
+
+Just add a local reference and bind it to the `NgModelGroup` directive.
+
+````html
+<div 
+ngModelGroup="names"
+#names="ngModelGroup">
+	<input>
+	<input>
+    <span *ngIf="!names.valid & names.touched">Please enter valid names</span>
+</div>
+````
+
+
+
+#### TD: radio buttons
+
+`````html
+//component.html
+//genders = ["male", "female"];
+
+<label *ngFor="let gender of genders">
+ 	<input
+ 	type="radio"
+ 	ngModel
+    name="userGender"
+    [value]="gender"
+    required>
+    {{ gender }}
+</label>
+`````
+
+
+
+#### TD: changing values in the `NgForm` object
+
+What if we wanna click a button that fills an input with some value? We could use two way data binding, but when using `@ViewChild`, the object is available in the `.ts` file before submission, and the `setValue()` can be called on the object. The downside: all the values of all the inputs must be defined, overwriting the values of all inputs.
+
+**IMPORTANT: all button that don't submit the form, must have `type="button"`.**
+
+````typescript
+//component.ts
+
+this.myForm.setValue({
+	firstName: 'Esteban',
+	lastName: 'Munch Jones',
+	email: 'esteban.munch.jones@gmail.com'
+})
+````
+
+
+
+BETTER alternative: `patchValue()`. It just patched one field or more:
+
+````typescript
+//component.ts
+
+this.myForm.form.patchValue({
+	firstName: 'Esteban'
+})
+````
+
+`this.myForm.form:` `FormGroup`, which also has `setValue()`, `patchValue()` and many more methods.
+
+ After getting the data upon submission, is a good idea to reset the form:
+
+````typescript
+//old API
+this.myForm.reset();
+//new API
+this.myForm.resetForm();
+//or
+this.myForm.form.reset();
+````
+
+Resets the `FormGroup`, marks all descendants `pristine` and `untouched` and sets the value of all descendants to null.
+
+
+
+#### Reactive: Intro
+
+The `FormGroup` object is created programatically and  then manually sync with the template. It offers more control and easier testing.
+
+In TD approach, the `NgForm` object was wrapping a `FormGroup` object in the end.
+
+What is a form? just a group of controls that have the `FormGroup` type.
+
+First step: import `ReactiveFormsModule`:
+
+````typescript
+//app.module.ts
+
+import { ReactiveFormsModule } from '@angular/forms';
+
+@NgModule({
+    imports: [
+        ReactiveFormsModule
+    ]
+})
+````
+
+
+
+`FormGroup` is one of the three fundamental building blocks used to define forms in Angular, along with `FormControl` and `FormArray`.
+
+A new instance of `FormGroup` must be created before rendering the template, and `ngOnInit()` is a perfect place for it.
+
+````typescript
+//component.ts
+
+
+export class Component implements OnInit {
+   myForm: FormGroup;
+   
+   ngOnInit() {
+       this.myForm = new FormGroup({
+           firstName: new FormControl();
+           lastName: new FormControl();
+       })
+   } 
+}
+
+//or
+
+export class Component implements OnInit {
+    myForm: FormGroup;
+    
+    constructor(private formBuilder: FormBuilder){}
+    
+    ngOnInit() {
+        this.formBuilder.group({
+            firstName: '',
+            lastName: ''
+        })
+    }
+
+````
+
+
+
+Now, it's time to connect this `FormGroup` object to the template, via property binding in a directive, and to connect each `FormControl` to it's respective input:
+
+````html
+//component.html
+
+<form [formGroup]="myForm">
+	<input [formControlName]="'firstName'">
+    <input [formControlName]="'lastName'">
+</form>
+````
+
+The `FormGroup` directive overwrites the default `ngForm` directive automatically applied to all `<form>` elements.
+
+the `FormGroup` directive also emits an `ngSubmit` event when the submit button is clicked. No need to pass the form object from the view to the model, because it was created and lives in the model, the `.ts` file:
+
+```typescript
+//component.html
+
+<form [formGroup]="myForm" (ngSubmit)="onSubmit()">
+	<button>Submit</button>
+</form>
+```
+
+
+
+#### Reactive: Validation
+
+Validation is added on the `.ts ` files, and no directives are places on each input.
+
+````typescript
+//component.ts
+
+email: new FormControl('', Validators.required)
+//or pass an array of validators
+email: new FormControl('', [Validators.required, Validators.email)
+````
+
+Make sure NOT to call `required()`, because we need the reference to this static method.
+
+
+
+#### Reactive: displaying error messages
+
+There's a `FormGroup.get()` method available, to get values an validation state of each control.
+
+````html
+<input> 
+    placeholder="Enter your email">
+	formControlName="email"
+</input>
+<span *ngIf="!myForm.get('email').valid & myForm.get('email').touched">Please enter a valid email</span>
+````
+
+
+
+#### Reactive: FormGroups
+
+Grouping `FormControl` s is easy. Make sure to have the right path passed to `.get()` method, like `.get(userNames.firstName)`;
+
+````typescript
+//component.ts
+
+this.myForm = new FormGroup({
+    userNames: new FormGroup({
+        firstName: new FormControl();
+        lastName: new FormControl();
+    })
+})
+````
+
+````html
+//component.html
+
+<form>
+    <div formGroupName="userNames">
+        <input formControlName="firstName">
+        <input formControlName="lasttName">
+    </div>
+</form>
+````
+
+
+
+#### Reactive: Adding new `FormControl` dynamically with `FormArray`
+
+Casting in TypeScript: `(<FormArray>this.myForm.get('userNames'))` 
+
+Everything inside the outer parenthesis has now the type declared inside it.
+
+````typescript
+//component.ts
+
+onAddHobby() {
+	const control = new FormControl(null, Validator.required);
+	(<FormArray>this.myForm.get('hobbies')).push(control);
+}
+````
+
+````html
+//component.html
+
+<div formArrayName="hobbies"> //this directive tells Angular that the array will live inside here
+    <h4>Add your hobbies</h4>
+    <button type="button" (click)="onAddHobbies()">Add more hobbies</button>
+    <div *ngFor="let hobbie of hobbies; let i = index">
+        <input 
+        [formControlName]="i">
+    </div>
+</div>
+````
+
+here, the name for the input can't be chosen by us, but numbers can be used instead.
+
+As I'm not passing a string, I used `[]` for binding `formControlName`.
+
+
+
+#### TD:Custom validators
+
+#### 
