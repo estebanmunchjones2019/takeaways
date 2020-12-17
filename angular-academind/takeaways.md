@@ -1969,7 +1969,7 @@ Angular doesn't add any inputs to the object (as controls) by default, they must
 </form>
 ````
 
-`ngModel` directive and the `name` of the control, is all we need to add the inputs.
+`ngModel` directive and the `name` of the control, is all we need to add the inputs and register it as a control.
 
 `name` is a built in html form attribute.
 
@@ -2293,7 +2293,7 @@ export class Component implements OnInit {
 
 
 
-Now, it's time to connect this `FormGroup` object to the template, via property binding in a directive, and to connect each `FormControl` to it's respective input:
+Now, it's time to connect this `FormGroup` object to the template, via property binding in a directive, and to connect each `FormControl` to its respective input:
 
 ````html
 //component.html
@@ -2410,6 +2410,399 @@ As I'm not passing a string, I used `[]` for binding `formControlName`.
 
 
 
-#### TD:Custom validators
+#### Reactive: Custom validators
 
-#### 
+Use case example: prevent the use of a specific username.
+
+A validator is just a functions that is run by Angular when it checks the validity of the form.
+
+Make sure to return `null` in the function when the field is valid, just simply omit the `return null` statement.
+
+ ````typescript
+//component.ts
+
+forbiddenUserNames = ['Max', 'Manu'];
+
+username: new FormControl(null, [Validators.required, this.forbiddenNames.bind(this)])
+
+forbiddenNames(control: FormControl): {[s: string]: boolean} {
+    if (this.forbiddenUserNames.indexOf(control.value) !== -1) {
+        return {
+            isNameForbidden: true
+        }
+    }
+    else {
+        return null;
+    }
+}
+ ````
+
+`this.forbiddenNames` is not called from inside the component class, is called by Angular, so the correct reference to the `this` (that actually refer to the class) must be binded.
+
+
+
+#### How to display different messages depending on which validator returns true?
+
+The `FormControl` object keeps track of which validators returned true, and is found inside the `errors` property. So, all the returned values from the validators are ketp in the object. Neat!
+
+````html
+//component.html
+
+<span *ngIf="!myForm.get('username').valid && myForm.get('username').touched">
+	<span *ngIf="myForm.get('username').errors['isNameForbidden']">Invalid name, choose another one</span>
+    <span *ngIf="myForm.get('username').error['required']">Please, enter a name</span>
+</span>
+````
+
+
+
+#### Reactive: Custom async validators
+
+To check if a username is valid, a database should be checked, and this is an async operation. So, the validator function should return a `Promise` or `Observable`. If the built in `HttpClient.get()` method is used, then an observable is returned. Rxjs `operators` must be used to modify the returned value from the obsevable to match the `{[s: string]: boolean}` or `null` typing.
+
+````typescript
+//component.ts
+
+email: new FormControl(null, [Validators.required], this.forbiddenEmail.bind(this))
+
+forbiddenEmail(control: FormControl): Promise<any> | Observable<any> {
+    const promise = new Promise((resolve, reject) => {
+        setTimeOut(() => {
+            if (control.value === 'test@test.com') {
+            	resolve({isEmailForbidden: true});
+        	} else {
+                resolve(null);
+            }
+        },2000)
+    });
+
+	return promise;
+}
+````
+
+The async validator is added as a 3rd argument to `FormControl`.
+
+The API changed, and now, the object returned from the validator doesn't have to be a `boolean`. The returned object has this shape: `{[key: string]: any}`
+
+
+
+#### Listen to value and status changes in `FormControl`
+
+There are a couple of observables that return values every time there are changes on the values or the status of the form:
+
+````typescript
+//component.ts
+
+ngOnInit() {
+	this.myForm.statusChanges.subscribe(data => {
+		console.log(data);
+	});
+	this.myForm.valueChanges.subscribe(data => {
+		console.log(data);
+	})
+}
+````
+
+These observables are also available at the field level, because at the `FormControl` level as well, apart from being available inside the global `FormGroup`.
+
+
+
+#### Change the values programatically with `setValue` and `patchValue`
+
+````typescript
+//component.ts
+
+someMethod(){
+    //change the values of ALL fields
+	this.myForm.setValue({
+        name: 'max',
+        email: 'max@max.com'
+    });	
+    //or change the values of SOME fields
+    this.myForm.patchValue({
+        name: 'manu'
+    });	
+}
+
+//reset the form
+onSubmit(){
+    this.myForm.reset();
+}
+````
+
+`reset()` can be passed an object with the values of ALL fields we want after reseting.
+
+
+
+Bonus: create a class with static methods with custom validators
+
+````typescript
+//custom-validators.ts
+
+export class CustomValidators {
+    static invalidName(control: FormControl): {[key: string]: any} {
+        if(control.value === 'amazon') {
+            return {
+                isNameInvalid: true
+            }
+        } else {
+            return null;
+        }
+    }
+}
+````
+
+The `static` type let us call `CustomValidators.invalidName` without instantiating the class (with `new CustomValidators`).
+
+
+
+## Section 16: Project Forms
+
+#### How to validate a number, so it's greater than 0? Use Regex:
+
+````typescript
+//component.ts
+
+<input
+[patern]="'[1-9]+[0-9]*$'"
+//or
+patern="[1-9]+[0-9]*$"
+````
+
+
+
+#### Reset a TD form
+
+The `NgForm` directive has a lot of properties of `FormGroup`, so `reset()` can be called on the directive passed to the `#f` local reference in the template.
+
+````typescript
+//component.ts
+
+onSubmit(form: NgForm) {
+	form.reset();
+}
+````
+
+
+
+#### Replace the default `NgForm` directive, which its selector is `<form>`:
+
+The `FormGroupDirective` from the `ReactiveFormsModule`  takes over the default `NgForm` from the `FormsModule` (which has a selector `<form>`) directive automatically called on every `<form>`.
+
+`````html
+//component.html
+
+<form [formGroup]="myForm">
+    
+</form>
+`````
+
+
+
+#### When typescript complains, just cast 
+
+`````typescript
+//component.ts
+
+onAddIngredient() {
+    (<FormArray>this.myForm.ingredients).controls.push(a new FormGroup);
+}
+`````
+
+To avoid a `<button>` to submit the form, it should have the attribute `type="button"`.
+
+
+
+#### Reactive: Pattern validation
+
+````typescript
+//component.ts
+
+Validators.pattern(/regex here/);
+````
+
+
+
+#### Programatic navigation
+
+````typescript
+//component.ts
+
+onCancel(){
+	this.router.navigate(['...'], {relativeTo: this.route})
+}
+````
+
+It navigates from `/recipes/1/edit` to `/recipes/1`
+
+
+
+#### Avoid this bug about services!
+
+If you provide a service at the component level, like at `Recipes` (loaded at `/recipes`), when this component is destroyed,  maybe because of navigating to a `/ingredients` route, the service instance is destroyed as well, with all its state (like the list of recipes);
+
+Solution: always provide the service at the `app.module.ts` level, via `providers` or just using `providedIn: 'root'` in the service.
+
+
+
+## Section 17: Pipes
+
+What are pipes? are output transformations in the template
+
+What if I wanna display a `userName` variable all in UPPERCASE in the view, but I don't want to change the variable value in the model?
+
+```html
+//component.html
+
+<h2>{{ userName | uppercase}}</h2>
+```
+
+There are built in pipes, and custom one we can build with `@pipe` decorator.
+
+The `DatePipe`: configuring it by passing parameters
+
+````html
+<p>{{ dataVariable |  date:'fullDate'}}</p>
+````
+
+How to pass multiple parameters? Just add another colon `:` and add the second parameter:
+
+````
+<p>{{ dataVariable |  date:'fullDate':'otherParam'}}</p>
+````
+
+
+
+#### What if I wanna display the date in spanish?
+
+Just add `LOCAL_ID` and configure it in `app.module.ts`, to configure NOT dynamically:
+
+````typescript
+//app.module.ts
+
+providers: [
+        { provide: LOCALE_ID, useValue: "es-AR" }
+    ]
+````
+
+And dynamically, at runtime:
+
+````typescript
+//component.ts
+
+import { LOCALE_ID } from '@angular/core';
+import { platformBrowserDynamic } from '@angular/platform-browser-dynamic';
+import { AppModule } from './app/app.module';
+
+platformBrowserDynamic().bootstrapModule(AppModule, {
+  providers: [{provide: LOCALE_ID, useValue: 'en-US' }]
+});
+````
+
+
+
+#### Chaining pipes: the order matters
+
+````html
+//component.html
+
+someDateObject | date | uppercase
+````
+
+the pipes are parsed from left to right.
+
+
+
+#### Custom pipes
+
+Custom pipes are classes with a `@Pipe` decorator
+
+````typescript
+//shorten.pipe.ts
+
+
+@Pipe({
+    name: 'shorten'
+})
+export class ShortenPipe extends PipeTransform {
+	transform(value: string): string {
+		return value.substr(0,10);
+	}
+}
+````
+
+Add the pipe to the `declarations` array in `app.module.ts`.
+
+And then use it in the template:
+
+````html
+//component.html
+
+<p>{{someString | shorten}}</p>
+````
+
+
+
+#### Accepting arguments
+
+````typescript
+//shorten.pipe.ts
+
+
+@Pipe({
+    name: 'shorten'
+})
+export class ShortenPipe extends PipeTransform {
+	transform(value: string, limit:number, ?anotherArg): string {
+		return value.substr(0,limit);
+	}
+}
+````
+
+````html
+//component.html
+
+<p>{{someString | shorten:10}}</p>
+````
+
+More than one arg? just add a comma and add them to the `transform()` method.
+
+
+
+#### Pipes for filtering data, not used in string interpolation
+
+````html
+//component.html
+
+<div *ngFor="let server of servers | filterServer:status:'stable'">
+    
+</div>
+````
+
+Super useful for filtering arrays and displaying just the info we want, and avoiding using *ngIf inside the `ngFor` loop.
+
+
+
+#### Pure vs Impure pipes: when to re-run the `transform()` method
+
+By default, Angular DOES run the `transform()` method every time the input changes (like passing a brand new object or array ). If a new element is added to an array, the pointer is still the same, and the `transform()` method is not triggered again. `pure: true` is the default behavior.
+
+#### Danger! Wanna run the `transform()` on every change detection cycle? use `pure: false`;
+
+
+
+#### The `AsyncPipe`, forget about unsubscribing
+
+The `async` pipe subscribes to an `Observable` or `Promise` and returns the latest value it has emitted. When a new value is emitted, the `async` pipe marks the component to be checked for changes. When the component gets destroyed, the `async` pipe unsubscribes automatically to avoid potential memory leaks.
+
+````html
+//component.html
+
+<p>
+    {{ someBehaviorSubject | async }}
+</p>
+````
+
+
+
+## Section 18 Making http-requests
