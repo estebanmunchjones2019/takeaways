@@ -2806,3 +2806,211 @@ The `async` pipe subscribes to an `Observable` or `Promise` and returns the late
 
 
 ## Section 18 Making http-requests
+
+Endpoints in a server usually return `JSON` data, instead in an `html` file, like when requesting a page from a certain `URL`.
+
+In order to make `http` requests, the `HttpClientModule` must be imported and added to the `imports` array in `app.module.ts`.
+
+````typescript
+//app.module.ts
+
+import { HttpClientModule } from '@angular/common/http';
+
+@NgModule({
+    imports: [
+        HttpClientModule
+    ]
+})
+
+export class AppModule {};
+````
+
+Now, the `HttpClient` service must be injected in the class we wanna use it (generally inside another service);
+
+````typescript
+//component.ts or service.ts
+
+import { HttpClient } from '@angular/common/http';
+
+constructor(private http: HttpClient){}
+````
+
+
+
+#### Making a post request
+
+````typescript
+//service.ts
+
+onPost(userData){
+	this.http.post('someUrl', userData).subscribe(res => {
+		console.log('post request succesful');
+	})
+}
+````
+
+Firebase rest API requires as to add `.json` at the end of the endpoint, for the `Realtime Database`.
+
+The `body` is automatically converted to `JSON` format before sending it to the API.
+
+We must `SUBSCRIBE` in order to fire the request, otherwise nothing happens.
+
+The `http.post()` method returns an `Observable` we must subscribe to, because otherwise no one is interested in the response.
+
+**Angular automatically extracts the `body` of the response from the `Observable`.**
+
+No need to unsubscribe because it's a built in Angular observable
+
+Browsers send 2 requests for `POST` ones, with the first request with `Request Method: OPTIONS`
+
+Angular adds `Headers` to the post request: `Accept: application/json, text/plain, */*`, `Content-Type: application-json`.
+
+
+
+#### Transforming the response data with observables
+
+The `map()` operator gets data and then return new one wrapped in a new Observable instance.
+
+Example: convert and object of the form:
+
+````json
+{xccasfafaf: {
+	name: 'Esteban',
+	age: '31'
+},
+ergietigjift:{...}}
+````
+
+Tip: to loop in an object, use `in`, and to loop in a array, `of` .
+
+````typescript
+//service.ts
+
+this.http.get('url').pipe(map(res => {
+	const usersArray = [];
+    for(let key in res) {
+        //check if the key exists in the object
+        if(res.hasOwnProperty(key))
+        usersArray.push(...res[key],id: key)
+    }
+    return usersArray;
+})).subscribe(...)
+````
+
+
+
+#### Adding types to http methods
+
+````typescript
+//user.model.ts
+
+export interface User {
+    name: string,
+    age: string,
+    id?: string    
+}
+````
+
+
+
+**Not necessary** to add the type to the argument of `map`.
+
+````typescript
+//service.ts
+
+map((res: {[key: string]: User}) => ....)
+````
+
+Instead, the `post()` is a **generic method**, that can cast many `types`:
+
+```typescript
+//service.ts
+
+this.http.get<{[key: string]: User}>()
+```
+
+The `http` requests should be done inside `services`, and not inside `components`. Inside the components, only template related things should be there.
+
+
+
+#### To return or not return, that's the question
+
+If the data gotten from the server is only needed in just one component, a good option is just `return` the observable and subscribe just in the component interested in that data. Downside: if used in more than one component, more than one request is done, making the app slower.
+
+On the other hand, if many components are interested, just use a `Subject` and call next to inform the interested components.
+
+If no component is interested in our response data, like when doing a `post` request, then, we can subscribe inside the `service` .
+
+
+
+#### Handling errors 
+
+**First way**: adding a function as second parameter inside `subcribe()`, when subscribed in a component.
+
+````typescript
+.subscribe(data => {
+	//do something with data
+}, error => {
+	console.log(error.message);
+})
+````
+
+**Second way**: same as above, but using a `Subject` when subscribed inside a service.
+
+````typescript
+//service.ts
+
+error = new Subject<string>();
+
+this.http.post(someArgs).subscribe(data => {}, error => {
+    error.next(error.message);
+})
+````
+
+**Third way**: with `catchError()` operator, and no need to `subscribe`:
+
+````typescript
+//service.ts
+
+this.http.get(someArgs).pipe(
+	catchError(error => {
+        //send the error to analytics, or store in a database, not related to the UI
+        return throwError(error);
+    })
+)
+````
+
+`trowError` is a function that returns a new observable by wrapping an error.
+
+
+
+#### Configuring Headers
+
+Every http request method has a `{header?: HttpHeaders}` optional argument, if the API needs them (like authorization):
+
+````typescript
+//service.ts
+
+this.http.get(url, {
+    headers: new HttpHeaders({'myCustomHeaderName': 'Banana'})
+});
+````
+
+
+
+#### Adding query params
+
+example: adding `?print=pretty` to the request url. It can be done manually, or, using a config object, below `headers`:
+
+````typescript
+//service.ts
+
+this.http.get(url, {
+	headers: new HttpHeaders({'myCustomHeaderName': 'Banana'}),
+    params: new HttpParams().set('print', 'pretty');
+    
+}});
+````
+
+#### How to add multiple query params?
+
