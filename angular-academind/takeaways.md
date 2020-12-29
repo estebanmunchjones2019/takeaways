@@ -3000,7 +3000,7 @@ this.http.get(url, {
 
 #### Adding query params
 
-example: adding `?print=pretty` to the request url. It can be done manually, or, using a config object, below `headers`:
+example: adding `?print=pretty` to the request url. It can be done manually with string interpolation, or inside the config object, below `headers`:
 
 ````typescript
 //service.ts
@@ -3014,3 +3014,195 @@ this.http.get(url, {
 
 #### How to add multiple query params?
 
+A `HttpParams` instance is not mutable, so when use `set()`, for example, a new instance is returned. Solution: use `let` to define a variable
+
+````typescript
+someMethod(){
+	let queryParams = new HttpParams();//first instance
+	queryParams = queryParams.append('custom', 'key')//second instance
+    queryParams = queryParams.append('otherCustom', 'key')//third instance
+}
+````
+
+ 
+
+#### Accessing the full response object
+
+Angular automatically extracts the `body` of the response, but...what if we wanna access the full response object, e.g to access a status code?
+
+In every request method , there's the config object:
+
+````typescript
+//service.ts
+
+{
+    observe: 'body' || 'response' || 'events'
+}
+
+````
+
+`events` are encoded with numbers, like `0`, `1`, etc. But there's an Enum called `HttpEventType` which has the numbers and event types paired. `HttpEventType.Sent` returns `0` , so it can be used to do some `if` checks:
+
+````typescript
+.pipe(tap(event => {
+	if(event.type === HttpEventType.Sent)//instead if writting 0 on the right of the === {
+		console.log('request sent');
+	}
+}))
+````
+
+
+
+#### What are Enums?
+
+```typescript
+var SizeEnum = { SMALL: 1, MEDIUM: 2, LARGE: 3,};
+```
+
+Then use it like so:
+
+```typescript
+var mySize = SizeEnum.SMALL;
+```
+
+
+
+#### How to change the type of the response body
+
+Is also donde with the config object:
+
+````typescript
+//service.ts
+
+{
+    responseType: 'json'(default) || 'text' || 'blob'
+}
+````
+
+
+
+#### Interceptors: request interceptors
+
+What if we wanna attach the same headers to all or some(applying filters) the requests?
+
+Interceptors are stored in separate files:
+
+````typescript
+//auth-interceptor.service.ts
+export class AuthInterceptorService implements HttpInterceptor {
+    intercept(req: HttpRequest<any>, next: HttpHandler) {
+        console.log('request on its way');
+        return next.handle(req);
+    }
+}
+
+````
+
+`HttpHRequest` is a generic type, so `<>` must be added to tell typescript which type of data the request body has.
+
+#### How to provide this service?
+
+````typescript
+//app.module
+
+providers:[{
+    provider: HTTP_INTERCEPTORS,
+    useClass: AuthInterceptorService,
+    multi: true //to allow multiple interceptor
+    
+}]
+````
+
+`HTTP_INTERCEPTORS` is a const, and is a token that tells angular how to use this services, so it runs this services every time there's a request going out.
+
+Filters can be added to the interceptor, like filtering by `req.url` or `req.method` to name a few.
+
+The `req` is immutable, so req.url = 'newUrl' won't work.
+
+A new req instance must be created like this:
+
+```typescript
+//interceptor.ts
+
+const newReq = req.clone({url: newUrl, headers: req.headers.append('Auth', 'xyz')});
+next.handle(newReq);
+```
+
+
+
+#### Interceptors: response interceptor
+
+`next.handle` returns an observable that we can pipe, and get just `events`, not the response body or the full response.
+
+````typescript
+//auth-interceptor.service.ts
+
+export class AuthInterceptorService implements HttpInterceptor {
+    intercept(req: HttpRequest<any>, next: HttpHandler) {
+        console.log('request on its way');
+        
+        //pipe the Observable
+        return next.handle(req).pipe(tap(event => {
+            if(event.type === HttpEventType.Response) {
+                console.log('Response arrived');
+            }
+        }));
+    }
+}
+````
+
+Does changing the `event.body` change the response body??
+
+**THE ORDER of the INTERCEPTOR MATTERS**, so pay attention to the order you provide them.
+
+````typescript
+//app.module
+
+providers:[{
+    provider: HTTP_INTERCEPTORS,
+    useClass: AuthInterceptorService,
+    multi: true //to allow multiple interceptor
+    
+},
+{
+    provider: HTTP_INTERCEPTORS,
+    useClass: LoginInterceptorService,
+    multi: true //to allow multiple interceptor
+    
+}]
+````
+
+
+
+# Section 19: Http request in the project
+
+When injecting a service, the `private` is an `accessor`, which is used in the constructor as a shortcut to create a property of the same name as the argument and assigns its value.
+
+When using `post` in Firebase, each object has a cryptic key, but when using `put`, just normal indexes like `0`, `1`, and so on are added like keys.
+
+## Getting recipes
+
+To avoid errors, add an `ingredients` key with an empty array if there are no `ingredients key`.
+
+````typescript
+.get<Recipe[]>(url).pipe(map(recipes => {
+	return recipes.map(recipe => {
+		return {
+			...recipe,
+			ingredients: recipe.ingredients?  recipe.ingredients : []
+		}
+	})
+})).subscribe()
+````
+
+ The inner `map` is just a JS array method, not the RxJs one.
+
+#### Using a resolver for `/recipes/:id` and `/recipes/:id/edit` route
+
+Make sure `fetchRecipes()`  in charge of making the `get` request returns the `http.get()` observable, so it can be subscribed in the `resolver` automatically by Angular .
+
+Also, to avoid loosing the recipes state when going from `/recipes/1/edit` to `/recipes/1`, just add a check to the resolver to trigger the fetching just when there are no recipes loaded in the app.
+
+
+
+# Section 20: Authentication
