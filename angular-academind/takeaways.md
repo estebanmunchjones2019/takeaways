@@ -3206,3 +3206,111 @@ Also, to avoid loosing the recipes state when going from `/recipes/1/edit` to `/
 
 
 # Section 20: Authentication
+
+A RESTful API or GraphQL API are stateles, they don't keep track of who is logged in (sessions). If the auth is ok (including the API_KEY), then the server sends a token to the client, and that can be used in subsequent requests to the server.
+
+The token is a string **encoded** not **encrypted**, so it can be unpacked and stored in the front end.
+
+If there are buttons not intended to submit the form inside a form, add `type="button"`.
+
+The `login()` and `signup()` methods return the observable, because the interested part is the `AuthComponent`.   
+
+````typescript
+//auth-service.ts
+
+interface AuthResponseData {
+    kind: string;
+    idToken: string;
+    //...
+}
+
+login(){
+    this.http.post<AuthResponseData>(//...)
+}
+````
+
+`post()` is a generic method and we can define (cast) the type of data we're getting back from the server.
+
+`catchError()` operator just catches the error, so `throwError()` must be used to return an observable.
+
+Nice idea: `catchError` for modifying the error message and give a customized message. Tip: make `if` check to see if `error.error` or `error.error.error` are present before trying to access it.
+
+**RULE: check if objects have keys before accessing them**
+
+ What if we have the same logic inside the `subscription` for login and signup observables?
+
+The observable is stored in a variable, and then just ONE subscription is done to this observable variable.
+
+ What if we have the same catchError logic for signup and login? create a method that takes the error and do the logic.
+
+````typescript
+return Observable.pipe(catchError(this.handleError));
+})
+
+private handleError(error: HttpErrorReponse) {
+	//...
+}
+````
+
+The `handleError` function is not called, just passed as an argument, like a reference.
+
+**RULE: do you have a callback function that repeats in different parts? (like the callback inside catchError). Just create a method that does the same as the callback an pass it as a reference where the callback should be placed :0 **
+
+
+
+## Storing the user
+
+it's nice to store the user and use a **Model** which is a class that can create the user object and validate it with methods inside it (getters).
+
+The `token` and `tokenExpiryDate`? are `private` and can only be accessed trough `getters` which validate the validity before returning them.
+
+````typescript
+//user.model.ts
+
+constructor(private _token:string, private _tokenExpirationDate: string){
+    get token(){
+        if (is not valid) {
+            return null;
+        }
+        return this._token;
+    }
+}
+````
+
+A method `handleAuthentication()` is used for creating the a user object and letting the app know about it via `Subject`
+
+A method is used because the same logic applies to login and sign up processes.
+
+How is the `handleAuthentication()` method used?
+
+````typescript
+return Observable.pipe(tap(resData => {
+	this.handleAuthentication(
+	resData.email,
+	resData.token
+	//...
+	)
+}))
+
+handleAuthentication(){
+    //some logic
+    user.next(userObject);
+}
+````
+
+So the method `handleAuthentication()` is called because it needs some arguments different than just the main object `resData`.
+
+The `user` Subject must also fire a null user object when the token expires, so the UI can change.
+
+So, for the UI parts interested, like the `HeaderComponent`, the user can be either a `user object`, and is taken as valid then, or `null`.
+
+TIP: `!!` for converting `object` into `true` and `null` into `false`.
+
+````typescript
+//header.component.ts
+
+this.isAuthenticated = !!user;
+````
+
+
+
