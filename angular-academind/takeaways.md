@@ -3314,3 +3314,80 @@ this.isAuthenticated = !!user;
 
 
 
+#### Adding the token to outgoing requests
+
+When firing `GET` and `POST` requests for recipes, the `token` must be added to the headers or query params, depending on the REST API,  and the `token` is just picked up at the moment of the request, from a `user` `BehaviorSubject` which it can keep the latest `user` emitted. 
+
+When we subscribe to a `BehaviorSubject` we immediately get the latest value it emitted, and is good to add `pipe(take(1))` so this way the `unsubscribe` is no longer necessary because the observable completes after getting this first value. This completion triggers the `exhaustMap` function right away. The `exhaustMap` is needed to return an observable instead of just returning `next.handle(req)` which is of type `HttpEvent<any>`.
+
+Using `map()` instead of `exhaustMap` seems to produce two nested `Observables` that don't match the expected return type, which is just one `Observable`, not 2. `SwitchMap()` works fine as well.
+
+````typescript
+//auth-interceptors.service.ts
+
+@Injectable()
+
+export class AuthInterceptorService implements HttpInterceptor {
+
+  constructor(private authService: AuthService) { }
+
+  intercept(req: HttpRequest<any>, next: HttpHandler) {
+    return this.authService.user.pipe(take(1), exhaustMap(user =>{
+      if (!user) {
+        return next.handle(req); // I don't want to add the token upon loggin and sign up
+      }
+      const modifiedReq = req.clone({params: new HttpParams().set('auth', user.token)});
+      return next.handle(modifiedReq); // this returned value is then returned in line 13 (nested returns)
+    }))
+  }
+}
+````
+
+`exhaustMap()` projects each source value to an Observable which is merged in the output Observable only if the previous projected Observable has completed.
+
+So, **it waits until the outer observable completes**, and then wraps the return value inside it in another observable.
+
+TIP: an interceptor returns an `Observable<HttpRequest>` so, an outer Observable `user` can be returned, and return another observable `next.handle`  when the outer one completes 
+
+The `auth-interceptor` intercepts all request (recipes and auth ones), but it only adds the `token` when the user exists, hence, doesn't add the token when login and signing up.
+
+
+
+#### Logout
+
+After logging out, the redirection to `/auth` is done in the auth service, because it can be triggered by the UI in the header AND from the automatic logging out logic when the token expires.
+
+
+
+#### Persisting the `user` object with local storage. Autologin
+
+When the app refreshes, the `AppComponent` should trigger a method in a service that looks for the `user` and then stores it the `BehaviorSubject` .
+
+To store the user object in the `localStorage`, just convert the object into a string with `JSON.Stringify(user)`.
+
+Then to convert back the string object into an object, use `JSON.parse(userStringObject)`
+
+The string object can't store methods, just properties, that's why `userStringObject._token` is used instead of using its getter.
+
+To convert the Date string into an object, just type `new Date(userStringObject.expiryData)`
+
+
+
+#### Autologout
+
+When the user has logged in or signed up, OR, when the page is refreshed, a timer should be set to trigger the auto logout.
+
+That timer should be cleared when the user manually logs out.
+
+
+
+#### AuthGuard
+
+The guard returns and observable that returns `true` if the user exists, or returns `this.router.createUrlTree(['/auth'])`. This new feature allows us to redirect the user, without using `router.navigate` that leads to race conditions when there are multiple redirects involved.
+
+When returning the observable, add `take(1)` to the `user` BehaviorSubject to avoid been subscribed to changes in `user` and running the logic inside the guard. But, doesn't Angular unsubscribe automatically when runs the guard?? Answer: no need to worry: every time a `canActivate` guard is run, by using `first()`, it will automatically unsubscribe from the returned observable.
+
+
+
+# Section 21: Dynamic components
+
