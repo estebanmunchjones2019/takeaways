@@ -3262,7 +3262,7 @@ The `handleError` function is not called, just passed as an argument, like a ref
 
 it's nice to store the user and use a **Model** which is a class that can create the user object and validate it with methods inside it (getters).
 
-The `token` and `tokenExpiryDate`? are `private` and can only be accessed trough `getters` which validate the validity before returning them.
+The `token` is  `private` and can only be accessed trough `getters` which validate the validity before returning them.
 
 ````typescript
 //user.model.ts
@@ -3390,4 +3390,303 @@ When returning the observable, add `take(1)` to the `user` BehaviorSubject to av
 
 
 # Section 21: Dynamic components
+
+The default way of adding components dynamically is using the template and `*ngIf`, which is the best way. The error alert and the backdrop are together in the same component, and the error message is passed as an `@Input()`, and the closing of the modal is done via `@Output()`
+
+The other way is creating it programatically. Instead of adding html tags of Angular components to the template, components can be created in the `.ts` file and added to the template at runtime! :0 when something specific happens (like getting an error). This way is quite complex :S
+
+
+
+#### Programatically Way:
+
+This piece of code doesn't work in Angular:
+
+````typescript
+const alertCmp = new AlertComponent();
+````
+
+So, instantiating a class is not all what Angular does: it also needs to wire it up to `change detection` and more things.
+
+
+
+**Step 1**: set up the factory for the component.
+
+````typescript
+const alertCmpFactory = this.componentFactoryResolver.resolveComponentFactory(AlertComponent);
+````
+
+**Step 2**: Place a `ViewContainerRef`:
+
+The classic `#templateRef` and `@ViewChild()` doesn't work for placing the component in the template. A `ViewContainerRef` must be exposed publicly, as a property, which is an object that sits in the template, which methods to create a new component there.
+
+A directive is used to expose the container outside the directive:
+
+````typescript
+//placeholder.directive.ts
+
+import { Directive, ViewContainerRef } from '@angular/core';
+
+@Directive({
+  selector: '[appPlaceholder]'
+})
+export class PlaceholderDirective {
+
+  constructor(public vsRef: ViewContainerRef, ) { } //vsRef is a pointer to the place this directive was used, and also has method to create the component we want
+
+}
+````
+
+
+
+ ````html
+//auth.component.html
+
+<ng-template appPlaceholder></ng-template>
+ ````
+
+`<ng-template>` doesn't render a DOM element to the DOM, but just servers a marker in the DOM.
+
+
+
+**Step 3**: use `@ViewChild` in the host component, in order to access the `ViewContainerRef` exposed publicly
+
+````typescript
+//auth.component.ts
+
+@ViewChild(PlaceholderDirective) alertHost: PlaceholderDirective; //viewchild will look for the first occurance of that directive in the DOM
+````
+
+A type is passed to `ViewChild()` directive, so if will assign the first occurrence of this type (the directive itself). Again, the `ViewContainerRef` is an **OBJECT** that let us interact with the DOM, the ANGULAR way.
+
+**Step 4**: access the `ViewContainerRef` and clear it:
+
+````typescript
+//auth.component.ts
+
+const hostVcRef = this.alertHost.vsRef;
+hostVcRef.clear();//to clear everything that was previously renderer there;
+````
+
+**Step 5**: Pass the factory already set up to a method inside the container:
+
+````typescript
+//auth.component.ts
+//stores the component ref in a variable, to interact with it later on
+const componentRef = hostVcRef.createComponent(alertCmpFactory);
+````
+
+**Step 6**: Declare the Dynamic component in `app.module.ts` in a special way, at `entryComponents`
+
+ When does Angular uses the `declarations` array? when it sees a component in a template, or in a route config.
+
+But when a component is created programatically, the component must be added to `entryComponents`, so Angular can know the component at runtime.
+
+ 
+
+**Step 7**: How to pass data into the component, and listen to events?
+
+We access the component properties through the `instance` property if the `componentRef` variable:
+
+````typescript
+//auth.component.ts
+
+componentRef.instance.message = errorMessage;
+    this.closeSub = componentRef.instance.close.subscribe(() => { //
+      this.closeSub.unsubscribe();
+      hostVcRef.clear();
+    })
+
+ ngOnDestroy() {
+    if (this.closeSub) {
+    this.closeSub.unsubscribe();
+    }
+  }
+````
+
+NOTE: this is the only time when subscribing to a `EventEmmiter` (name `close` here) makes sense. Otherwise, use `Subjects`
+
+TIP: also `unsubscribe` when the host component is destroyed as well.
+
+
+
+# Section 22: Angular Modules
+
+Angular doesn't scan all the files and adds them to the app, it looks at the modules and see what's inside.
+
+IMPORTANT: every module works on its own, it doesn't know about what happens in other modules.
+
+To make things available to other modules that import a certain module, is to add `exports` array (like in `app.routing.module.ts`).
+
+If we import components in one module, we can only use it in that module if it's not added to the exports array.
+
+
+
+#### Import in your module what you need in the templates
+
+TIP: the `recipes.module.ts` has a component which has `<router-outlet>` tag which is a directive. The same happens when using the `routerLink` directive. If the `RouterModule` is not imported in the `recipes.module.ts` Angular throws an error, saying: hey, I don't know what your talking about when saying  `<router-outlet>` in the `recipes.module.ts`
+
+The solution, import `RouterModule` in `recipes.module.ts`.
+
+Services, even though imported in the `app.module.ts`, are available on ALL modules. This doesn't happen to Components, directives and pipes.
+
+**RULE: So, all the things (Components, directives and pipes) used in the template of the components of a module, must be imported in that module**
+
+Exporting the components of a module and importing them in the app.module which now has the imports like `RouterModule` is NOT ENOUGH. Each module it's a separate world
+
+
+
+#### Splitting the routes into each feature module
+
+Each feature can have all the routes associated with it in `recipes-routing.module.ts` and using `forChild()` method in the `RouterModule` to merge the child routes with the root route config.
+
+````typescript
+//recipes-routing.module.ts
+
+//BEFORE lazy loading
+const routes: Routes = [
+  { path: 'recipes',       component: RecipesComponent, //lazyloading requires to have '' path because the RecipesModule is loading when already in '/recipes'
+    canActivate: [AuthGuard],
+    children: [
+        {path: '',           component: RecipeStartComponent},
+        {path: 'new',        component: RecipeEditComponent},
+        {path: ':id',        component: RecipeDetailComponent, resolve: [RecipesResolverService]},
+        {path: ':id/edit',   component: RecipeEditComponent,   resolve: [RecipesResolverService]}
+    ]
+  }
+];
+
+@NgModule({
+  declarations: [],
+  imports: [RouterModule.forChild(routes)],
+  exports: [RouterModule]
+})
+export class RecipesRoutingModule { }
+````
+
+`recipes-routing.module.ts` must be imported an exported in the `recipes. module.ts` file, so the routes can be available in the `app.module.ts`
+
+If a component is loaded via routing, it also needs to be added to declarations array of that feature module as well. So, the component will be typescript imported on two files: `recipes-routing.module.ts` and `recipes.module.ts` as well, and just added ONCE to an `imports` array in a module.
+
+NOTE: if recipes components are not used in other features (templates) of the app (or present in other routes of the app), they don't need to be added to the `exports` array! 
+
+`CommonModule` unlocks `ngIf` and `ngFor` directives.
+
+
+
+#### A shared Module: things every module needs
+
+`````typescript
+//shared.module.ts
+
+@NgModule({
+    declarations: [
+        AlertComponent,
+        LoadingSpinnerComponent,
+        PlaceholderDirective,
+        DropdownDirective
+    ],
+    imports: [CommonModule],
+    exports: [ // I export all these things because I need them in other modules, and are not loaded by routing
+        AlertComponent,
+        LoadingSpinnerComponent,
+        PlaceholderDirective,
+        DropdownDirective,
+        CommonModule
+    ]
+})
+export class SharedModule {
+}
+`````
+
+So, this module can be imported in each module what needs these universal things
+
+**RULE: Components can only be added to one `declarations` array, not on more than one module.** Wanna use the components in many parts of the app? export them in your module and them import that module.
+
+
+
+#### The core Module: for services declared in the `providers` array.
+
+Have interceptors, or services declared the OLD School way, in the `providers` array? Move them to a `core Module`.
+
+````typescript
+//core.module.ts
+
+//no need to export services!
+@NgModule({
+  providers: [{provide: HTTP_INTERCEPTORS, useClass: AuthInterceptorService, multi: true}], 
+})
+export class CoreModule { }
+````
+
+
+
+#### Optimizing app perfomance: Lazy loading
+
+Splitting the `app.module` in modules, is just cosmetic. The improvement comes from applying lazy loading.
+
+The requirement is: each module should have its own routes, with an empty path for the main feature's route (because we're already at `/recipes`)
+
+`loadChildren` is deprecated, use the `import` syntax now.
+
+Now, each feature module is bundled separately, and is requested by the browser on demand
+
+**TIP: check for unused typescript imports at the top of your modules! ALL what's imported in a module is bundled!**
+
+Restart `ng serve` to see changes in the new bundles
+
+**TIP: If a module is lazy loaded, remove it from the `app.module` `imports` array!**
+
+What to lazyload? parts of the app rarely visited. Downside: sluggish when requesting the lazy loaded module. There a solution to it: `preloadingStrategy: PreloadAllModules`
+
+````typescript
+//app.routing.module.ts
+
+RouterModule.forRoot(ROUTES, {preloadingStrategy: PreloadAllModules})
+````
+
+So, the lazy loaded modules are loaded in the background whilst the user is on the home page. The main goal is to have the smallest main bundle size.
+
+Custom strategies can be defined, like preloading certain routes
+
+**RULE: always import services in the AppModule, and with `providedIn: 'root'`**
+
+![](images/services-lazy-loading.png)
+
+Make sure not to add services to the `SharedModule` because this module can be imported in the `AppModule` and in a lazy loaded module, having 2 instances of the same service, but with different scope.
+
+
+
+#### JIT and AOT compilation
+
+Just in Time compilation is when the compiler is ship to the browser as part of the app, and the performance is not super great, because **the compilation happens in the browser**. The compilation is the transformation of angular templates to instruction on how to change the DOM. `ng serve`
+
+AOT: the **compilation happens in development**, in the server, and **the compiler is not part of the app**. `ng build --prod`.
+
+
+
+AOT makes some extra checks in the code and we can have errors:
+
+like when getting the array of controls of ingredients:  `let ingredient of recipeForm.get('ingredients').controls` in the template.
+
+It can be replaced by a getter method:
+
+````typescript
+get ingredientsControls() {
+	return (<FormArray>this.recipeForm.get('ingredients')).controls
+    //or
+    return (this.recipeForm.get('ingredients') as FormArray).controls
+}
+````
+
+Casting the type before accessing the property `controls` is required, so TS doesn't complain.
+
+Now, this `getter` can be used in the template like: 
+
+````html
+let ingredient of ingredientsControls
+````
+
+
+
+
 
