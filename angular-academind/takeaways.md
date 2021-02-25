@@ -2047,7 +2047,7 @@ Each field is added some css classes, like `ng-dirty`, `ng-touched`, `ng-pristin
 
 ````html
 <button 
-[disable]="!f.valid">
+[disabled]="!f.valid">
 Submit</button>
 ````
 
