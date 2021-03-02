@@ -477,7 +477,7 @@ estebanmunchjones@Estebans-MacBook-Air Git-basics %
 
 When checking out to a previous commit, we're in detached mode, because **we checked out from a branch to the middle of nowhere.**
 
-New commands from version 2.30 > 
+New commands from version 2.23 > 
 
 instead of checking out a branch:
 
@@ -807,4 +807,676 @@ How to ignore folders?
 When doing `git clean -df`, the ignored files are not deleted!
 
 
+
+## Advanced Git
+
+#### The stash
+
+Are snapshots of the working tree, in memory, for unstaged changes.
+
+Use case: after the last commit, I've done some changes I'm not sure about, not staged. So I go back to the last commit, but stashing the Working tree state before that, and see that initital state, and start over again. If the new version is rubbish, I just go back the the stashed working tree snapshot.
+
+useful when working on a new feature in the master branch, with unstaged changes. Keep the working tree state of unstaged files or unstaged changes in memory, while going back to the HEAD in the working directory and staging area. 
+
+So the `git stash` command saves the current working tree state and checks us out to the original working tree state (the last commit).
+
+````
+git stash
+Saved working directory and index state WIP on master: 68bcc26 file1 added
+````
+
+````
+git stash apply
+On branch master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+        modified:   file1.txt
+
+no changes added to commit (use "git add" and/or "git commit -a")
+````
+
+`git stash apply` lets us jump forward to the saved working tree state in memory
+
+This cycle of adding stashes can be done many times, and there will be many state snapshots saved. `git stash apply` always takes us forward to the last saved snapshot. 
+
+How to see all the snapshots saved?
+
+````
+git stash list
+stash@{0}: WIP on master: 68bcc26 file1 added (this is the latest)
+stash@{1}: WIP on master: 68bcc26 file1 added
+stash@{2}: WIP on master: 68bcc26 file1 added
+````
+
+Every time we hit `git stash`, a new snapshot is saved in memory.
+
+What if I wanna go to the oldest snapshot, of index `2`?
+
+````
+git stash apply 2
+error: Your local changes to the following files would be overwritten by merge:
+        file1.txt
+Please commit your changes or stash them before you merge.
+Aborting
+````
+
+We need to convert this old snapshot to the latest one:
+
+````
+git stash
+````
+
+Then, we're gonna have this:
+
+````
+stash@{0}: WIP on master: 68bcc26 file1 added
+stash@{1}: WIP on master: 68bcc26 file1 added
+stash@{2}: WIP on master: 68bcc26 file1 added
+stash@{3}: WIP on master: 68bcc26 file1 added
+````
+
+Now, we can access the original `2` index with the `3` index whitout any errors.
+
+being on the first stash snapshot, namely the `3`, what if I wanna go back to the latest snapshot, namely `0`. We need to stash again and git stash apply 1. It's getting confusing!
+
+Note: why do we need these extra stashes to jump to different snapshots? It's the same as when checking out branches with no commited changes. they need to be commited before changing branches. 
+
+The index stuff is super messy, so messages are added to each stash.
+
+How to add messages to the stashes?
+
+````
+git stash push -m "third feature added"
+Saved working directory and index state On master: third feature added
+````
+
+```
+git stash list
+stash@{0}: On master: third feature added
+stash@{1}: WIP on master: 68bcc26 file1 added
+stash@{2}: WIP on master: 68bcc26 file1 added
+stash@{3}: WIP on master: 68bcc26 file1 added
+stash@{4}: WIP on master: 68bcc26 file1 added
+stash@{5}: WIP on master: 68bcc26 file1 added
+```
+
+How to commit a stashed snapshot?
+
+````
+git stash pop 3
+On branch master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+        modified:   file1.txt
+
+no changes added to commit (use "git add" and/or "git commit -a")
+Dropped refs/stash@{3} (4c9d352a7375dfc93261e6007a04a73ffb405e4f)
+````
+
+Then just `git add .` , `git commit -m 'message-here'`
+
+How to delete stashes?
+
+`git stash pop stash-id` autmatically deletes the stash. 
+
+```
+git stash drop stash-id
+
+or
+
+git stash clear
+```
+
+
+
+#### How to recover deleted branches and commits
+
+How to delete a commit? By doing a reset of the HEAD, e.g:
+
+`````
+git reset --hard HEAD~1
+`````
+
+If we do a git log, the last commit was deleted.
+
+How to see a history of the HEADs?
+
+````
+git reflog
+0f717c6 (HEAD -> master) HEAD@{0}: reset: moving to HEAD~1
+98e7274 HEAD@{1}: commit: file2 added
+0f717c6 (HEAD -> master) HEAD@{2}: reset: moving to HEAD
+0f717c6 (HEAD -> master) HEAD@{3}: commit: added third feature
+68bcc26 HEAD@{4}: reset: moving to HEAD
+68bcc26 HEAD@{5}: reset: moving to HEAD
+68bcc26 HEAD@{6}: reset: moving to HEAD
+68bcc26 HEAD@{7}: reset: moving to HEAD
+68bcc26 HEAD@{8}: reset: moving to HEAD
+68bcc26 HEAD@{9}: reset: moving to HEAD
+68bcc26 HEAD@{10}: reset: moving to HEAD
+68bcc26 HEAD@{11}: reset: moving to HEAD
+68bcc26 HEAD@{12}: reset: moving to HEAD
+68bcc26 HEAD@{13}: commit (initial): file1 added
+````
+
+We can store up to 30 days history. The hashes (ids, like 98e7274) are used to back track then.
+
+How to get back the lost commit then?
+
+````
+git reset --hard lost-commit-hash
+
+git reset --hard 98e7274
+````
+
+that's it!
+
+How to recover a deleted branch? 
+
+1) 
+
+````
+git reflog
+````
+
+2) 
+
+````
+git checkout last-commit-id-on-deleted-branch
+````
+
+````
+git switch -c any-branch-name
+````
+
+
+
+## Merging branches
+
+The `master` branch is the main one, and a `feature` branch can be created. We can keep working on the two brances at the same time, and then merge `feature` to the master or viceversa.
+
+![](./images/merging-styles.png)
+
+#### Fast Forward merge (with optional squash)
+
+When you create a feature branch and work on it not commiting (or working on) the master branch anymore.
+
+![](./images/fast-forward-merging.png)
+
+Fast forward doesn't create a new commit when merging, but just moves the HEAD, of course, bringing the commits done in the `feature` branch.
+
+````
+git merge feature
+Updating 033f8f3..8872eca
+Fast-forward
+ feature/f1.txt | 0
+ feature/f2.txt | 0
+ 2 files changed, 0 insertions(+), 0 deletions(-)
+ create mode 100644 feature/f1.txt
+ create mode 100644 feature/f2.txt
+````
+
+still on `master`:
+
+````
+git log
+commit 8872eca66205e5df80ece51988315ff9a3112c9c (HEAD -> master, feature)
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Sat Feb 27 15:25:48 2021 +0000
+
+    f2
+
+commit c8c8fcc338ed0bf9c4cba3d1b3d99fc560f9eef3
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Sat Feb 27 15:25:32 2021 +0000
+
+    f1
+
+commit 033f8f31fe7fdc93c8c62a731fd057e2c792cacb
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Sat Feb 27 15:24:31 2021 +0000
+
+    m2
+
+commit 9da0885bfee78154199783d34bfd09a07765bad1
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+:
+
+m1
+````
+
+There's a continious flow of commits, whithout a `merge commit`.
+
+Interesting fact: the `f2` commit is now the HEAD of both branches.
+
+how to merge just the last commit of the `feature` branch? 
+
+````
+git merge --squash feature
+Updating 033f8f3..8872eca
+Fast-forward
+Squash commit -- not updating HEAD
+ feature/f1.txt | 0
+ feature/f2.txt | 0
+ 2 files changed, 0 insertions(+), 0 deletions(-)
+ create mode 100644 feature/f1.txt
+ create mode 100644 feature/f2.txt
+````
+
+still on `master` let's now check the commits log:
+
+````
+git log
+commit 033f8f31fe7fdc93c8c62a731fd057e2c792cacb (HEAD -> master)
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Sat Feb 27 15:24:31 2021 +0000
+
+    m2
+
+commit 9da0885bfee78154199783d34bfd09a07765bad1
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Sat Feb 27 15:24:13 2021 +0000
+
+    m1
+````
+
+Hang on...no commit was added. Yep, we need to do it manually. Let's check the status:
+
+```
+git status
+On branch master
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+        new file:   feature/f1.txt
+        new file:   feature/f2.txt
+```
+
+So, the changes are already staged, so, let's commit it now:
+
+````
+git commit -m 'merge-feature-branch'
+````
+
+`````
+git log
+commit 9c2d902de56b09a76f3c8336f4087580c6a8cde7 (HEAD -> master)
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Sat Feb 27 16:45:13 2021 +0000
+
+    merge feature-branch
+
+commit 033f8f31fe7fdc93c8c62a731fd057e2c792cacb
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Sat Feb 27 15:24:31 2021 +0000
+
+    m2
+
+commit 9da0885bfee78154199783d34bfd09a07765bad1
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Sat Feb 27 15:24:13 2021 +0000
+
+    m1
+`````
+
+Much cleaner now, we don't have the unnecessary `f1` commit done on `feature` branch.
+
+Interesting fact: the manuall commit when mergin is now the HEAD of just the master branch, not the `feature` branch.
+
+
+
+#### Non fast forward: recursive
+
+Is useful when both, the `master` and the `feature` branches have new commits.
+
+![](./images/recursive-merging.png)
+
+````
+git merge --no-ff feature
+Merge made by the 'recursive' strategy.
+ feature/f1.txt | 0
+ feature/f2.txt | 0
+ 2 files changed, 0 insertions(+), 0 deletions(-)
+ create mode 100644 feature/f1.txt
+ create mode 100644 feature/f2.txt
+````
+
+We're gonna be prompted to add a message to the extra commit autmatically created when merging:
+
+````
+1) pres I
+2)write the comment in a new line
+3)press Esc
+4) :qw and press enter
+````
+
+
+
+`````
+git log
+commit c6e70e705d815cb3a31df9de2c8980706fcb68bc (HEAD -> master)
+Merge: 033f8f3 8872eca
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Sat Feb 27 17:12:43 2021 +0000
+
+    Merge branch 'feature'
+    Just merging non recursevely
+
+commit 8872eca66205e5df80ece51988315ff9a3112c9c (feature)
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Sat Feb 27 15:25:48 2021 +0000
+
+    f2
+
+commit c8c8fcc338ed0bf9c4cba3d1b3d99fc560f9eef3
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Sat Feb 27 15:25:32 2021 +0000
+
+    f1
+    ...
+    m1
+    ...
+    m2
+    ...
+`````
+
+So, the aumatic merging commit is now the HEAD of only the `master` branch.
+
+How to backtrack commits on the already merge `master` branch recursively:
+
+ATTENTION!! the commits we see in the log of the `master` that were done on the `feature` branch doesn't count for the HEAD~number, they're invisible when picking this number of steps to go back.
+
+So, to get back to the `m1` commit, just go back 1 step.
+
+When `master` and `feature` have new commits, then the recursive merging is done by default:
+
+`````
+git merge feature
+Merge made by the 'recursive' strategy.
+ feature/f1.txt | 0
+ feature/f2.txt | 0
+ 2 files changed, 0 insertions(+), 0 deletions(-)
+ create mode 100644 feature/f1.txt
+ create mode 100644 feature/f2.txt
+`````
+
+````
+git log
+commit 40f2eaa950d78281ede07a231ff9f1df1a56c746 (HEAD -> master)
+Merge: e267940 8872eca
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Sat Feb 27 17:30:53 2021 +0000
+
+    Merge branch 'feature'
+    merging feature into master that has a new commit
+
+commit e267940291dfcb47294b6017049aee3f73dda5dd
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Sat Feb 27 17:30:47 2021 +0000
+
+    m3
+
+commit 8872eca66205e5df80ece51988315ff9a3112c9c (feature)
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Sat Feb 27 15:25:48 2021 +0000
+
+    f2
+    ....
+````
+
+
+
+#### Rebasing
+
+Rebasing is used when new commits have been added to bot the `master` and the `feature` branches. 
+
+![](./images/rebase-when-to-apply.png)
+
+It's useful for bringing new commits done on `master` to the `feature` branch and keep working on `feature`. It's a way of updating `feature` branch.
+
+The rebase brings the new commit on the `master` branch a use it a the new base for the commits we already made on the `feature` branch. Then a fast-forward merge is done. 
+
+![](./images/rebase.png)
+
+Advantage:  no mergin commits needed (like when doing recursive)
+
+BUT: the commits done in the `feature` branch are now based on another commit (the latest on `master`) and they have a new hash.
+
+IT'S NOT SUITABLE FOR WORKING WITH OTHER PEOPLE, JUST OWN REPO!
+
+Example:
+
+on `feature` branch:
+
+````
+git log
+commit 8872eca66205e5df80ece51988315ff9a3112c9c (HEAD -> feature)
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Sat Feb 27 15:25:48 2021 +0000
+
+    f2
+
+commit c8c8fcc338ed0bf9c4cba3d1b3d99fc560f9eef3
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Sat Feb 27 15:25:32 2021 +0000
+
+    f1
+
+commit 033f8f31fe7fdc93c8c62a731fd057e2c792cacb
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Sat Feb 27 15:24:31 2021 +0000
+
+    m2
+    ...
+````
+
+Time to rebase now:
+
+````
+git rebase master
+Successfully rebased and updated refs/heads/feature.
+````
+
+````
+git log
+commit 2145597a9823631803c68a54b0921f255cadeae6 (HEAD -> feature)
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Sat Feb 27 15:25:48 2021 +0000
+
+    f2
+
+commit d6a95313530dc4fe811fc146ac8d781d4b1188b7
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Sat Feb 27 15:25:32 2021 +0000
+
+    f1
+
+commit e267940291dfcb47294b6017049aee3f73dda5dd (master)
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Sat Feb 27 17:30:47 2021 +0000
+
+    m3
+    ....
+````
+
+The `f1` and `f2` commits have new hashes and are based on the `m3` commit.
+
+Time to do a normal fast forward merge now:
+
+````
+git switch master
+git merge feature
+````
+
+
+
+#### Merging conflicts
+
+When do they occur? when to people worked on the same file and same line (e.g: on `master` & `feature`).
+
+While on `master`:
+
+`````
+git merge feature
+Auto-merging feature/f1.txt
+CONFLICT (content): Merge conflict in feature/f1.txt
+Automatic merge failed; fix conflicts and then commit the result.
+`````
+
+![](./images/merging-error.png)
+
+The current change is the one green, which the one belonging to the current branch.
+
+The best feature is `Compare changes`
+
+![](./images/compare-changes.png)
+
+The differences are higlighted on darker red or green colours.
+
+`Accept both changes` will add the 2 lines, in 2 separate lines.
+
+If we chose the option above, we can got back to the menu with `ctrl + c`
+
+How to get more info about the conflict?
+
+````
+git status
+You have unmerged paths.
+  (fix conflicts and run "git commit")
+  (use "git merge --abort" to abort the merge)
+
+Unmerged paths:
+  (use "git add <file>..." to mark resolution)
+        both modified:   feature/f1.txt
+
+no changes added to commit (use "git add" and/or "git commit -a")
+````
+
+Wanna abort the merging?
+
+````
+git merge --abort
+````
+
+How to log the commit to be merged?
+
+````
+git log --merge
+commit 965c4683ba5583c00537cc34f26f0ebc6cca1063 (feature)
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Mon Mar 1 17:31:11 2021 +0000
+
+    updated f1 on feature
+
+commit fc1bfb63a2292f2896b33fd0569543bfcd4e7c4d (HEAD -> master)
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Mon Mar 1 17:29:37 2021 +0000
+
+    updated f1 on master
+````
+
+How to see the differences on the terminal?
+
+````
+git diff
+diff --cc feature/f1.txt
+index b39a5e7,1addf16..0000000
+--- a/feature/f1.txt
++++ b/feature/f1.txt
+@@@ -1,1 -1,1 +1,5 @@@
+- added this on master
+ -added this on feature
+++<<<<<<< HEAD
+++added this on master
+++=======
+++added this on feature
+++>>>>>>> feature
+````
+
+
+
+#### Steps for resolving the conflict
+
+````
+choose the resolution option
+git add .
+git commit -m 'merge feature branch to master'
+
+git log
+commit 152c9fe775be28f880d7871363cbb58ce084685c (HEAD -> master)
+Merge: fc1bfb6 965c468
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Mon Mar 1 18:17:56 2021 +0000
+
+    merge feature branch to master
+
+commit 965c4683ba5583c00537cc34f26f0ebc6cca1063 (feature)
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Mon Mar 1 17:31:11 2021 +0000
+
+    updated f1 on feature
+
+commit fc1bfb63a2292f2896b33fd0569543bfcd4e7c4d
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Mon Mar 1 17:29:37 2021 +0000
+
+    updated f1 on master
+````
+
+
+
+#### Cherry-pick
+
+When you want to fix something of the master branch while working the new feature. We don't want to merge all the commits of the `feature` branch, just the commit fixing a thing on the `master`.
+
+````
+ git cherry-pick 3401fed871b60a35612e0cfbcea8990241a59997
+ 
+[master 25e36c5] fixed m1 typo from new-feature branch
+ Date: Mon Mar 1 18:49:07 2021 +0000
+ 2 files changed, 1 insertion(+), 1 deletion(-)
+ create mode 100644 new-feature/new-feature.txt
+ 
+ 
+estebanmunchjones@Estebans-MacBook-Air branches % git log
+
+commit 25e36c57b9a5ff8dd09a1edfbd4489cc15c8b920 (HEAD -> master)
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Mon Mar 1 18:49:07 2021 +0000
+
+    fixed m1 typo from new-feature branch
+
+commit b820d5961ea26bce2d30dd9d82a658b48fae327b
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Mon Mar 1 18:39:25 2021 +0000
+
+    modified m1 on master
+
+commit 152c9fe775be28f880d7871363cbb58ce084685c
+Merge: fc1bfb6 965c468
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Mon Mar 1 18:17:56 2021 +0000
+
+    merge feature branch to master
+
+commit 965c4683ba5583c00537cc34f26f0ebc6cca1063 (feature)
+:
+````
+
+The picked commit changes hash, so the commit history of `new-feature` and `master` are different now.
+
+Don't add all the files of the features you'r working on. If you spot an error coming from master:
+
+````
+fix the error
+add just that file and commit it
+then cherry-pick the above commit while on master
+switch back to master and keep working on the features
+
+````
+
+
+
+#### Tagging commits
 
