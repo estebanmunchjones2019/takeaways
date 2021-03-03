@@ -1480,3 +1480,668 @@ switch back to master and keep working on the features
 
 #### Tagging commits
 
+It's for tagging important commits, like version 1.0.0
+
+To see the list of all project tags:
+
+````
+git tag
+````
+
+How to add a lightweight (temporary) tag:
+
+````
+git tag tag-content-here commit-id
+
+e.g
+
+git tag 1.0 578ce73
+````
+
+Let's check now all the tags present on the project:
+
+````
+git tag
+1.0
+````
+
+But, I can't see which commit has this tag. Let's use `show` to see the object content:
+
+````
+git show 1.0
+commit 578ce73c818954ac9f4d80b58ac14763cad3b7de (tag: 1.0)
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Tue Mar 2 11:22:22 2021 +0000
+
+    file2.txt
+
+diff --git a/file2.txt b/file2.txt
+new file mode 100644
+index 0000000..e69de29
+````
+
+Now, instead of using the commit id, we can use the corresponding tag, e.g for checking out to a previous commit, in detached HEAD mode:
+
+````
+git checkout 1.0
+````
+
+How to remove lightweight tag:
+
+````
+ git tag -d 1.0
+Deleted tag '1.0' (was 578ce73)
+````
+
+
+
+How to add annotated tag (permanent) to the last commit:
+
+````
+git tag -a 2.0 -m 'this is the second version'
+````
+
+````
+git show 2.0
+tag 2.0
+Tagger: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Tue Mar 2 12:01:36 2021 +0000
+
+this is the second version
+
+commit b4903ccbec17bdc8509babe88eb5612ac1384c67 (HEAD -> master, tag: 2.0)
+Author: Esteban Munch Jones <esteban.munch.jones@gmail.com>
+Date:   Tue Mar 2 11:22:42 2021 +0000
+
+    file3.txt
+
+diff --git a/file3.txt b/file3.txt
+new file mode 100644
+index 0000000..e69de29
+````
+
+
+
+## Github
+
+Workflow 
+
+![](./images/connect-github.png)
+
+
+
+````
+git remote add origin repo-url
+git push origin master
+````
+
+How to check the remote `machines` (origins):
+
+````
+git remote -v
+````
+
+If we're prompted to sign in to GitHub, we can cancell the redirection to the browser option, and just enter the username, press enter, and then the password, then press enter.
+
+How to see local, local tracking and remote tracking branches?
+
+````
+git branch -a
+
+* master (in green)
+  remotes/origin/master (in red, it's a remote tracking branch)
+````
+
+How to see just the remote tracking branches?
+
+```
+git branch -r
+
+origin/master
+```
+
+How to see the remote branches (on the github repo, maybe a new one just created by a colleague):
+
+````
+git ls-remote
+
+From https://github.com/estebanmunchjones2019/commits.git
+b4903ccbec17bdc8509babe88eb5612ac1384c67        HEAD
+8f1e58d6056e9cd10c58ee4fc22fb827a700ccb1        refs/heads/feature
+b4903ccbec17bdc8509babe88eb5612ac1384c67        refs/heads/master
+````
+
+it does a http call the check what's in the github repo.
+
+
+
+#### What is a remote tracking branch?
+
+a read only copy of a remote branch.
+
+`git push origin master` pushed the `master` branch from the local repo to the remote one, creating a remote `master` branch, because there was no branch at all on the github repo.
+
+The `remotes/origin/master` is a local copy of the remote `master` branch.
+
+All the `push` and `pull` commands involve the use of a remote tracking branch.
+
+When doing `git push origin master`, the workflow is:
+
+1. The local master branch updates the remote tracking branch
+2. The remote tracking branch updates the remote branch on github
+
+#### What is git pull?
+
+It's a combination of `get fetch` and `git merge`.
+
+![](./images/remote-tracking.png)
+
+The remote tracking branch is always the middleman
+
+#### Working with branches
+
+Example:
+
+````
+git checkout -b feature
+(add a feature)
+git add .
+git commit -m 'added feature'
+git push origin feature
+
+git branch -a
+* feature
+  master
+  remotes/origin/feature
+  remotes/origin/master
+````
+
+A `feature` branch is created in the gihub repo, and, of course, a remote tracking branch called `feature` as well.
+
+How to bring a remotely created branch to our local repo?
+
+1) the first step is to sync the remote branches and the remote tracking branches with `git fetch origin`:
+
+````
+git fetch origin
+
+remote: Enumerating objects: 4, done.
+remote: Counting objects: 100% (4/4), done.
+remote: Compressing objects: 100% (3/3), done.
+remote: Total 3 (delta 1), reused 0 (delta 0), pack-reused 0
+Unpacking objects: 100% (3/3), 731 bytes | 365.00 KiB/s, done.
+From https://github.com/estebanmunchjones2019/commits
+ * [new branch]      feature-remote -> origin/feature-remote
+````
+
+For the above example, a `feature-remote` branch was created, with a new file added and a new commit.
+
+The newly created branch on github is now "copied" to a remote tracking branch.
+
+
+
+What if we run this `git pull origin`?
+
+it breaks, because there's a merging step involved and there a no specified branches, what to merge into what?
+
+`````
+git pull origin
+
+hint: Pulling without specifying how to reconcile divergent branches is
+hint: discouraged. You can squelch this message by running one of the following
+hint: commands sometime before your next pull:
+hint: 
+hint:   git config pull.rebase false  # merge (the default strategy)
+hint:   git config pull.rebase true   # rebase
+hint:   git config pull.ff only       # fast-forward only
+hint: 
+hint: You can replace "git config" with "git config --global" to set a default
+hint: preference for all repositories. You can also pass --rebase, --no-rebase,
+hint: or --ff-only on the command line to override the configured default per
+hint: invocation.
+You asked to pull from the remote 'origin', but did not specify
+a branch. Because this is not the default configured remote
+for your current branch, you must specify a branch on the command line.
+`````
+
+
+
+#### Understanding local tracking branches
+
+After doing `git fetch origin`, we can checkout to a remote tracking branch and then be on detached HEAD. 
+
+But there's a better way to bring changes on a branch to our local repo.
+
+A local tracking branch is a local reference to a remote tracking branch, that can be edited (not just read only).
+
+![](./images/branch-types.png)
+
+![](./images/local-tracking.png)
+
+
+
+#### Creating a local tracking branch
+
+1) Get the remote tracking branches up to date:
+
+````
+git fetch origin
+````
+
+
+
+2) Create the local tracking branch based on the remote tracking branch. The first thing is to have the same name as the remote branch. **Local remote branch name = remote branch name**
+
+````
+git branch --track local-tracking-branch-name remote-tracking-branch-name
+
+e.g
+
+git branch --track feature-remote remotes/origin/feature-remote
+
+
+Branch 'feature-remote' set up to track remote branch 'feature-remote' from 'origin'.
+````
+
+let's check the branches now:
+
+````
+git branch -a
+* feature
+  feature-remote
+  master
+  remotes/origin/feature
+  remotes/origin/feature-remote
+  remotes/origin/master
+````
+
+
+
+Let's do same changes, and commit them, and now, push them:
+
+````
+git push
+ 
+Enumerating objects: 4, done.
+Counting objects: 100% (4/4), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (3/3), done.
+Writing objects: 100% (3/3), 361 bytes | 361.00 KiB/s, done.
+Total 3 (delta 1), reused 0 (delta 0), pack-reused 0
+remote: Resolving deltas: 100% (1/1), completed with 1 local object.
+To https://github.com/estebanmunchjones2019/commits.git
+   5e294c2..cd68925  feature-remote -> feature-remote
+````
+
+It's just `git push` whitout any `origin` or so on.
+
+Now, the remote branch `feature-remote` has been updated on GitHub.
+
+
+
+We can add a new commit on `feature-remote` on github and pull it to the local tracking branch like this:
+
+````
+git pull
+
+hint: Pulling without specifying how to reconcile divergent branches is
+hint: discouraged. You can squelch this message by running one of the following
+hint: commands sometime before your next pull:
+hint: 
+hint:   git config pull.rebase false  # merge (the default strategy)
+hint:   git config pull.rebase true   # rebase
+hint:   git config pull.ff only       # fast-forward only
+hint: 
+hint: You can replace "git config" with "git config --global" to set a default
+hint: preference for all repositories. You can also pass --rebase, --no-rebase,
+hint: or --ff-only on the command line to override the configured default per
+hint: invocation.
+remote: Enumerating objects: 5, done.
+remote: Counting objects: 100% (5/5), done.
+remote: Compressing objects: 100% (3/3), done.
+remote: Total 3 (delta 1), reused 0 (delta 0), pack-reused 0
+Unpacking objects: 100% (3/3), 740 bytes | 185.00 KiB/s, done.
+From https://github.com/estebanmunchjones2019/commits
+   cd68925..d8c0d25  feature-remote -> origin/feature-remote
+Updating cd68925..d8c0d25
+Fast-forward
+ feature-remote.txt | 2 ++
+ 1 file changed, 2 insertions(+)
+````
+
+It does a merge (fast-forward in the above case)
+
+#### How to differentiate between a local and a local tracking branch?
+
+````
+git branch -vv 
+
+  feature        8f1e58d add feature (this a local branch)
+* feature-remote d8c0d25 [origin/feature-remote] Update feature-remote.txt (this is a local tracking branch)
+  master         b4903cc file3.txt (this a local branch)
+````
+
+
+
+How to see the list of remote servers?
+
+````
+git remote
+origin 
+
+git remote -v
+origin  https://github.com/estebanmunchjones2019/commits.git (fetch)
+origin  https://github.com/estebanmunchjones2019/commits.git (push)
+````
+
+
+
+How to see servers, branches, and more?
+
+````
+git remote show origin
+
+* remote origin
+  Fetch URL: https://github.com/estebanmunchjones2019/commits.git
+  Push  URL: https://github.com/estebanmunchjones2019/commits.git
+  HEAD branch: master
+  Remote branches:
+    feature        tracked
+    feature-remote tracked
+    master         tracked
+  Local branch configured for 'git pull':
+    feature-remote merges with remote feature-remote
+  Local refs configured for 'git push':
+    feature        pushes to feature        (up to date)
+    feature-remote pushes to feature-remote (up to date)
+    master         pushes to master         (up to date)
+````
+
+List of remote commands:
+
+![](./images/remote-commands.png)
+
+
+
+## Clone a repo
+
+![](./images/clone.png)
+
+````
+git clone repo-url
+````
+
+````
+git branch -a
+* master
+  remotes/origin/HEAD -> origin/master
+  remotes/origin/feature
+  remotes/origin/feature-remote
+  remotes/origin/master
+````
+
+is the master branch above a local or a local tracking branch? Let's check:
+
+````
+git branch -vv
+* master b4903cc [origin/master] file3.txt
+````
+
+What if a wanna work on another branch, not master?  Just create a local tracking of the desired branch:
+
+````
+git branch --track local-tracking-name remote-tracking-name
+
+git branch --track feature remotes/origin/feature
+Branch 'feature' set up to track remote branch 'feature' from 'origin'.
+````
+
+
+
+How to create a branch locally and push it to github (LONG VERSION) :
+
+````
+git checkout -b 'feature-local'
+
+git branch -vv
+  feature       8f1e58d [origin/feature] add feature
+* feature-local b4903cc file3.txt
+  master        b4903cc [origin/master] file3.txt
+  
+git add .
+git commit -m 'added f1.txt'
+
+git push origin feature-local
+Enumerating objects: 4, done.
+Counting objects: 100% (4/4), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (2/2), done.
+Writing objects: 100% (3/3), 294 bytes | 294.00 KiB/s, done.
+Total 3 (delta 0), reused 0 (delta 0), pack-reused 0
+remote: 
+remote: Create a pull request for 'feature-local' on GitHub by visiting:
+remote:      https://github.com/estebanmunchjones2019/commits/pull/new/feature-local
+remote: 
+To https://github.com/estebanmunchjones2019/commits.git
+ * [new branch]      feature-local -> feature-local
+ 
+ git branch -a
+  feature
+* feature-local
+  master
+  remotes/origin/HEAD -> origin/master
+  remotes/origin/feature
+  remotes/origin/feature-local
+  remotes/origin/feature-remote
+  remotes/origin/master
+
+````
+
+The push command will create a local tracking branch named `remotes/origin/feature-local` and a remote branch on GitHub.
+
+Now, it's time to delete the local branch `feature-local` and replace it for a local tracking branch:
+
+````
+git checkout master
+git branch -D feature-local
+````
+
+````
+git branch --track feature-local remotes/origin/feature-local
+````
+
+
+
+How to create a branch locally and push it? (SHORT VERSION):
+
+````
+git checkout -b feature-upstream
+git add .
+git commit -m 'added f2.txt'
+
+check the branches:
+git branch -vv
+  feature          8f1e58d [origin/feature] add feature
+  feature-local    151d1e3 [origin/feature-local] added f1.txt
+* feature-upstream 414bcb1 added f2.txt
+  master           b4903cc [origin/master] file3.txt
+  
+git push -u origin feature-upstream
+Enumerating objects: 3, done.
+Counting objects: 100% (3/3), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (2/2), done.
+Writing objects: 100% (2/2), 247 bytes | 247.00 KiB/s, done.
+Total 2 (delta 1), reused 0 (delta 0), pack-reused 0
+remote: Resolving deltas: 100% (1/1), completed with 1 local object.
+remote: 
+remote: Create a pull request for 'feature-upstream' on GitHub by visiting:
+remote:      https://github.com/estebanmunchjones2019/commits/pull/new/feature-upstream
+remote: 
+To https://github.com/estebanmunchjones2019/commits.git
+ * [new branch]      feature-upstream -> feature-upstream
+Branch 'feature-upstream' set up to track remote branch 'feature-upstream' from 'origin'.
+
+check the branches again:
+git branch -vv
+  feature          8f1e58d [origin/feature] add feature
+  feature-local    151d1e3 [origin/feature-local] added f1.txt
+* feature-upstream 414bcb1 [origin/feature-upstream] added f2.txt
+  master           b4903cc [origin/master] file3.txt
+
+````
+
+So, automatically, the local branch was replaced by the local tracking branch, pretty neat!
+
+#### Deleting branches and commits on GitHub
+
+How to get a local repo up to date with the remote repo?
+
+````
+Check the current state:
+git branch -vv
+git branch -a
+
+fetch remote branches:
+git fetch origin
+
+check the state again
+git branch -a (if remote branches were added, new remote tracking branches will be created)
+````
+
+How to delete a remote tracking branch and the remote branch (LONG VERSION)?
+
+this doesn't work:
+
+````
+git branch D remote-tracking-branch-name
+
+git branch -D remotes/origin/feature
+error: branch 'remotes/origin/feature' not found.
+````
+
+This DOES work:
+
+````
+git branch --delete --remotes origin/feature
+Deleted remote-tracking branch origin/feature (was 8f1e58d).
+````
+
+but, the remote `feature` branch is still present on GitHub:
+
+````
+git ls-remote
+From https://github.com/estebanmunchjones2019/commits.git
+b4903ccbec17bdc8509babe88eb5612ac1384c67        HEAD
+8f1e58d6056e9cd10c58ee4fc22fb827a700ccb1        refs/heads/feature
+151d1e303d39ffda54615e0856425cd9fef759d3        refs/heads/feature-local
+d8c0d2510d489a95fa554cc9a43550cf09bcbbfe        refs/heads/feature-remote
+414bcb1f3d4982cdb886bcc0161592cc33e6003f        refs/heads/feature
+````
+
+How to delete the remote branch then?
+
+````
+git push origin --delete feature
+To https://github.com/estebanmunchjones2019/commits.git
+ - [deleted]         feature
+````
+
+
+
+How to delete a remote tracking branch and the remote branch (SHORT VERSION)?
+
+````
+git push origin --delete feature
+````
+
+This deletes both, the remote-tracking branch and the remote branch.
+
+#### How to delete commits on GitHub?
+
+example on the master branch
+
+````
+git reset --hard HEAD~1
+
+ git push origin master
+To https://github.com/estebanmunchjones2019/commits.git
+ ! [rejected]        master -> master (non-fast-forward)
+error: failed to push some refs to 'https://github.com/estebanmunchjones2019/commits.git'
+hint: Updates were rejected because the tip of your current branch is behind
+hint: its remote counterpart. Integrate the remote changes (e.g.
+hint: 'git pull ...') before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+````
+
+Now, the local branch is behind the remote branch. We can force it. WARNING: check with teammates before doing this:
+
+````
+git push --force origin master
+Total 0 (delta 0), reused 0 (delta 0), pack-reused 0
+To https://github.com/estebanmunchjones2019/commits.git
+ + b4903cc...578ce73 master -> master (forced update)
+````
+
+
+
+#### GitHug summary 
+
+![](./images/github-summary.png)
+
+
+
+#### Summary of creating a local repo and pushing it:
+
+````
+git push -u origin master
+````
+
+the above creates a local tracking master branch, and deletes the origin local master branch.
+
+Now, another dev commits on the master remote branch on directly on GitHub.
+
+````
+git push origin master
+````
+
+
+
+#### Summary of merging a `tebi` branch created on github
+
+````
+git checkout -b tebi
+git pull origin tebi
+````
+
+check the code, it it work, then merge to master and push the changes:
+
+````
+git checkout master
+git merge tebi
+git push -u origin master
+````
+
+
+
+#### Summary of cloning a repo
+
+````
+git clone github-repo-URL
+git switch -c new-feature
+
+commit a new feature
+git add .
+git commit -m 'new feature added'
+
+//push the new-feature branch to tebi remote branch
+git push -u origin new-feature:some-remote-branch
+e.g
+git push -u origin new-feature:tebi
+
+//just push new-feature branch to github, that creates that branch
+git push -u origin new-feature
+````
+
+
+
