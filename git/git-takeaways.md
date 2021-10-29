@@ -2033,3 +2033,14 @@ git push -u origin new-feature:tebi
 //just push new-feature branch to github, that creates that branch
 git push -u origin new-feature
 ```
+
+### How to revert commits on master?
+
+```bash
+$ git checkout <commit-id> .
+$ git add .
+$ git commit -m "Reverting to <commit-id>"
+$ git push -u origin <branch-name>
+```
+
+Don't forget the period `.`when checking out
