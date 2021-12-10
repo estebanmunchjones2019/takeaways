@@ -2043,4 +2043,16 @@ $ git commit -m "Reverting to <commit-id>"
 $ git push -u origin <branch-name>
 ```
 
-Don't forget the period `.`when checking out
+### Don't forget the period `.`when checking out   How to pull a remote branch?
+
+```
+git pull {repo} {remotebranchname}:{localbranchname}
+
+git pull origin xyz:xyz
+```
+
+When you are on the master branch you also could first checkout a branch like:
+
+```
+git checkout -b xyz
+```

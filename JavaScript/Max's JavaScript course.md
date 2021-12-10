@@ -711,9 +711,9 @@ If we go to `Settings` -> `Workspace`, and then change the `Tab width` to 4, we 
 
 The `User` config keeps the settings on a global file in the machine.
 
-
-
 ### Chrome debugger tools
+
+#### Breakpoints
 
 After hitting a `debugger` keyword in the code or `breakpoint` applied on the Chrome dev tools, there are buttons:
 
@@ -744,7 +744,20 @@ How to get out of that function? press the up arrow
 
 - The right arrow with the point: Step. It's a combination of `Step Over next function call` and `down arrow`.
 
+#### Conditional breakpoints
 
+You can right click `Edit breakpoint` and add a condition for it's triggered.
+
+```js
+getUserInput() > 100
+```
+
+#### Brekpoints on events
+
+What if I wanna stop JS execution and debbug whenever a registered event for clicks happens in the app? e.g when clicking add, deduct, didive and multiply?
+would be cumbersome to add 4 breakpoint manually.
+
+The most efficient way is to use `Event listeners breakpoint` and select `click`.
 
 ### The callStack
 
@@ -752,10 +765,173 @@ Is a list of functions that are being called. You can click on the functions and
 
 The bottom funtion on the list is the most outern function on the code.
 
+### Scope
+
 On `Scope` we have variables values, pretty neat!
 
 Variable values can be changed!
 
+### Watch
+
 You can also `Watch` variables or expression using variables, like:
 
 `enteredNumber` + `currentResult` at all times.
+
+### Editing source
+
+Code can be edited in source, but it needs to be saved with `cmd + S` to be tested. Faster than opening VSCode.
+
+## Debugging inside VSCode
+
+1) You click next to a line of code, and the red dot is active
+
+2) Run -> Start debugging
+
+3) ```json
+   `launch.json` is created automatically:
+   ```
+   
+   {
+   
+       // Use IntelliSense to learn about possible attributes.
+       // Hover to view descriptions of existing attributes.
+       // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+       "version": "0.2.0",
+       "configurations": [
+           {
+               "type": "pwa-chrome",
+               "request": "launch",
+               "name": "Launch Chrome against localhost",
+               "url": "http://localhost:8080",
+               "webRoot": "${workspaceFolder}"
+           }
+       ]
+   
+   }
+
+```
+4) Edit the file by replacing the `url`:
+
+```json
+ "url": "file:///Users/estebanmunchjones/Documents/Coding/courses/JavaScript/calculator/basics-01-starting-project/index.html"
+```
+
+   Just copy and paste from the browser url bar where the app was running
+
+5) On the left, there will be the same info as inside the browser (variables, etc), and next to the `Terminal` there's a `Debug Console` where variables and expressions can be run, excelent! (e.g: print the value of `currentResult`).
+
+6) Press red square to stop debugging, that will close the Chrome window opened.
+
+## Control structures
+
+### if blocks
+
+```js
+if (condition1) {
+    //do something
+} else if (condition2) {
+    // do something
+} else {
+    // do something else
+}
+```
+
+conditions evaluate to true or false.
+
+In order to get this booleans values, `boolean operators` are used:
+
+1) `==` and `!=` equal and un equal operators, they check value. e.g: `3 == '3'` return `true`
+
+2) `===` and `!===` strict equan and un equal operators. They check value and type. e.g `3 === '3'` returns `false`.
+
+3) `> >= ` and `< <=` for numbers and strings
+
+4) `!` not True operator
+
+### Danger!: Comparing objects and Arrays
+
+```javascript
+{name: "Esteban"} == {name: "Esteban"} // returns false
+[1,2] == [1,2] // returns false
+```
+
+event the content is the same, they're different pointers (not copies, like `strings` and `numbers`).
+
+### Early return
+
+it's better to have early return, so the main logic is not nested in an `if` block:
+
+```javascript
+// early return
+const someFunction() {
+    if (conditio I don't want) {
+        return
+    }
+
+//rest of the logic
+}
+```
+
+```javascript
+// nested main code here, bad practice
+const someFunction() {
+    if (condition I want) {
+        //rest of the logic
+    }
+}
+```
+
+### Operators precedence
+
+Which operators are executed first by JS in the same line?
+
+```javascript
+3 + 2 < 7 + 20 //returns true
+
+// + operator has precedence over < operator        
+```
+
+check out the list of operators precedence here: [Operator precedence - JavaScript | MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Operator_Precedence)
+
+```javascript
+true && false || true // returns true.
+// && has precence (executed first) over ||
+```
+
+### Falsy an truthy values
+
+if non-bolean values are used as a condition, JS coerces ("convert without really converting") them to booleans.
+
+```javascript
+if(""){// doesn't get executed} // empty string evaluates to false
+if("Hola"){// gets executed} // non-empty strings evaluate to true
+
+
+if(0){//doesn't get executed}
+if(-1){//gets executed} // numbers != 0 evaluate to true
+
+if({}){// all objects are truthy}
+if([]){// all arrays are truthy}
+
+if(null) if(undefined) if(Nan){//all are falsy}
+```
+
+### Hardcoded values convention
+
+```javascript
+const ATTACK_VALUE = 10;
+```
+
+capital letters and underscores.
+
+### Event listeners naming conventions
+
+```javascript
+function attackHandler() {}
+// OR
+function onAttack(){}
+
+attackBtn.addEventListener('click', attackHandler);
+
+attackBtn.addEventListener('click', onAttack);
+```
