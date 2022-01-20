@@ -329,7 +329,7 @@ userName = 'Manu';
 greetUser('Max');
 ```
 
-the local `userName` variable inside the funtion is `shadowed`, so it doesn't overwrite the global variable, it's a different variable than the global one, named the same.
+the local `userName` variable inside the funtion is `shadowed`, so it doesn't overwrite the global variable, it's a different variable than the global one, named the same, inside the function block.
 
 ### The return statement:
 
@@ -934,4 +934,582 @@ function onAttack(){}
 attackBtn.addEventListener('click', attackHandler);
 
 attackBtn.addEventListener('click', onAttack);
+```
+
+### Putting re-used strings constants into variables
+
+```js
+const ATTACK = "ATTACK";
+
+function attackHandler(){
+   attack(ATTACK);
+}
+
+function attack(mode) {
+    let attackMonsterValue;
+    if (mode === ATTACK) {...
+```
+
+write the string once, and use the variable instead, smart!
+
+### Declaring a constant with 2 possible values
+
+It's a great scenario for a `ternary operator`:
+
+```js
+const userName = isLoggedIn ? 'Max' : null;
+```
+
+use for simple stuff, not nesting it, because gets unreadable.
+
+### Expression vs Statement
+
+```js
+// expression - used on the right hand side of assignment operators
+// it returns something
+isLoggedIn ? 'Max' : null;
+
+//statement. It CAN'T be used on the right hand side of assignment operators
+const userName = isLoggedIn ? 'Max' : null;
+
+// an if STATEMENT is an example
+```
+
+### Boolean tricks with logical operators
+
+**Double bang** `!!` to convert truthy/falsy values to true/false:
+
+```js
+!!"" // return false
+```
+
+**Default value** assigment via OR || operator:
+
+```js
+const userName = someInput || 'Max'; // the || operator will return the 
+// first truthy value
+```
+
+**double &&**:
+
+```js
+const userName = isLoggedIn && 'Max' 
+// will assign 'Max if isLoggedIn is truish
+// and will assign the isLoggedIn value if it's falsis
+```
+
+the double && is used a lot in JSX in React to conditionally render views, is a minimalistic version of the ternary expression, that just have a return value for a truthy condition, but none for falsy.
+
+### Switch statement
+
+```js
+if (location === 'Argentina'){
+    console.log('hola')
+} else if (location === 'UK'){
+    console.log('hello');
+} else if //
+```
+
+the above code repeats the equality expression, so `switch` statement is a more compact alternative:
+
+```js
+switch(location) { // location or and expresion that returns a value
+    case 'argentina':
+        console.log('hola');
+    break;
+    case 'UK': {
+       console.log('hello');
+    }
+    break;
+}
+```
+
+`switch` uses `===` under the hood.
+
+add `break` keyword, because `switch` statements use `fall through` mechanism, and it doesn't stop till the end.
+
+### For loop
+
+```js
+for (let i = 0; i < 10; i++){
+    //do something
+}
+```
+
+`let i = 10` is code that runs at the beginning, and `let` has been chosen in order to reassign it.
+
+`i < 10` is a condition that gets evaluated on every iteration;
+
+`i++` is a code that runs after every iteration.
+
+### For of
+
+```js
+ for (const el of log) {
+    console.log(el);
+ }
+
+ // const is used because el is recreated on every iteration
+```
+
+The above syntax simplifies this loop:
+
+```js
+  for (let i = 0; i < log.length; i++) {
+        console.log(log[i]);
+    }
+```
+
+variables defined inside the `for` parenthesis, are scoped to the loop.
+
+Do you want to keep track of the index as well? no problem:
+
+```js
+let i = 0;
+ for (const el of log) {
+    console.log(el);
+    console.log(i);
+    i++;
+ }
+```
+
+### For in
+
+```js
+const offer = {
+        price: 10,
+        tag: 'perfume'
+    }
+    for (const key in offer) {
+        console.log(offer[key]);
+    }
+```
+
+`offer.key` won't work because JS will look for a property in the object called `key`.
+
+A string must be passed to inside the brackets [];
+
+### While loop
+
+```js
+ let i = 0;
+    while (i < 10) {
+        console.log(i);
+        i++
+    }
+ // the above example should be done with a classic for loop instead
+
+ let finished = false;
+ const randomNumbers = [];
+ while (!finished) {
+     const rndNumber = Math.random();
+     randomNumbers.push(rndNumber);
+     if (rndNumber < 0.5) {
+         // to exit the loop  
+         finished = true;
+ }
+ }
+```
+
+a while loop start not knowing how many iterations it will take to complete.
+
+### Do while loop
+
+```js
+let i = 10
+do {
+        console.log(i);
+        i++
+    }
+    while (i < 10);
+
+// will print 10, because the do block runs first
+```
+
+how does it work? first do, then check the condition
+
+### Loop + break: good for liping iterations execution
+
+```js
+for (let i = 0; i < 5; i++) {
+        //lets stops the execution if i === 3
+        if (i === 3) {
+            break;
+        }
+        console.log(i);
+    }
+
+//prints 0,1,2
+```
+
+useful for stoping the loop executions under certain conditions.
+
+### Loop + continue:  good for skipping one iteration
+
+```js
+for (let i = 0; i < 5; i++) {
+       //lets avoid printing 3
+       if (i === 3) {
+           continue;
+       }
+       console.log(i);
+   }
+
+// prints 0,1,2,4
+```
+
+### Labels: useful for breaking outer loop from inside inner loop
+
+```js
+outerLoop: for (let i = 0; i < 5; i++) {
+    console.log('outer', i);
+    for (let i = 0; i < 5; i++) {
+        if (i === 3) {
+            break outerLoop;
+        }
+        console.log('inner', i);
+    }
+}
+```
+
+### Try and catch
+
+We can throw many things that will stop execution, like objects, strings, Error, etc
+
+```js
+throw {message: 'code below wont run'};
+
+//it prints: app.js:155 Uncaught {message: 'code below wont run'}
+//, (in red colour, indicating it's a system error);
+```
+
+maybe a `user input` or `network error` causes the code to stop exectution, not ideal, right?
+
+```js
+try {
+    throw {message: 'code below wont run'};
+} catch {
+    console.log('there was an error, but code below will be executed :)')
+}
+// code below keeps being executed!
+```
+
+It's common to throw our own errors in the app, so we save up adding a lot of if statements for different types of errors.
+
+```js
+let chosenMaxLife;
+
+function getValue() {
+    const enteredValue = prompt('enter the max life value', '100');
+    userInput = +enteredValue;
+    if(isNaN(userInput) || userInput <= 0) {
+        throw {message: 'invalid user input'}
+    } else {
+        return userInput;
+    }
+}
+
+try {
+    chosenMaxLife = getValue();
+
+} catch (error) {
+    console.log(error);
+    chosenMaxLife = 100;
+}
+```
+
+### Finally block
+
+is rarely used.
+
+```js
+try {
+    // some code that might fail
+} catch (error) {
+    // maybe store the error in a database
+    // re-throw the errror
+    throw(error); // not very common, very advanced
+} finally {
+    // runs after the try {} block;
+    // do something, because the rest of the code
+    // wont run if the error was thrown
+}
+// rest of the code
+```
+
+### ES5 &  ES6
+
+Var vs Let & Const
+
+1) **Better scoping**
+
+`var` respects `global` and `function` scopes, while `let` and `const`  respects `curly braces` (present in for loops, if blocks, functions):
+
+```js
+const name = 'Max';
+
+if (name === 'Max') {
+    var hobbies = ['coding', 'cooking'];
+}
+
+
+console.log(hobbies); // prints the hobbies, it was defined
+// in the global scope
+```
+
+```js
+const name = 'Max';
+
+if (name === 'Max') {
+    let hobbies = ['coding', 'cooking'];
+}
+
+
+console.log(hobbies); // throws an error (not defined)
+// because let saw the curly braces!
+```
+
+So, using `var` causes variable polution, and using `const` and `let` keeps them better scoped.
+
+
+
+2. **Better variables and usage order declaration**
+   
+   variables with `var` can be declared at the bottom of the files, after they have been used.
+
+```js
+console.log(userName);
+var userName = "Max"; // returns `undefined` but not an error
+```
+
+what happens is that the JS engine does this under the hood, with `hosting`:
+
+
+```js
+var userName;
+
+console.log(userName);
+
+userName = "Max";
+```
+
+but with `let` or `const`, an error is thrown:
+
+
+
+```js
+console.log(userName);
+let userName = 'Max'; // throws this error:
+// Uncaught ReferenceError: userName is not defined
+```
+
+we're forced into declaring the variable first and then use it.
+
+
+
+3. Avoids redeclaring variables:
+
+```js
+var userName = "Max";
+var userName = "Manuel" // works!
+
+let userName = "Max";
+let userName = "Manuel" // Throws an error!
+// Uncaught SyntaxError: Identifier 'userName' has already been declared
+```
+
+
+
+4. Strict-mode can be enabled
+   
+   use `use strict` mode at the file or function level, to avoid unexpected behaviours, that browser vendors do when executing the JS code. Generally, it's not neccessary.
+   
+   ```js
+   // behaviour no 1: assigning a non declared variable
+   
+   userName = 'Max' // assigning value to a non declared variable
+   console.log(userName); // prints Max, wow!
+   
+   'use strict'
+   userName = 'Max'
+   console.log(userName); // throws an error
+   // ncaught ReferenceError: userName is not defined
+   
+   ```
+
+```js
+   // behaviour no 2: assigning a reserved name
+   var undefined = 'foo' // doesnt throw an error
+   
+   'use strict'
+   var undefined = 'foo' // Uncaught TypeError: Cannot assign 
+   // to read only property 'undefined' of object '#<Window>'
+   
+   //using let or const, also disables this behaviour
+   let undefined = 'foo';
+   const undefined = 'foo'; // Uncaught SyntaxError: Identifier 
+   //'undefined' has already been declared
+```
+
+
+
+## JS engines and what they do
+
+#### Parsing and compilation
+
+code is interpreted to `bytecode` (faster) and starts execution, but still low performance, so it's then compiled to `machine code` (OS code) that runs on the chip.
+
+What are browser APIs? bridges between the JS code and C++ code built in the browser, like `window.document`, etc
+
+
+
+#### Execution: inside the JS engine
+
+1) Managing memory: `heap` is long term memory. The `stack` is the short term memory and manages which function is executing and if there's a return, to which function is returning a value to.
+   
+   functions code gets stored in the `heap`.
+   
+   The browser reaches the `heap` and the `stack`.
+
+2) Managing execution steps
+
+
+
+### The `stack`
+
+
+the first thing to be pushed to the `stack` is all the code present in the file, and it's kind of wrapped in an `anonymous` function. Then, the function `greet()` is added to the top of the stack, so the thing on top of th stack is the thing that is currently running.
+Then, `getName()` is added to the top of the stack; Then `prompt()` is added to the top of the stack.
+
+The stack manages execution contenxt, e.g which functions are being executed, and the order of the nested calls and primitite values (cheap to re-create). The heap stores reference values, like objects, because are expensive the re-create.
+
+One the `prompt()` function is done, by returning a value to `getName()` is being removed from the stack;
+
+Even if a function doesn't have a `return` statement, there's an implicit return after the last line, which makes the stack to remove when done.
+
+Once the `greet()` function is done, the `anonymous` function is also removed from the stack because there's no more things to run on the file.
+
+```js
+function getUserName() {
+  return prompt('enter userName', '');
+}
+
+
+function greet() {
+  const userName = getUserName();
+  console.log('Hello' + userName);
+}
+
+greet();
+```
+
+The stack is a shortlive data structure to keep track of which functions are being executed.
+
+
+
+#### Debugger & the stack
+
+go to `Sources`, place a breakpoint, and the check the stack, you'll see the functions there stacked.
+
+So to sum it up JS engine = heap + stack.
+
+If event listeners have been set up, the `Event loop` knows them and it will reach the JS engine and push callback functions to the stack.
+
+
+
+### Primitive vs Reference values
+
+
+
+#### Primitives
+
+ are shared by copy
+
+
+
+```js
+let name = "Max";
+let anotherName = name; // "Max" was copied, stored in the stack,
+// and passed here
+console.log(anotherName) // prints "Max";
+name = "Manu";
+console.log(anotherName) // still prints "Max";
+```
+
+name.length(), tells us that a string can be temparely be transformed to an object to access some properties.
+
+
+
+#### Reference values:
+
+
+when assigning an object to a variable, the pointer is stored in that variable, not the object itself.
+
+
+
+```js
+let userData = {
+    name: 'tebi',
+    age: 32
+}; // this object is stored in the heap, and userData holds the 
+// pointer (or reference) to it.
+
+let newUserData  = userData; // the same pointer is passed here
+
+userData.name = 'Sarah';
+console.log(newUserData.name) = 'Sarah';
+```
+
+How to avoid mutating the object? cloning objects and arrays
+
+
+```js
+let newUserData = {...userData};
+userData.name = 'Sarah'; // 
+console.log(newUserData.name) = 'tebi'; // different pointer
+// it's pointing to another object, a clone one
+```
+
+
+
+### Garbage collection
+
+JS engines have garbage collectors that delete stored things in the heap.
+
+
+
+```js
+let person = {name: 'Max'};
+person = null; 
+// garbage collector deletes {name: 'Max'} from the heap;
+// because the pointer is no longer used in the rest of the code
+```
+
+Nowadays, browsers are intelligent enough to check if `person` is being used or not, and also delete the object from the heap, without the need of having to reassign the variable to null, for example.
+
+#### Memory leaks
+
+when you keep having references to objects in the code, but you don't use them, so it's means keeping space in memory for nothing.
+
+adding `click` event listeners to a button will always result on event listener replacement `if the same function pointer is passed as callback`, so a button will woun't trigger 2 callback functions.
+
+
+
+```js
+function print() {
+    console.log('button clicked');
+}
+
+someHtmlElement.addEventListener('click', print);
+someHtmlElement.addEventListener('click', print);
+
+// upon click, just one console.log() will be printed
+
+
+someHtmlElement.addEventListener('click', function() {console.log('button clicked')};
+someHtmlElement.addEventListener('click', function() {console.log('button clicked')};
+
+//upon click, 2 console.log() will be printed!!
+// 2 functions that do the same are stored in the heap!
+// that's a memory leak;
 ```
