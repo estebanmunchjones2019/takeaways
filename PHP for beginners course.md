@@ -1043,9 +1043,992 @@ disable display_startup_errors, and check if the $_FILE is empty, inside the try
 
 
 
-### To do:
+## Checking the mime type
+
+do it safely, and not just relying on the `$_FILES['file']['type']` as it can be easily edited by users.
+````
+ $mime_types = ['image/jpeg', 'image/png', 'image/giff'];
+
+        // Create a new finfo instance
+        // FILEINFO_MIME (int)
+        //Return the mime type and mime encoding as defined by RFC 2045.
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+
+        // also pass the path to the temp location
+        $mime_type = finfo_file($finfo, $_FILES['file']['tmp_name']);
+````
+
+
+
+
+
+## Storing the image somewhere else
+
+the temporary folder is not a good place to store things long term, as servers might delete it when restarting, etc.
+
+make sure you change the permissions for the /uploads folder:
+
+https://stackoverflow.com/questions/8103860/move-uploaded-file-gives-failed-to-open-stream-permission-denied-error
+
+You can change the persmission for the /uploads file to any user to read and write, but we only need to do it for the `daemon` user, which is the server's own user let's say. To check that user, and open the server config file. 
+
+````
+// httpd.conf
+User daemon
+Group daemon
+````
+
+
+
+and run some bash command `sudo chown -R :daemon uploads`
+
+☝️ doesnt work on Mac.
+
+
+
+## Sanitize the file names
+
+It could have invalid characters or have a name that allows it to move it to other parts of the file system
+
+```
+
+ $path_info = pathinfo($_FILES['file']['name']);
+
+        // without the extension
+        $base = $path_info['filename'];
+
+        $base = preg_replace('/[^a-zA-Z0-9_-]/', '_', $base);
+
+        $destination = "../uploads/" . $base . "." . $path_info['extension'];
+
+        if (move_uploaded_file($_FILES['file']['tmp_name'], $destination)) {
+            echo 'File uploaded successfully';
+        } else {
+            throw new Exception('Error saving the file');
+        }
+
+IMG-20200920-WA0018%%.jpeg
+// gets saved as
+IMG-20200920-WA0018__.jpeg
+```
+
+
+
+## Avoiding overriding files
+
+````
+ $destination = "../uploads/" . $base . "." . $path_info['extension'];
+
+        $i = 1;
+        while(file_exists($destination)){
+            $destination = "../uploads/" . $base . "-$i" . "." . $path_info['extension'];
+        }
+````
+
+
+
+## Limit the file name lenght
+
+```
+$base = mb_substr($base, 0 , 200);
+```
+
+mb_subst works well with UTF8 characters, like á.
+
+
+
+## Indexes
+
+when creating a new table, some columns can have `INDEX` (non-unique index) or `UNIQUE` indexes, so we can sort them out by that field faster.
+
+### One to one relationship:
+
+A foreign key needs to have an index, for `category_id` in `article` table, that has been chosen as a `UNIQUE` key, to represent a one to one relationship. Only one article can be related to one category. If I try to add the same category to to articles, I get the error. Not very common relationship, but good to now:
+
+
+
+### One to many relationship
+
+one category can be used in many articles, that's the normal usage.
+
+we need to change the `UNIQUE` index to `INDEX` for `category_id`.
+
+
+
+## Full JOIN
+
+or OUTER join:
+
+````
+SELECT * FROM `article`
+JOIN `category`
+ON article.category_id = category.id
+````
+
+In a FULL JOIN or OUTER JOIN, the rows with null values are not included.
+
+LEFT JOIN or OUTER LEFT JOIN is used to include the rows where the foreign key has a null value.
+
+the OUTER keyword is optional
+
+
+
+## ON delete and ON update options:
+
+when adding the foreign key in the `Relation View` phpmyadmin section, there were `On delete` and `on update` with `RESTRICT` values by default.
+
+That way, if we try to delete a `category` record that is being referenced in the `article` page, we get an error.
+
+We also have `NO ACTION`,  quite dangerous, `NULL`, that lets us go ahead, and then replaces the foreign key with a NULL value. And finally, `CASCADE`, that deletes the entire row if the foreign key is deleted from the other table.
+
+The final setup used in the project is:
+ON DELETE: SET NULL
+
+ON UPDATE: CASCADE (when id is changed in `category` table, it deletes the old id in the `article` table, and it's replaced with the new one).
+
+When working with PDO, if an error is caused by a CONSTRAINT, then we can see the error code and act accrodingly inside a try catch block https://mariadb.com/kb/en/mariadb-error-codes/
+
+
+
+## Many to many relationship
+
+what if one article can have more than one category? and one category can be used in many articles?
+
+we need a new table to achieve that, usally called a JOIN table.
+
+The trick is to generate a Primary Key formed with the 2 columns (article id and category id), so each pair article_id and category_id will make a unique combination and can not be repeated (Primary key)
+
+
+
+## Querying the article + the category id inside Article class: problems
+
+1) the PDO layer won't add `category_id` to the object popped out by the class when calling the database with a join statement, as that property is not defined in the class. In other words `Article` class only has `article` properties.
+2) More than one result can be returned when using the join statement, and the method getByID only expects just one object.
+
+
+
+## Trips to the database
+
+for `admin/article.php` we get the article as a array of them (same article) with categories using `getWithCategories` method, because there's no need of having an article object.
+
+But, for `admin/edit-article.php`, we need an object to call `upate` method .
+
+So we can make an extra trip to the database and get the subscriptions using `getCategories` method.
+
+Sometimes to match the data shape needed, we need to make an extra call to the db
+
+
+
+To have multiple check boxes that can build up a `category` array of ids inside $_POST, here's the solution:
+````
+<?php foreach ($allCategories as $category): ?>
+            <input type="checkbox" value="<?= $category['id']?>" 👉name="category[]" id="<?= $category['id']?>">
+            <label for="<?= $category['id']?>"><?= $category['name']?></label>
+        <?php endforeach;?>
+````
+
+
+
+## Error when trying to insert duplicate keys
+
+one way to solve the error
+```
+Fatal error: Uncaught PDOException: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '24-12' for key 'PRIMARY' in /Applications/XAMPP/xamppfiles/htdocs/www/classes/Article.php:220 Stack trace: #0 /Applications/XAMPP/xamppfiles/htdocs/www/classes/Article.php(220): PDOStatement->execute() #1 /Applications/XAMPP/xamppfiles/htdocs/www/admin/edit-article.php(35): Article->setCategory(Object(PDO), Array) #2 {main} thrown in /Applications/XAMPP/xamppfiles/htdocs/www/classes/Article.php on line 220
+```
+
+is to:
+
+- add a catch block
+- just ignore all errors with `INSERT IGNORE`.
+
+
+
+## Transform sql query to make just one trip to the db
+
+initial sql:
+````
+public function setCategory($connect, $category_ids) {
+        if ($category_ids) {
+            $sql = "INSERT IGNORE INTO article_category (article_id, category_id)
+             VALUES ({$this->id}, :category_id)";
+
+            $stmt = $connect->prepare($sql);
+
+            foreach ($category_ids as $category_id) {
+                $stmt->bindValue(':category_id', $category_id, PDO::PARAM_INT);
+                $stmt->execute();
+            }
+        }
+    }
+````
+
+final sql
+
+```
+public function setCategory($connect, $category_ids) {
+        // first delete the previous image if there was one
+        if ($category_ids) {
+            $sql = "INSERT IGNORE INTO article_category (article_id, category_id)
+             VALUES ";
+
+            $values = [];
+
+            foreach ($category_ids as $category_id) {
+                $values[] = "({$this->id}, ?)";
+            }
+
+            $sql .= implode(", ", $values );
+
+            $stmt = $connect->prepare($sql);
+
+            foreach ($category_ids as $index => $category_id) {
+                $stmt->bindValue($index + 1, $category_id, PDO::PARAM_INT);
+            }
+
+            $stmt->execute();
+        }
+    }
+```
+
+
+
+```
+staging13
+esteban
+arX#W7(0wiB!4xqTJZD*@Wt#
+```
+
+
+
+## Display categories in `index.php` 
+
+the problem is that if I join tables in getPage, pagination is broken because an article can be repeated if it has multiple categories associated to it.
+
+The option of calling getWithCategory(id) would mean a lot of trips to the database.
+
+The other option is to keep getPage as it is and get the categories for all the articles in that page at once (not for single articles).
+
+The best option is to use subqueries + massaging the array so there's just one article id (not repeated ones for each category)
+
+````php
+public static function getPage($connect, $limit, $offset) {
+        $sql = "SELECT a.*, category.name AS category_name
+        FROM (
+            SELECT *
+            FROM article
+            ORDER BY published_at    
+            LIMIT :limit
+            OFFSET :offset
+        ) AS a
+        LEFT JOIN article_category
+        ON a.id = article_category.article_id
+        LEFT JOIN category
+        ON article_category.category_id = category.id";
+
+
+        $stmt = $connect->prepare($sql);
+
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+
+        $stmt->execute();
+
+
+        $rawArticles =  $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $articles = [];
+
+        $previous_id = null;
+
+        foreach ($rawArticles as $rawArticle) {
+            // set current article id
+            $article_id = $rawArticle['id'];
+
+            // I rely on SQL result grouping the same ids together
+            if ($article_id != $previous_id) {
+                //initialize `category_names` key
+                $rawArticle['category_names'] = [];
+
+                // add that article to the array
+                $articles[$article_id] = $rawArticle;
+            }
+
+            //push the category name to the array of categories
+            $articles[$article_id]['category_names'][] = $rawArticle['category_name'];
+
+            $previous_id = $article_id;
+
+        }
+
+        return $articles;
+    }
+````
+
+
+
+## JS, the minimal example
+
+```
+<button onClick="alert('hello world');">Click me</button>
+```
+
+There are 3 ways of adding JS
+
+- inline JS inside HTML elements, not a good idea, messy code difficult to maintain
+
+- embedded JS:
+
+  ````
+  <button onClick="greet()">Click me</button>
+  <script>
+      function greet() {
+          alert('hello world');
+      }
+  </script>
+  ````
+
+  or
+
+  ````
+  <button id="greet-button">Click me</button>
+  <script>
+      function greet() {
+          alert('hello world');
+      }
+  
+      document.getElementById('greet-button').addEventListener('click', greet);
+  </script>
+  ````
+
+- in a JS file
+
+  ````
+  <button id="greet-button">Click me</button>
+  <script src="index.js"></script>
+  ````
+
+
+
+## jQuery
+
+best option: use a CDN, as it loads faster than if it were hosted in your own server.
+
+```
+    </body>
+    <script
+            src="https://code.jquery.com/jquery-3.6.0.min.js"
+            integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4="
+            crossorigin="anonymous">
+
+    </script>
+    <script src="js/script.js"></script>
+```
+
+
+
+Src is relative to the current page the way it has been written above, so the solution is to adda slash, to look for the js file in the root of the site
+````
+ <script src="/js/script.js"></script>
+````
+
+
+
+## Doing the delete dialog with JS
+
+it provides a better experience, rather than requesting a delete-article.php file
+
+One way is to create a form and submit it straight away after clicking the delete button, with JQuery, and use a class to target the delete buttons (for article and article-image), but it's a clunky solution, it's better to use an Ajax request to submit the POST request.
+
+## Client side validation
+
+was done with one plugin `validate` , that prevents the form to be submited if the fields are not valid, and displays error messages next to each field.
+
+## HTTP request to PHP
+
+on clicking `Submit` on a form, that returns an html document
+
+## AJAX request
+
+if an ajax request is done via JS reacting to an event, then the PHP can return a HTML doc OR some JSON, nice!
+
+VanillaJS ajax function:
+````
+function getAjax(url, success) {
+    var xhr = window.XMLHttpRequest ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
+    xhr.open('GET', url);
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState>3 && xhr.status==200) success(xhr.responseText);
+    };
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    xhr.send();
+    return xhr;
+}
+````
+
+https://plainjs.com/javascript/ajax/send-ajax-get-and-post-requests-47/
+
+
+
+in JQuery:
+
+````
+$.ajax(some params here)
+````
+
+
+
+The response to an ajax request can be anything: HTML, a string, and image.
+
+## Having fun with XHR (ajax) and fetch APIs
+
+````
+// date.php
+<?php echo date('c');
+````
+
+````
+// I get the same string with both
+
+fetch('http://localhost/ajax-practice/date.php')
+   👉 no JSON returned // .then(response => response.json())
+   👉 read ReadableStream object .then(data => data.text())
+    .then(text => console.log(text));
+
+
+
+function getAjax(url, success) {
+    var xhr = window.XMLHttpRequest ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
+    xhr.open('GET', url);
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState>3 && xhr.status==200) success(xhr.responseText);
+    };
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    xhr.send();
+    return xhr;
+}
+
+getAjax('http://localhost/ajax-practice/date.php', (response)=> console.log(response));
+````
+
+some docs https://stackoverflow.com/questions/40385133/retrieve-data-from-a-readablestream-object
+
+
+
+## The associative array example
+
+image you return this from a PHP file:
+````
+<?php
+
+echo ['name' => 'Esteban', 'surname'=> 'Munch Jones']
+// returns a string containing the array
+````
+
+the above is totally unusable, so if it's before converted to JSON in the backend, JS will be happy using it.
+
+## How to return JSON from PHP?
+
+````
+// user-data.php
+<?php
+echo json_encode([
+    'user' => 'tebi',
+    'surname' => 'Munch Jones'
+]);
+````
+
+```
+fetch('http://localhost/ajax-practice/user-data.php')
+    .then(response => response.json())
+    .then(data => console.log(data.user));
+    
+    // response is:
+    {
+    	user: 'tebi',
+    	surname: 'Munch Jones'
+    }
+```
+
+Difference with the course:
+The difference is: **json() is asynchronous and returns a Promise object that resolves to a JavaScript object.** **JSON.** **parse() is synchronous can parse a string to (a) JavaScript object(s)**.
+
+Pending replace Dave's method for sending POST request creating a form on the fly
+
+Solved it!
+````
+$('#delete-article').on('click', function(e) {
+    e.preventDefault();
+    if (confirm('Are you sure?')) {
+        $.ajax({
+            type: "POST",
+            url: e.currentTarget.href,
+            success: function() {
+                window.location.href = 'http://localhost/admin/';
+            }
+        });
+    }
+});
+````
+
+is far better than the clunky workaround of creating a form and submitting it on the fly to perform a POST request to delete the article.
+
+The form on the fly has the advantage of getting the redirects done on PHP. The ajax POST method doesn't present that advantage though, so redirects need to be done in the front end.
+
+// Uses redirects from PHP
+
+````
+$('.delete').on('click', function(e) {
+    e.preventDefault();
+    if (confirm('Are you sure?')) {
+        const form = $ ( '<form>' );
+        form.attr('method', 'post');
+        form.attr('action', $(this).attr('href'));
+        form.appendTo('body');
+        form.submit();
+    }
+});
+````
+
+
+
+// add form validation with plugin
+
+https://jqueryvalidation.org/
+
+
+
+## conditional SQL statements
+
+make sure you add double quotes if you wanna interpolate variables like this "SELECT FROM $some_table"
+
+
+
+## Dates
+
+strings are stored as strings, with a specific formal, and then they can be formated diffently by converting the string into a date object, and then converting it back but to a string of a different format.
+
+`<time datetime="some extra info here">` so crawlers can have a readable date if the one inside the time text is not clear.
+
+````php
+<time datetime="<?= $article[0]['published_at'] ?>">
+                <?php
+                $datetime = new DateTime($article[0]['published_at']);
+                echo $datetime->format('j F, Y');
+                ?>
+            </time>
+````
+
+in the server, the string is stored as `2022-02-17 14:53:26`
+
+
+
+## Data-something attributes
+
+it's the way that JS gives as to pass data from e.g clicked buttons to AJAX calls
+
+https://developer.mozilla.org/en-US/docs/Learn/HTML/Howto/Use_data_attributes
+
+or using Jquery
+
+````
+$( "body" ).data( "foo" ); // 52
+````
+
+https://developer.mozilla.org/en-US/docs/Learn/HTML/Howto/Use_data_attributes
+
+```
+ <button class="publish" data-name="tebi">Publish</button>
+
+$('button.publish').on('click', function(e) {
+    console.log($(this).data('name'));
+})
+```
+
+
+
+## Publishing articles with AJAX
+
+````
+<?php
+
+require '../includes/init.php';
+
+Auth::requireLogin();
+
+$conn = require '../includes/db.php';
+
+$article = Article::getById($conn, $_POST['id']);
+
+$published_at = $article->publish($conn); ?><time><?= $published_at?></time>
+````
+
+the response of calling this PHP file is an html string, can can be used to update the date element in the FE.
+````
+$('button.publish').on('click', function(e) {
+    const id = $(this).data('id');
+    // store the context so it can be used in inner blocks
+    const button = $(this)
+    $.ajax({
+        url: '/admin/publish-article.php',
+        type: 'POST',
+        data: {
+            id: id
+        }
+    })
+        .done(function(reponse) {
+            button.parent().html(reponse);
+        })
+})
+````
+
+
+
+## Bootstrap
+
+it ensures the site looks the same on all browser, we don't need to test it, out of the box
+
+
+
+## Adding a CSS file
+
+adding below the bootstrap file, so you can override styles
+
+````
+// header.php
+<head>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>  
+````
+
+use the `/` at the beginning of the stylesheet path so it always refer to the root of the repo, so it works for any template (e.g in a subfolder) using header.php
+
+```
+ul#index {
+    padding-left: 0;
+    👉 list-style-type: none;
+}
+
+// the list-style-type is an ihnerited property for the li elements,
+so no need to target the li elements to change that rule
+
+```
+
+
+
+## Adding a date time picker
+
+https://www.jqueryscript.net/time-clock/Clean-jQuery-Date-Time-Picker-Plugin-datetimepicker.html
+
+Add the minified files to the JS and CSS files of the project
+
+and delete the date
+
+
+
+## Email server
+
+Web servers server websites, and email servers send emails.
+
+
+
+## Send an email
+
+way 1: using built in `mail` function  + php config file, not recommended because sometimes we're locked out of the provider's config files
+
+Way 2: 3rd party package https://github.com/PHPMailer/PHPMailer
+
+Namespaces are folders and subfolder for classes
+
+using `use` allows as to use classes without prefixing them with their namespaces
+
+the package creates a email server, just the same as Nodemailer for node
+
+it's useful to debug the STMP like this:
+
+```
+$mail->SMTPDebug = 2;
+```
+
+https://mailtrap.io/blog/phpmailer/#:~:text=Enable%20SMTP%20debugging%20and%20set,messages%2C%20it's%20the%20recommended%20setting.
+
+To diagnose conection or sending errors.
+
+
+
+## Add a config file with global variables for prod and dev
+
+the idea is to replace this:
+```
+class Database {
+    public function getConn() {
+        $db_host = "localhost";
+        $db_name = "cms";
+        $db_username = "cms_www";
+        $db_pass = "o-1cYEYRBiF9Rd8h";
+```
+
+with a class with properties that are set by a constructor, passed when instatiating the class.
+
+/config.php is the file we're gonna change when moving the site to production
+
+
+
+## How to prevent access to a single file?
+
+```
+The best way to prevent direct access to files is to place them outside of the web-server document root (usually, one level above). You can still include them, but there is no possibility of someone accessing them through an http request.
+```
+
+but sometimes that's not possible on a shared host
+
+````
+<Files config.php>
+    deny from all
+</Files>
+````
+
+
+
+## Errors and exceptions
+
+Errors = used for language level errors, like 1 / 0
+
+Error example
+```
+$division = 1 / 0;
+
+Fatal error: Uncaught DivisionByZeroError:
+```
+
+
+
+Exceptions = errors when using classes and objects
+
+### Exception example
+
+```
+<?php
+
+$date = new DateTime('invalid');
+
+echo 'code didnt stop executing'; // this doesn't get printed
+```
+
+````
+Fatal error: Uncaught Exception:... // printed on the browser
+````
+
+
+
+## Try and catch not enough with the current config
+
+```
+try {
+    $date = new DateTime('invalid');
+} catch(Throwable $e) {
+    echo $e->getMessage();
+}
+
+echo 'code didnt stop executing'; // this doesn't get printed
+```
+
+```
+on the browser, I get
+
+Failed to parse time string (invalid) at position 0 (i): The timezone could not be found in the databasecode didnt stop executing
+```
+
+but I didn't get the rest of the code executed, we need to do something about it.
+
+
+
+## Try and catch blocks enhancement
+
+it's likely that we forget to add a try and catch block somewhere and the code will break, so this functions are useful:
+https://www.php.net/manual/en/function.set-error-handler.php
+
+https://www.php.net/manual/en/function.set-exception-handler
+
+The trick: convert all errors to exceptions, and handle everything on the exceptions handler using https://www.php.net/manual/en/class.errorexception.php
+
+```
+<?php
+function myErrorHandler($errno, $errstr, $errfile, $errline) {
+// we can convert errors into exceptions
+    throw new ErrorException($errstr, 0, $errno, $errfile, $errline);
+}
+
+set_error_handler('myErrorHandler');
+
+
+function exception_handler(Throwable $exception) {
+// main handling logic here
+    echo "Hey! Uncaught exception: " , $exception->getMessage(), "\n";
+}
+
+set_exception_handler('exception_handler');
+
+$file=fopen("mytestfile.txt","r"); // throws an error
+
+$division = 1 / 0; // throws an exception
+
+//echo 'code didnt stop executing'; // this doesn't get printed
+
+```
+
+
+
+## Try and catch block + keep running the code
+
+```
+try {
+    $division = 1 / 0;
+} catch(Throwable $e) {
+    echo 'hey, caught the exception :' . $e->getMessage();
+}
+
+echo 'code kept running';
+```
+
+another example:
+````
+ try {
+            //Server settings
+//            $mail->SMTPDebug = SMTP::DEBUG_SERVER;                      //Enable verbose debug output
+            $mail->isSMTP();                                            //Send using SMTP
+            $mail->Host       = 'smtpout.secureserver.netxxxx';                     //Set the SMTP server to send through
+            $mail->SMTPAuth   = true;                                   //Enable SMTP authentication
+            $mail->Username   = 'hi@munchjones.com';                     //SMTP username
+            $mail->Password   = 'xxxxxxxxx';                               //SMTP password
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;            //Enable implicit TLS encryption
+            $mail->Port       = 465;                                    //TCP port to connect to; use 587 if you have set `SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS`
+
+            //Recipients
+            $mail->setFrom('hi@munchjones.com');
+            $mail->addAddress('hi@munchjones.com');     //Add a recipient
+            $mail->addReplyTo($email);
+
+            //Content
+            $mail->Subject = $subject;
+            $mail->Body    = $message;
+
+            $mail->send();
+            $sent = true;
+        } catch (Exception $e) {
+            $errors[] = $mail->ErrorInfo;
+        }
+````
+
+the key is to pass the appropiate type `Exception` or `Throwable` to the catch block as an argument
+
+otherwise, the code will stop executing and the try block will have been a waste of time
+
+
+
+## Add exception handler for debugging
+
+what if we add an exception handler for debugging, to output better messages to the browser, and then display a generic message (for security reasons) in production?
+
+```
+// init.php
+
+function myErrorHandler($errno, $errstr, $errfile, $errline) {
+    throw new ErrorException($errstr, 0, $errno, $errfile, $errline);
+}
+
+set_error_handler('myErrorHandler');
+
+
+function exception_handler($exception) {
+    echo '<h1>Error has been handled</h1>';
+    // some more useful info can be output
+    exit;
+}
+
+set_exception_handler('exception_handler');
+```
+
+The above code makes the exception handler not to work!!
+
+But the exception handler will work on places where we don't have try and catch blocks
+
+```
+function exception_handler($exception) {
+    if (SHOW_ERROR_DETAIL){
+        echo '<h1>Error has been handled. Some useful info for devs here</h1>';
+    } else {
+        echo '<h1>Something went wrong, message for users here</h1>';
+    }
+    exit;
+}
+```
+
+```
+ The set_exception_handler() function can set a function that will be called in place of a catch block if no other block is invoked. The effect is essentially the same as if the entire program were wrapped in a try-catch block with that function as the catch.
+```
+
+
+
+## AJAX en error
+
+```
+$('button.publish').on('click', function(e) {
+    const id = $(this).data('id');
+    const button = $(this)
+    $.ajax({
+        url: '/admin/publish-article.php',
+        type: 'POST',
+        data: {
+            id: id
+        }
+    })
+        .done(function(reponse) {
+            button.parent().html(reponse);
+        })
+})
+```
+
+the problem is that the error is displayed where the published date was meant to be displayed on the DOM, we can do better than that
+
+The trick is to return a status code in the PHP endpoint, and the check it in the ajax code
+
+
+
+## Status codes to the rescue
+
+by default, PHP returns 200 response code
+
+it can be changed in the exception handler
+
+````
+function exception_handler($exception) {
+    // change the 200 default code
+    http_response_code(500);
+````
+
+```
+ // AJAX call.
+ done(function(reponse) {
+            button.parent().html(reponse);
+       👉 }).fail(function(){
+            alert('An error ocurred');
+    })
+```
+
+.fail() will be reached when code is != 200
+
+
+
+### To do
 
 - Try to run php outside`htdocs` folder, and configure the interpreter on `PHP storm`.
 - convert double quotes from form to single quotes for SQL values's statement
 - 
+
+````
+mysql login
+tebi
+123
+````
 
