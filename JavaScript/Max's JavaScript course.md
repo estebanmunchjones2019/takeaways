@@ -1513,3 +1513,316 @@ someHtmlElement.addEventListener('click', function() {console.log('button clicke
 // 2 functions that do the same are stored in the heap!
 // that's a memory leak;
 ```
+
+
+
+## More on functions
+
+### Functions are objects
+
+````javascript
+function hello () {
+    console.log('hello');
+} 👈 // no semicolon to function declarations, that's the convention
+
+console.log(typeof hello); // prints `function`
+
+console.dir(hello) // it prints the function object!
+````
+
+The method **`console.dir()`** displays an interactive list of the properties of the specified JavaScript object.
+
+### Function expression vs function declaration
+
+Expression: right hand side of an `=` operator.
+
+````javascript
+// right hand side, it's an expression
+const start = function 👉 ❌startGame() { // the name of the function is not needed, could be anonymous
+  console.log('Game is starting...');
+}; 👈 // semicolon is usually added to expressions.
+startGameBtn.addEventListener('click', start);
+
+//it's a declaration
+function startGame() {}
+````
+
+```javascript
+// right hand side breaks hoisting! `start` is hoisted as undefined 😕
+startGameBtn.addEventListener('click', start);
+
+const start = function() {
+  console.log('Game is starting...');
+};
+
+❌ Uncaught ReferenceError: Cannot access 'start' before initialization
+    at app.js:16:40
+```
+
+### Which approach to choose?
+
+the expression approach is prefered since it forces devs to declare the function before calling it:
+
+```javascript
+✅ // prefered approach
+const start = function() {
+  console.log('Game is starting...');
+};
+```
+
+### To be anonymous or not, that's the question 🤔
+
+You might want to name them to get better logs in the console when that function breaks.
+
+```javascript
+// anonymous function log
+startGameBtn.addEventListener('click', function() {
+  console.log('Game is starting...', age);
+});
+
+app.js:19 Uncaught ReferenceError: age is not defined
+    at HTMLButtonElement.<anonymous>👈 (app.js:19:38) 👈 // line number is not enough when having bundled code in prod
+
+
+// named function log
+    startGameBtn.addEventListener('click', function startGame() {
+  console.log('Game is starting...', age);
+});
+
+app.js:4 Uncaught ReferenceError: age is not defined
+    at HTMLButtonElement.startGame👈 (app.js:4:38) 
+```
+
+
+
+### Arrow functions
+
+`=>` is a keyword made up of math symbols, it's not an operator like the `=` operator!
+
+Predence: && have precedence over || operator, so && are executed before.
+
+````javascript
+// empty return, `undefined` is returned
+const getWinner = (computerSelection, playerSelection) => {
+	....some code
+	return;
+}
+
+const winner = getWinner(); // winner will be `undefined`
+````
+
+````javascript
+// calling functions with less arguments than expected
+// there's no JS error 😮
+
+ const winner = getWinner(computerSelection); // doesn't throw error!
+````
+
+````js
+// fallback params!
+
+const getWinner = (computerSelection, playerSelection👉 = DEFAULT_SELECTION) => {
+  // only kicks in when `playerSelection` is `undefined`.
+  // it doesn't work for falsy values, like null, 0, etc
+  
+// we can add a value depending on other argument's values!
+  const getWinner = (computerSelection, playerSelection👉 = computerSelection === ROCK ? PAPER : DEFAULT_SELECTION) => {
+````
+
+### How to add breakpoints when the code stopped in one?
+
+just go to `Source` in the dev tools and add a new breakpoint with the cursos, and press the play button! Easy!
+
+I can also disable the selected breakpoints by going to `Source->Breakpoints` window, and uncheck them!
+
+
+
+### Rest parameters (...someNumers)
+
+variable amount of arguments! https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/rest_parameters
+
+this function it can handle any number of args:
+
+```js
+const addNumbers = (...numbers) => {
+  let sum = 0;
+  numbers.forEach(number => {
+    sum = sum + number;
+  });
+  return sum;
+}
+
+console.log(addNumbers(1,2));
+```
+
+The arguments get added to an array, so we can iterate over it!
+
+```js
+// OLD way ❌
+
+const addNumbers = function () {
+  let sum = 0;
+  for (number of 👉 arguments) { // arguments is magically in the scope of the fn,
+    // it's not an array, an array-like object, so it doesn't have the .forEach method 😮
+    sum = sum + number;
+  }
+  return sum;
+}
+
+console.log(addNumbers(1,2));
+```
+
+
+
+### Declaring functions inside functions
+
+````js
+const addNumbers = (...numbers) => {
+  👉 const validateNumber = (number) => {
+		return isNaN(number) ? 0 : number;
+	}
+
+  let sum = 0;
+  numbers.forEach(number => {
+    sum = sum + validateNumber(number);
+  });
+  return sum;
+}
+````
+
+functions are objects, so we can can objects stored inside objects, right?
+
+The `validateNumber` function is scoped to the curly braces of the parent function.
+
+### Callbacks
+
+````
+const addNumbers = (👉 callback, ...numbers) => {
+  const validateNumber = (number) => {
+		return isNaN(number) ? 0 : number;
+	}
+
+  let sum = 0;
+  numbers.forEach(number => {
+    sum = sum + validateNumber(number);
+  });
+  👉callback(sum);
+}
+
+const myCallBack = (sum) => {
+  alert(sum);
+}
+
+addNumbers(👉myCallBack, 1,2, 'banana', 5);
+````
+
+
+
+### Adding extra parameters on the fly: the .bind() method:
+
+Using .bind() method returns a new function reference with some new configuration (give values to some params), so that function can be called at some point (upon an event, etc) with the pre-configured param values!
+
+````js
+const sayHello2 = (👉 greeting, name) =>{
+  console.log(greeting + name);
+}
+
+// silly example calling the function right away, not done in real life
+sayHello2.bind(this, 👉'Special greetings ')('tebi!'); // Special greetings, tebi!
+````
+
+💡 usually the binded function is passed as a callback fn an then exectuted at some point by the parent function
+
+````js
+someFn(sayHello2.bind(this, 'Special greetings'), someOtherParams);
+
+const someFn = (callback, someOtherParams) => {
+	callback('tebi');
+}
+
+// there could be some logic inside the someFn to pass the appropiate greeting to callback, but that could lead
+// to a lot of if checks on the someOtherParams, or ternary expressions
+````
+
+````js
+// bind usage in the calculator
+// the callbacks are preconfigured for each button 🔥
+const operators = {
+  ADD: '+',
+  SUBSTRACT: '-',
+  MULTIPLY: '*',
+  DIVIDE: '/'
+}
+
+function calculate(operation) {
+  const enteredNumber = getUserNumberInput();
+  const initialResult = currentResult;
+  
+  if (operation === 'ADD') {
+    currentResult += enteredNumber;
+  } else if (operation === 'SUBTRACT') {
+    currentResult -= enteredNumber;
+  } else if (operation === 'MULTIPLY') {
+    currentResult *= enteredNumber;
+  } else {
+    currentResult /= enteredNumber;
+  }
+  createAndWriteOutput(operator.operation, initialResult, enteredNumber);
+  writeToLog(operation, initialResult, enteredNumber, currentResult);
+}
+
+addBtn.addEventListener('click', calculate.bind(this, 'ADD'));
+subtractBtn.addEventListener('click', calculate.bind(this, 'SUBTRACT'));
+multiplyBtn.addEventListener('click', calculate.bind(this, 'MULTIPLY'));
+divideBtn.addEventListener('click', calculate.bind(this, 'DIVIDE'));
+````
+
+
+
+### Interacting with the DOM
+
+````
+// console
+document
+// we see kind of HTML, and we can select html elements, and they get hovered on the page
+// document is just a JS object (with all the methods we need), represented by Chrome in this HTML way in the console.
+````
+
+````bash
+console.dir(document) // to see the full object!
+````
+
+### Why can we use `alert()` without the window.?
+
+because the browser adds the window. to functions and variables it doesn't find in our code! 😮
+
+### The DOM
+
+There are 2 types of Nodes (JS objects):
+
+- Element Nodes divs, paragraphs, etc
+- Text Nodes (white spaces coming from the indentation of the HTML file)
+
+whitespaces are Text Nodes, and not rendered in the screen 😮
+
+#### The `$0` shortcut:
+
+the last selected element in the `Elements` tab in the dev tools gets stored in the `$0` variable, so it can be used in the console, neat!
+
+We can't see the text nodes in the `Elements` tab.
+
+### Targeting elements
+
+there are 2 camps of methods:
+
+- return the fisrt match (getElementById, querySelector)
+- return an array-like array: NodeList (it might not have .forEach and other methods) (e.g querySelectorAll)
+
+`getElementBySomething` methods return an object that is updated if the Node changes later in time ⏺
+
+the other ones just return a snapshot of the Nodes 📸
+
+
+
+
+
