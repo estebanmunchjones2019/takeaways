@@ -40,7 +40,7 @@ the downside: the html gets long an messy with inline JS.
    </head>
    ```
 
-IMPORTANT: self closing `<script />` tag is not supported.
+⚠️ IMPORTANT: self closing `<script />` tag is not supported.
 
 IMPORTANT: the above ways, are **BLOCKING** the loading of the HTML. In our case, the html doesnt load till we click on the alert 😯
 
@@ -133,7 +133,7 @@ adding dinamyc values to strings:
 let fullName = 'Esteban ' + surname + ' some extra random surname'
 ```
 
-the `+` operator here doesn't SUM numbers but it joins strings into a single one. Downside? messy syntax. It's better to do **strint interpolation**.
+the `+` operator here doesn't SUM numbers but it joins strings into a single one. Downside? messy syntax. It's better to do **string interpolation**.
 
 ### From top to bottom
 
@@ -159,7 +159,7 @@ The above does print the single quote string on the html, yes!
 
 ### Template literals or string interpolation
 
-is the solution to string concatenation, wich is ugly.
+is the solution to string concatenation, which is ugly.
 
 ```js
 let greeting = `Welcome onboard ${userName}`
@@ -237,7 +237,7 @@ function addNumbers (num1, num2) {
 
 we have the function keyword, the function name, the parameters, and the body of the function inside the {}.
 
-#### IMPORTANT: usually no `;` is added after the the funcion `}` closing curly brace.
+#### IMPORTANT: usually no `;` is added after the the funcion `}` closing curly brace, in function declarations, but it's added to function expressions (functions saved in constants)
 
 `num1` variable is defined inside the function body of the function, which is a block, but can't be used outside the function.
 
@@ -259,7 +259,7 @@ const result = addNumbers(1,2);
 
 ### The order in code matters
 
-variables and constants should be declared (not neccessarly defined, with a value, or, in other words, initialize it) before using them.
+variables and constants should be declared (not neccessarly defined, with a value, or, in other words, initialized) before using them.
 
 ```js
 let greeting;
@@ -267,7 +267,7 @@ let greeting;
 console.log(greeting); // doesn't break the code, prints undefined
 ```
 
-on the other hand, having functions declared with the keyword `function` can be place anywhere in the code, because the browser takes them to the top after parsing the JS code. This is called hoisting.
+on the other hand, having functions declared with the keyword `function` can be placed anywhere in the code, because the browser takes them to the top after parsing the JS code. This is called **hoisting**.
 
 ```js
 addNumbers (1,2); //works thanks to hoisting
@@ -310,7 +310,7 @@ function addNumber(num1, num2) {
     return result;
 }
 
-// even calling addNumber(1,2) here doesn't make the result variable available outside the function
+// even calling addNumber(1,2) here doesn't make the `result` variable available outside the function
 
 console.log(result); // will throw an error "result is not defined"
 ```
@@ -326,7 +326,7 @@ function greetUser(name) {
   alert(userName);
 }
 userName = 'Manu';
-greetUser('Max');
+greetUser('Max'); // will still greet Max
 ```
 
 the local `userName` variable inside the funtion is `shadowed`, so it doesn't overwrite the global variable, it's a different variable than the global one, named the same, inside the function block.
@@ -378,7 +378,7 @@ add
 
 are inputs for the function, that are available just inside the function, like local variables.
 
-### Input values are always strings
+### Input values from forms are always strings
 
 if you get a number from a form, the value is a string, so it's needs to be converted to a number:
 
@@ -445,10 +445,10 @@ Using numbers inside a literal string, has `.toString()` applied to those number
 
 ```js
 const calcDescription = `${currentResult} + ${userInput.value}`
-// it has currentResult.toString() under the hood
+// it has currentResult.toString() under the hood 😮
 ```
 
-## 
+
 
 ### Comments
 
@@ -502,7 +502,7 @@ console.log(logEntries[1]) // returns undefined
 
 ### Console.log(myArray)
 
-Funny facts: the order of the keys an an object may change, to be ****sorted alphabetically****:
+Funny facts: the order of the keys an an object may change, to be **sorted alphabetically** in the dev tools:
 
 ```js
 0:
@@ -547,7 +547,7 @@ let someArray = [1];
 console.log(someArray[3]); // prints undefined
 ```
 
-Never assign `undefined` manually to a variable!!
+⚠️ Never assign `undefined` manually to a variable!!
 
 #### Null
 
@@ -557,11 +557,11 @@ is **never** assumed by default, and is assigned manually to reset a variable
 userName = 'Esteban'
 
 // the form was submitted
-// instead of assigning an empty string, null is assigned
+// instead of re-assigning an empty string, null is assigned
 userName = null
 ```
 
-`undefined & null` are great for managing empty data, either because it hasn't been set, or it has been reseted.
+#### 💡 `undefined & null` are great for managing empty data, either because it hasn't been set, or it has been reseted.
 
 #### NaN
 
@@ -592,7 +592,11 @@ typeof {name: "tebi"} // prints "object"
 typeof [1,2] // prints "object"
 ```
 
-### Async and defer
+### Async and defer: never blocks HTML parsing 😉
+
+#### ⚠️ make sure you start downloading your scripts in the head!
+
+Keep this word in mind: **HTML parsing**
 
 If `JS` code depends on `HTML` (like accessing DOM elements), the `JS` files can be imported at the end of the `<body>`:
 
@@ -625,7 +629,7 @@ Option 1: (not recommended)
 </body>
 ```
 
-It throws an error because the `JS` code targets DOM elements not yet parsed.
+⚠️ It throws an error because the `JS` code targets DOM elements not yet parsed.
 
 ```bash
 Uncaught ReferenceError: addBtn is not defined
@@ -636,7 +640,7 @@ The download of the `JS` files blocks (or stops) the HTML parsing.
 
 ### Defer attribute: when the JS targets the DOM
 
-it tells the browser to download the `JS` files straight away, no blocking the HTML parsing, and execute the `JS` after the HTML has been parsed.
+it tells the browser to download the `JS` files straight away, no blocking the **HTML parsing**, and execute the `JS` after the HTML has been parsed.
 
 ```html
 <head>
@@ -647,7 +651,7 @@ it tells the browser to download the `JS` files straight away, no blocking the H
 </body>
 ```
 
-The time difference between the end of the HTML parse and the `Script execution` is much shorter than when importing the scripts at the end of the `<body>`.
+💡The time difference between the end of the HTML parse and the `Script execution` is much shorter than when importing the scripts at the end of the `<body>`.
 
 With `defer` the scripts execution follows the order they're listed on the HTML.
 
@@ -666,7 +670,7 @@ when the  `JS` doesnt target the DOM, why bothering waiting for the HTML parse t
 
 when using `async` the order of the scripts executions depends on which one gets downloaded first.
 
-`async & defer` doesn't have any effect when used here:
+⚠️`async & defer` doesn't have any effect when used here:
 
 ```html
 //No effect!
@@ -675,7 +679,7 @@ when using `async` the order of the scripts executions depends on which one gets
 </script>
 ```
 
-because there's no such `JS` file to download.
+because there's no such `JS` file to download.😅
 
 ```html
 // DONT combine inline JS and src
@@ -1818,11 +1822,131 @@ there are 2 camps of methods:
 - return the fisrt match (getElementById, querySelector)
 - return an array-like array: NodeList (it might not have .forEach and other methods) (e.g querySelectorAll)
 
-`getElementBySomething` methods return an object that is updated if the Node changes later in time ⏺
+💡`getElementBySomething` methods return an object that is updated if the Node changes later in time ⏺
 
 the other ones just return a snapshot of the Nodes 📸
 
+### Applying methods on Element Nodes
+
+we can do `someElement.querySelector('some-selector');` that's great! we can have a more scoped search
+
+`getElementById` is not inside Element Nodes, only in the document.
+
+```js
+const h1 = document.querySelector('h1');
+h1.textContent = 'Lalala'; // deletes and creates a new Text Node
+```
+
+Use mdn to look for the Element Node documentation, e.g h1. Under `DOM interface`, we have, eg. https://developer.mozilla.org/en-US/docs/Web/API/HTMLHeadingElement.
+
+Some props are read only ⚠️
+
+### Attributes vs Properties
+
+- Attributes: what's inside the HTML tag, e.g `id`
+- Properties: the browsers configures some props, like the `id` based what is was passed in the HTML as attributes
+
+Some attributes, like <input value="some text here">, can't be changes with input.value method.
+
+````
+<input value="some text here">
+input.value = 'other random text'
+
+// we check Elements tab
+<input value="some text here"> // still the same, one way data binding
+
+
+input.id = 'some-id';
+<input value="some text here" 👉 id="some-id"> // updates the HTML! 2 way data binding
+````
+
+So, when the user types, the value of `value` is updated in the JS object but not on the HTML attribute read on Elements tab, so 
+
+````
+input.setAttribute('value', 'some other default text');
+<input 👉 value="some other default text">
+
+input.value = 'some previous text the user entered' // decoupled state!
+````
+
+💡value attribute and property are decouple on purpose, so we can always backtrack to the original value if we need to, after the user entered some text:
+
+````js
+input.value = input.getAttribute('value'); // reseting the value propr with the original attribute!
+````
+
+Tip: the JS object propr and the rendered UI are in sync
+
+`input.getAttribute()` helps to read the value written in the HTML tag attribute
 
 
 
+### Traversing the DOM: children, descendents, Parent and Ancestors
+
+use `.children` to navigate the Node Elements (skiping the Text Nodes);
+
+if you use `.childNodes` you get the list of all nodes (Elements and Text).
+
+Remember: even the indentation of the HTML gets converted into text nodes. e.g: `someTextNode.data: "\n      "`
+
+How to see the text nodes being rendered on the screen:
+```css
+// add this to the ol/ul or other element
+element.style {
+    white-space: pre;
+}
+```
+
+Then, if we have the nodelist of text and element nodes in the console.dir, and we hover over the text nodes, we'll see them highlighted in the rendered page!
+
+#### Perfomance issues:
+
+````
+document.querySelector('li:last-of-type'); // 🐌 running a query like that at the document level is expensive!
+
+document.querySelector('ul').lastElementChild() 🚀
+````
+
+`````
+someElement.closest('some-selector'); // looks for the closes parent that matches that selector
+// it's kind of querySelector but for looking upstream
+`````
+
+💡 Run as fewer .querySelector queries as possible, and use parent and children navigation instead (always taking into account code readability, and future changes in the HTML order)
+
+Deep traversing is also bad for perfomance
+
+### Styling DOM elements
+
+````
+// inline
+someElement.style.backgroundColor = 'red' // inline style -> highest specificity
+
+// classes
+someElement.className = 'banana' // add or remove classes, I can re-use styles
+// cumbersome, be careful not to override previous classes added to the element ❌
+
+someElement.classList.add('banana'); ✅
+someElement.classList.remove('banana');
+
+// ids
+someElement.id = 'banana'
+
+// some attributes (that are already targetted in the CSS file)
+someElement.setAttribute('banana', 'true');
+````
+
+
+
+
+
+
+
+
+
+
+
+
+
+(read from debugging section 📚)
 
