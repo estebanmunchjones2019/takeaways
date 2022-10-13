@@ -640,6 +640,8 @@ The download of the `JS` files blocks (or stops) the HTML parsing.
 
 ### Defer attribute: when the JS targets the DOM
 
+Download JS -> execute it when the HTML parsing finished.
+
 it tells the browser to download the `JS` files straight away, no blocking the **HTML parsing**, and execute the `JS` after the HTML has been parsed.
 
 ```html
@@ -656,6 +658,8 @@ it tells the browser to download the `JS` files straight away, no blocking the *
 With `defer` the scripts execution follows the order they're listed on the HTML.
 
 ### Async attribute: when the JS doesn't target the DOM
+
+Download JS -> execute when finished downloading
 
 when the  `JS` doesnt target the DOM, why bothering waiting for the HTML parse to finish? it just executes the `JS` when the download finished.
 
@@ -732,7 +736,7 @@ After hitting a `debugger` keyword in the code or `breakpoint` applied on the Ch
    currentResult += enteredNumber;
   ```
 
-- down arrow: Step into next function call:
+- down arrow: Step into next function call (chain of function calls)
 
 Will get you inside this function:
 
@@ -868,7 +872,7 @@ it's better to have early return, so the main logic is not nested in an `if` blo
 ```javascript
 // early return
 const someFunction() {
-    if (conditio I don't want) {
+    if (condition I don't want) {
         return
     }
 
@@ -974,7 +978,7 @@ use for simple stuff, not nesting it, because gets unreadable.
 isLoggedIn ? 'Max' : null;
 
 //statement. It CAN'T be used on the right hand side of assignment operators
-const userName = isLoggedIn ? 'Max' : null;
+const username = const somethingelse ❌
 
 // an if STATEMENT is an example
 ```
@@ -1046,7 +1050,7 @@ for (let i = 0; i < 10; i++){
 
 `i++` is a code that runs after every iteration.
 
-### For of
+### For of (arrays)
 
 ```js
  for (const el of log) {
@@ -1077,7 +1081,7 @@ let i = 0;
  }
 ```
 
-### For in
+### For in (objects)
 
 ```js
 const offer = {
@@ -1938,15 +1942,172 @@ someElement.setAttribute('banana', 'true');
 
 
 
+### Creating and inserting Elements
+
+#### #1 HTML string
+
+##### `innerHTML`:
+
+````js
+// innerHtml
+
+const ol = document.querySelector('ol');
+
+ol.innerHTML = '<li>the only element</>'; // replaces ALL original HTML content
+````
+
+Performance and lossing state issues:
+
+````js
+ol.innerHTML = ol.innerHTML + '<li>the only element</>'; // re-renders the original content, purple flashing on those elements
+// on Chrome dev tools ⚠️
+
+<div id="someId">
+  <input>
+</div>
+
+const div = document.getElementById('someId')
+ div.innerHTML = div.innerHTML + '<p>Something went wrong</p>'; // I loose the input value of the `value` prop
+````
+
+
+
+##### `insertAdjacentHTML`
+
+```js
+div.insertAdjacentHTML('beforeend', '<p>Something went wrong</p>'); // doesn't re-render the input field!
+// more performant ✅
+// but I only set the attributes ⚠️
+```
+
+ what if I want to attach and event listener to a button I've just added? 🤔
+ I'd have to target it with querySelector and then add the prop, so annoying and poor perfomance ❌
+
+
+
+#### Creating Node Element + append it
+
+The methods to add the nodes are `append`, appendChild `prepend`, `before`, `after`, `replaceWith`.
+
+```js
+// createElement + appendChild
+
+const div = document.getElementById('input-wrapper');
+
+const error = document.createElement('p');
+
+error.textContent = 'Something broke!';
+
+div.appendChild(error);
+```
+
+These are better APIs, since I can append a list of Node Elements separated by a coma:
+
+```js
+div.append(error, otherNodeHere);
+```
+
+
+
+### Nodes are objects!
+
+```js
+div.append(error);
+
+div.prepend(error); // moves the element up, it's the same object reference
+```
+
+
+
+### Cloning elements = cloning objects
+
+Remember to deep clone nodes to, e.g get the textContent cloned as well:
+
+````js
+div.append(error);
+
+const errorClone = error.cloneNode(true);
+
+div.prepend(errorClone);
+````
+
+
+
+#### NodeList vs HTMLCollection
+
+NodeList (querySelectorAll) is more perfomant because it's not updated when inserting **new** Elements there with JS, or deleting them.
+
+HTMLCollection (getElementByTag) reflects new/removed items in the array when targeted with JS
+
+````
+const ol = document.querySelector('ol');
+
+const nodeList = document.querySelectorAll('li');
+
+const HTMLElementList = document.getElementsByTagName('li');
+
+const newLi = document.createElement('li');
+
+newLi.textContent = 'added item';
+
+ol.append(newLi);
+
+
+console.log('nodelist', nodeList); 👈 not updated in terms of new/removed elements
+
+console.log('HTMLElementList', HTMLElementList); 👈 updated! ✅
+````
+
+Having a non live array it's maybe not an issue.
+
+
+
+### Removing elements from the DOM
+
+```js
+someElement.remove()
+```
+
+
+
+### Favourite movies app
+
+`getElementById` is faster than `querySelector(#someId)`
+
+Don't use `.classList.add('someClass')` and  `.classList.remove('someClass') 
+
+#### checking input values
+
+````js
+const addButtonHandler = () => {
+
+    const titleValue = titleInput.value;
+    const imageUrlValue = imageUrlInput.value;
+    const ratingValue = ratingInput.value
+
+    //conditions I don't want + early return
+    if (
+      // 👇 get rid of white spaces
+        titleValue.trim() === '' ||
+        imageUrlValue === '' ||
+        ratingValue === '' ||
+      👇// strings are coherced to numbers when checking with tese operators
+        ratingValue < 1 ||
+        ratingValue > 5
+    ) {
+        alert('invalid input');
+        // early return
+        return;
+    }
+
+}
+````
+
+If I don't have the `.trim` method, adding white spaces in the title field makes it valid.
 
 
 
 
 
-
-
-
-
-
-(read from debugging section 📚)
+(read from While loop 📚)
 
