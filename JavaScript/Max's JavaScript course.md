@@ -2107,7 +2107,480 @@ If I don't have the `.trim` method, adding white spaces in the title field makes
 
 
 
+App architecture:
 
+~~using global variables, like `movies`, or `selectedMovie` make the code less dependant on event targets, and attaching event listeners to do things on those specific  targets (a movie) . And adding and removing event listerners that are target specific is a pain. So, trying to keep the movies state in the HTML and not in JS is a bad decision.~~ 
+
+~~Max's approach re-renders the whole ul list, but doesn't mess with event targets, so it's cleaner code.~~
+
+
+
+How to pass the movie id to the `yes` delete button handler?
+
+First, clicking on the li element opens up the modal, that has the `Yes` button:
+
+````js
+liItemElement.addEventListener('click', liItemHandler.bind(this, movie.id));
+````
+
+Then, `liItemHandler` can also add an binded event listener to the `Yes` button, but that will need to be added an removed each time the modal opens and closes, OR, as Max did, clone, remove and re-add the buttons to the DOM, so the event listeners are cleared
+
+```js
+yesDeleteButton.replaceWith(yesDeleteButton.clone(true));
+```
+
+The most elegant solution is to read the `event.target` value inside the event handler, instead of binding the event handler.
+
+
+
+#### My version of the app:
+
+keep the movies array state in the HTML instead.
+
+The `delete` button from the li element is binded so it can pass the liElement and then, if clicked, update the global variable `selectedMovie`.
+
+have a global variable `selectedMovie` that helps me avoid needing to remove event listeners
+
+Success! ✅
+
+
+
+#### Automatic event listeners clearance
+
+The browser deletes event listeners when an element is removed from the DOM, no memory leak at all 😁
 
 (read from While loop 📚)
+
+
+
+## More on arrays and iterables
+
+### what are iterable objects?
+
+objects that can be looped using a `for of` loop.
+
+````js
+const name = 'Max';
+
+for (letter of myString) { 
+	console.log(letter); // prints 'M', 'a', 'x'
+}
+````
+
+
+
+E.g: `NodeList` and `String`.
+
+### what are array-like objects?
+
+E.g: `NodeList` and `String`.
+
+We can access items indexes, and they have a .length property
+
+```js
+const name = 'Max';
+
+console.log(name.length); // outputs '3'
+
+console.log(name[0]); outputs 'M'
+```
+
+
+
+### Creating arrays
+
+```js
+const numbers = [1,2,3]; 🚀 best performance
+
+const numbers = Array(1,2,3); // ❓is Array a function here?
+
+const numbers = new Array(1,2,3);
+
+// unexpected behaviour
+
+const numbers = Array(5); // [empty x5]
+
+const numbers = new Array(5); // [empty x5 ] // numbers[0] outputs undefined
+
+```
+
+### Converting iterables and array-like objects into arrays
+
+```js
+// NodeList example
+const divsNodeList = document.querySelectorAll('div');
+const divArray = Array.from(divsNodeList);
+
+//String example
+const name = 'Max';
+const nameArray = Array.from(name); // ['M', 'a', 'x'];
+
+
+```
+
+That way, we could use, e.g .splice() on the converted array.
+
+### Adding and removing elements in arrays
+
+```
+.push(element) // 🚀fastest perfomance
+.pop() // removes last element // 🚀 fastest perfomance
+.shift() // removes the first element => shiftes elements to the left // 🐌 bad performance
+.unshift(element) // adds to the begining of the array => // 🐌 shiftes elements to the right
+```
+
+```js
+// how not to mutate elements ❌
+
+const countries = ['Argentina']
+countries[5] = 'Brazil';
+
+console.log(countries); // ['Argentina', empty × 4, 'Brazil']
+```
+
+
+
+### Splice method: powerful
+
+```js
+  const animals = ['bear', 'parrot', 'fish']
+
+// remove
+animals.splice(1,1) // ['bear','fish']
+
+// add
+animals.splice(1,0, 'donkey');  // ['bear', 'donkey', parrot', 'fish']
+
+// replace
+  animals.splice(0,1, 'wale'); // ['wale', 'parrot', 'fish']
+
+// delete all items (1 arg)
+animals.splice(1); // ['bear']
+
+
+// start from the end of array (negative indexes)
+animals.splice(-2, 1); // ['bear', 'fish']
+```
+
+it returns the deleted elements and mutate the array.
+
+### Slice method
+
+Shallow copies! ⚠️:
+
+`slice() , Array. from() , Object. assign() , and Object. create() ) **do not create deep copies** (instead, they create shallow copies).`
+
+```js
+const users = [{name: 'John'}, {name: 'Paul'}];
+
+const shallowUsersClone = users.slice(); // ⚠️ shallow copy created
+
+users[0].name = 'Matthew';
+
+console.log(users, shallowUsersClone); 
+// outputs [{name: 👉'Matthew'}, {name: 'Paul'}] [{name: 👉'Matthew'}, {name: 'Paul'}]
+```
+
+
+
+```js
+const animals = ['bear', 'parrot', 'fish']
+
+const fullSlice = animals.slice(); // shallow copy ['bear', 'parrot', 'fish'] 
+
+
+const smallSlice = animals.slice(0,2); ['bear', 'parrot']
+
+const fromNegativeSlice = animals.slice(-2,2); // always slices to the right! ['parrot', 'fish']]
+```
+
+it returns a shallow copy of the slice.
+
+ 
+
+### Concat method
+
+useful for combining to arrays into a **brand new one**! (shallow copy)
+
+```
+const wild = ['bison'];
+
+const domestic = ['cat'];
+
+const animals = wild.concat(domestic); // ['bison', 'cat']
+```
+
+### IndexOf method
+
+finds the first index of an occurrance.
+
+```
+const wildAnimals = ['bison', 'lion'];
+
+const lionIndex = wildAnimals.indexOf('lion');
+
+if (lionIndex !== -1) {
+    // and the cat becomes a wild animal!
+    wildAnimals[lionIndex] = 'cat';
+}
+```
+
+
+Gotcha here: it works fine for primite values, but not for references.
+
+```
+const people = [{name: 'Max'}, {name: 'Manu'}];
+
+console.log(people.indexOf({name: 'Max'})); // -1, not found!
+
+// use .find() instead
+console.log(people.findIndex(element => element.name === 'Max')); // 0
+```
+
+
+
+### LastIndexOf method
+
+similar to the above, but starts looking from the end of the array
+
+
+
+### Find method
+
+it accepts a callback that is executed for each element.
+
+it returns the first element that matches the returned condition.
+
+⚠️ It doesn't create a copy of objects returned in the array, they're the same references! 😮
+
+````
+const people = [{name: 'Max'}, {name: 'Manu'}];
+
+const max = people.find(element=> element.name === 'Max');
+
+max.name = "Rob";
+
+console.log(people); // [{name: 'Rob'}, {name: 'Manu'}]
+````
+
+
+
+### FindIndex method
+
+```
+console.log(people.findIndex(element => element.name === 'Max')); // 0, found
+```
+
+
+
+### .includes
+
+It's case sensitive
+
+````
+console.log(wildAnimals.includes('bison')); //
+````
+
+Doesn't work to find object and arrays (reference values)
+
+Works well for primitive values
+
+
+
+### .forEach
+
+doesn't return anything
+
+````js
+const prices = [1, 2];
+
+const tax = 0.20;
+
+const updatedPrices = [];
+
+prices.forEach(element => updatedPrices.push(element*(1 + tax)));
+````
+
+
+
+### .map
+
+return a new array (shallow copy!)⚠️
+
+````js
+// primitive values
+const prices = [1, 2];
+
+const tax = 0.20;
+
+const updatedPrices = prices.map(element => element*(1 + tax));
+
+// reference values
+const people = [{name: 'Max'}, {name: 'Manu'}];
+const updatedPeople = people.map(element => element.name = 'Banana');
+console.log (people, updatedPeople); // [{name: 'banana'}, {name: 'banana'}];, [{name: 'banana'}, {name: 'banana'}];
+
+// clone deep, to avoid pushing references to the new array
+const updatedPeople = people.map(element => { 
+    return {...element, name: 'Banana'};
+});
+
+
+````
+
+
+
+### .sort
+
+it mutates the array, and returns the mutate one (psss, don't do use that returned value, footgun);
+
+````
+// how not to use it ❌
+
+//footgun here 🔫
+const sortedAnimals = wildAnimals.sort(); // it returns the same array reference ⚠️
+
+wildAnimals[0] = 'banana';
+
+console.log(sortedAnimals); // ['banana', etc] 🤦‍♂️
+
+
+// how to use it
+wildAnimals.sort();
+console.log(wildAnimals) // sorted wild animals
+
+````
+
+it sorts strings alphabetically.
+
+⚠️ If numbers are on the array, they'r converted to a string, and the first string character is used for sorting:
+
+```js
+const prices = [10.99, 1.50, 3.75, 5.80];
+
+prices.sort(); // [1.5, 10.99, 3.75, 5.8] 😮
+
+
+// let's do it properly
+prices.sort((a,b) => {
+    if (a < b) {
+        return -1;
+    } else if (a === b) {
+        return 0;
+    } else {
+        return 1
+    }
+});
+
+// [1.5, 3.75, 5.8, 10.99] ✅
+```
+
+
+
+### .filter
+
+returns shallow copy array ⚠️
+
+Callback function return true to keep it, false to discard it in the new array
+
+```js
+// primitive values
+const prices = [10.99, 1.50, 3.75, 5.80];
+
+const filteredPrices = prices.filter(element => element < 10); // [1.5, 3.75, 5.8]
+```
+
+```js
+ // reference values
+// how not to do it ❌
+ const people = [{name: 'Max'}, {name: 'Manu'}];
+
+const filteredPeople = people.filter(element => element.name === 'Max');
+
+filteredPeople[0].name = 'banana';
+
+console.log(people); // [{name: 'banana'}, {name: 'Manu'}];
+```
+
+````
+✅ use a .forEach and push a cloned object to an array insted OR .map and return a cloned object
+````
+
+
+
+### .reduce
+
+reduce an array into a single value! e.g sum numbers in an array:
+
+
+````js
+const numbers = [1,2,3];
+
+const sum = numbers.reduce((prevValue, currentValue) => prevValue + currentValue, 0);
+````
+
+easier than initializing variable and using .forEach to add numbers!
+
+prevValue is `undefined` in the first iteration of not specified.
+
+### The power of chainging methods
+
+```js
+const originalArray = [{price: 10.99}, {price: 5.99}, {price: 29.99}];
+const sum = originalArray.map(obj => obj.price)
+    .reduce((sumVal, curVal) => sumVal + curVal, 0); // => 46.97
+```
+
+### .split and .join
+
+````js
+const data = 'edinburgh;10';
+
+const dataArray = data.split(';'); // ['edinburgh', '10']
+
+const joinedData = dataArray.join(':'); // 'edinburgh:10'
+````
+
+.join will convert everything into a string.
+
+if the `let` or `const` is missing:
+````js
+joinedData = dataArray.join(':'); // 'edinburgh:10' // window.joinedData is created!
+````
+
+
+
+### ...operator
+
+example of Math.min()
+
+```
+const numbers = [1,2,3];
+const min = Math.min(...numbers);// same as (1,2,3)
+```
+
+```
+how not to use it! ❌
+const numbersClone = ...numbers
+```
+
+⚠️ only deep clone things you plan to change on the newly created array.
+
+
+
+### array restructuring
+
+````js
+const data = ['max', `schwarz`];
+
+const [name, surname] = data; // name = 'max', surname = 'schwarz', rest = [ "germany", "34" ]
+````
+
+
+
+### Arrays, sets and maps
+
+Sets have no guaranteed order and there can't be repeated values. Useful for storing unique things. Things can't be accessed with the index, but I can check if things are present. It has some array protoype methods available. It's iterable
+
+Maps have the order guaranteed, and key value pairs are stored; keys can be anything (even objects). There can't be duplication of key 's values. Values are accessed with the key. Some methods are available. It's iterable.
 
