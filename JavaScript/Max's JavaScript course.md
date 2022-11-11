@@ -850,7 +850,7 @@ In order to get this booleans values, `boolean operators` are used:
 
 1) `==` and `!=` equal and un equal operators, they check value. e.g: `3 == '3'` return `true`
 
-2) `===` and `!===` strict equan and un equal operators. They check value and type. e.g `3 === '3'` returns `false`.
+2) `===` and `!===` **strict** equal and un equal operators. They **check value and type**. e.g `3 === '3'` returns `false`.
 
 3) `> >= ` and `< <=` for numbers and strings
 
@@ -867,12 +867,12 @@ event the content is the same, they're different pointers (not copies, like `str
 
 ### Early return
 
-it's better to have early return, so the main logic is not nested in an `if` block:
+it's better to have early returns, so the main logic is not nested in an `if` block:
 
 ```javascript
 // early return
 const someFunction() {
-    if (condition I don't want) {
+    if (condition I don't want) { ✅
         return
     }
 
@@ -881,7 +881,7 @@ const someFunction() {
 ```
 
 ```javascript
-// nested main code here, bad practice
+// nested main code here, bad practice ❌
 const someFunction() {
     if (condition I want) {
         //rest of the logic
@@ -896,7 +896,7 @@ Which operators are executed first by JS in the same line?
 ```javascript
 3 + 2 < 7 + 20 //returns true
 
-// + operator has precedence over < operator        
+// + operator has precedence over < operator  (is executed first) 
 ```
 
 check out the list of operators precedence here: [Operator precedence - JavaScript | MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Operator_Precedence)
@@ -918,8 +918,8 @@ if("Hola"){// gets executed} // non-empty strings evaluate to true
 if(0){//doesn't get executed}
 if(-1){//gets executed} // numbers != 0 evaluate to true
 
-if({}){// all objects are truthy}
-if([]){// all arrays are truthy}
+if({}){// all objects are truthy} ⚠️
+if([]){// all arrays are truthy} ⚠️
 
 if(null) if(undefined) if(Nan){//all are falsy}
 ```
@@ -958,7 +958,7 @@ function attack(mode) {
     if (mode === ATTACK) {...
 ```
 
-write the string once, and use the variable instead, smart!
+write the string once, and use the variable instead, smart 💡!
 
 ### Declaring a constant with 2 possible values
 
@@ -968,7 +968,7 @@ It's a great scenario for a `ternary operator`:
 const userName = isLoggedIn ? 'Max' : null;
 ```
 
-use for simple stuff, not nesting it, because gets unreadable.
+use for simple stuff, not nesting it, because gets unreadable ⚠️.
 
 ### Expression vs Statement
 
@@ -980,7 +980,7 @@ isLoggedIn ? 'Max' : null;
 //statement. It CAN'T be used on the right hand side of assignment operators
 const username = const somethingelse ❌
 
-// an if STATEMENT is an example
+// an `if` STATEMENT is an example
 ```
 
 ### Boolean tricks with logical operators
@@ -2584,3 +2584,383 @@ Sets have no guaranteed order and there can't be repeated values. Useful for sto
 
 Maps have the order guaranteed, and key value pairs are stored; keys can be anything (even objects). There can't be duplication of key 's values. Values are accessed with the key. Some methods are available. It's iterable.
 
+
+
+### Sets: great for uniqueness
+
+```js
+const mySet = new Set(['hi', 'there']);
+
+mySet.add('man'); // Set(3) [ "hi", "there", "man" ]
+
+mySet.add('man'); // Set(3) [ "hi", "there", "man" ] // it doesn't throw error
+
+mySet.delete('man'); // Set [ "hi", "there" ]
+
+mySet.delete('inexistant'); // Set [ "hi", "there" ] // it doesn't throw error
+
+const isHiPresent = mySet.has('hi'); // true
+
+for (entrie of mySet.entries()) {
+    console.log(entrie); // Array [ "hi", "hi" ] Array [ "there", "there" ]
+}
+
+// entries not very handy, they're more built for maps
+
+// let's use .values() for looping instead
+for (value of mySet.values()) {
+    console.log(value); // hi there
+}
+```
+
+
+
+### Maps: great for not bloating objects used heavily in the app
+
+```js
+const animal1 = {name: 'negrito'};
+const animal2 = {name: 'toto'}
+
+const myMap = new Map([[animal1, {favouriteFood: 'fish'}]]); // Map { {…} → {…} }
+
+myMap.set(animal2, {favouriteFood: 'meat'}); // Map { {…} → {…}, {…} → {…} }
+
+const animal1Food = myMap.get(animal1); //Object { favouriteFood: "fish" }
+
+for (entrie of myMap.entries()) {
+    console.log(entrie); // Array [ {…}, {…} ] Array [ {…}, {…} ]
+}
+
+for (key of myMap.keys()) {
+    console.log(key); // Object { name: "negrito" } Object { name: "negrito" }
+}
+
+for (value of myMap.values()) {
+    console.log(value); // { favouriteFood: "fish" } { favouriteFood: "meat" }
+}
+```
+
+
+
+### Weak Set and Weak Map: memory management!
+
+only objects and arrays can be stored there! (no primitive values)
+
+they let **garbage collection** of objects that points to null objects. Very efficient! 
+
+No need to delete those object pointers from arrays when making the object values null somewhere else in the app!
+
+```js
+let user1 = {name: 'Max'}
+let user2 = {name: 'Manu'}
+
+const users = new WeakSet([user1, user2]);
+
+user1 = null; // the browser at some point will remove this item from the users WeakSet
+```
+
+WeakMap doesn't have .size prop or entries method, because the gargage collection can happen anytime and affect the size and hence, the number of items to be iterated over.
+
+````js
+let animal1 = {name: 'negrito'};
+
+const myMap = new Map([[animal1, {favouriteFood: 'fish'}]]); // this item will garbage collected at some point after animal1 is set to null
+
+animal1 = null;
+````
+
+
+
+### Short syntax for returning an object
+
+Use parenteshis to indicate that the return is there otherwise, the body of the functions becomes `number: element`, not very useful!
+
+````
+const numbersInObjects = numbers.map(element => 👉( {number: element}));
+````
+
+
+
+## More on objects
+
+### Adding/overriding new props after object creation
+
+````js
+const animal = {
+    name: 'negrito'
+}
+
+console.log(animal.age); // undefined, doesn't throw an error
+
+animal.age = 20; // {name: 'negrito', age: 30};
+````
+
+### Deleting props
+
+````js
+delete animal.age;
+````
+
+### Resetting props
+
+````js
+animal.age = undefined // ❌ bad practice! age will still be an active prop though (logged in the console)
+
+animal.age = null ✅// to reset it's value, cleaner, age will still be an active prop though (logged in the console)
+````
+
+
+
+### Key naming
+
+anything that is used as a variable name can be used as a variable key + strings + positive numbers
+
+Key values are coherced into strings when the object is created.
+
+```js
+const first-name = 'tebi'; // Uncaught SyntaxError: Missing initializer in const declaration
+```
+
+```js
+  const person = {
+    'first-name': 'tebi',
+    age: 33,
+    1: 'positive numbers work'
+  }
+
+person['first-name']; // 'tebi'
+person.first name; // Uncaught SyntaxError: Unexpected identifier 'name'
+
+person.age; // 33
+person['age']; 
+person[age]; ❌ // Uncaught ReferenceError: age is not defined at <anonymous>:1:8
+
+person.1; // Uncaught SyntaxError: Unexpected number
+person[1]; // 'positive numbers work'
+person['1'] // 'positive numbers work'
+```
+
+
+
+### Order of keys:
+
+If there are only numbers, the order is changed to `ascending`.
+
+If there are at least one string, then the order numbers come first, and then the non numbers order is kept.
+
+````js
+// strange example, only for demo purposes
+const numbers = {
+	5: 'number 5!',
+  1: 'number 1'
+} // {1: 'number 1', 5: 'number 5!'}
+
+const numbersAndOthers = {
+  'hello': 'hello there!',
+  'aaa': 'aaaaaaa',
+  1: 'number 1'
+} // {1: 'number 1', hello: 'hello there!', aaa: 'aaaaaaa'}
+````
+
+
+
+⚠️ Remember that the console.log when we **expand objects**, always sort things alpabetically. 
+
+
+
+### Interacting with the DOM
+
+The DOM Nodes offer both keys!
+
+````js
+li.style['background-color'] = 'red'; // ✅
+// OR
+li.style.backgroundColor = 'red'; // ✅
+````
+
+
+
+### Dynamically accessing key value pairs
+
+````js
+  const person = {
+    'first-name': 'tebi',
+    age: 33,
+    1: 'positive numbers work'
+  }
+
+for (const key in person) {
+	console.log(person.key) // ❌ undefined x 3, there's no such `key` key
+}
+
+for (const key in person) {
+	console.log(person[key]) // ✅ // 'tebi', 33, 'positive numbers work'
+}
+````
+
+
+
+### Dynamically defining key value pairs
+
+```js
+ const userSelectedKey1 = 'someKey';
+
+const animal = {
+    name: 'negrito',
+  	[userSelectedKey1]: 'someValue'
+}
+
+const userSelectedKey2 = 'customKey';
+
+animal[userSelectedKey2] = 'someOtherValue';
+
+console.log(animal); // {name: 'negrito', someKey: 'someValue', customKey: 'someOtherValue'}
+```
+
+
+
+### Rendering Elements based on objects project
+
+`renderMovies` clears the `ul` children. It's not ideal. It would be better to keep each movie `li` , and append the new one using the function `addMovie`, but it's done this way to save up some time.
+
+The downside is that each time a renderMovies is called, the entire children are wipped out.
+
+the `renderMovies()` function takes a parameter called filter. `renderMovies(filter = '')`
+
+That was smart, because I didn't need to arrays in the global scope: `movies` and `filteredMovies` ❌, instead, the filtered array was just in the scope of the renderMovies function.
+
+### Chaining methods
+
+````js
+Math.random().toString()
+````
+
+everything has that .toString() method in JS
+
+
+
+### Cloning objects
+
+only do a deep clone if you need to, it's expensive. Loadash has a .deepClone() method.
+
+````js
+// #1 spread operator ... (the recommended way, can be transpiled to ES5, no worries)
+
+const person = { name: 'esteban', surname: 'munch'};
+
+const person1 = { ...person, surname: 'munch jones'}; // I can shallow clone and override values
+
+
+#2 Object.assign (has support in really old browsers)
+
+const person = { name: 'esteban', surname: 'munch'};
+const person1 = Object.assign({}, person, {surname: 'munch jones'}); // the 2nd and subsequent objects are merged alltogether into the first one.
+````
+
+### Object destructuring
+
+Imagine you reference `person.name` a lot of times in your code. Wouldn't be better to create a variable for that?
+````js
+const person = {name: 'tebi', surname: 'munch', hobbies: ['fishing', 'coding']};
+
+// const name = person.name OR
+const {name} = person; //✅
+
+// const customName = person.name OR
+const { name: customName } = person; //✅
+
+// const hobbies = person.hobbies; OR
+const {hobbies} = person; //✅ d oesn't deep clone
+
+hobbies.push('cooking');
+
+console.log(person); // Object { name: "tebi", surname: "munch", hobbies: (3) […] }
+````
+
+
+
+### Check for property existance
+
+When assigning variables (checks on the right hand side of the equal operator)
+
+````js
+const person = {name: 'tebi', surname: 'munch', hobbies: ['fishing', 'coding']};
+
+onst unexistingKey = person.places[0]; // ❌throws error, stops code execution
+// Uncaught TypeError: person.places is undefined
+
+const unexistingkey1  = person?.places?.[0]; // ✅undefined
+
+const firstHobbie = person?.hobbies?.[0]; // fishing
+````
+
+
+
+when we need to run blocks of code conditionally
+
+```js
+const person = {name: 'tebi', surname: 'munch', hobbies: ['fishing', 'coding']};
+
+if ('name' in person) {
+  console.log(`person has a 'name' key!`);
+}
+
+if (person.name !== undefined) {
+  console.log(`person has a 'name' key!`);
+}
+```
+
+
+
+
+
+Piano
+
+- I'll need to create https://piano-dev.dctdigital.cloud/thecourier/reset-password page that also loads the basic Piano JS scripts + [ID's reset password JavaScript](https://docs.piano.io/piano-id-password-reset-javascript/) 
+- 
+
+https://www.thecourier.co.uk/subscribe/ (register on checkout)
+
+https://www.thecourier.co.uk/login/ (register)
+
+
+
+Are we gonna use VX?
+
+
+
+### Piano Accounts ? are we using this?
+
+If you're using Piano Accounts, you'll need to set the useTinypassAccounts boolean on the tp global object to true. Like so:
+
+EXAMPLE CODE
+
+1
+
+```
+tp.push(["setUseTinypassAccounts", true]);
+```
+
+
+
+https://api.open-meteo.com/v1/forecast?latitude=55.860916&longitude=-4.251433&current_weather=true
+
+
+
+App editor config
+
+https://wpcstaging4.dctdigital.com/thecourier (redirect Uris)
+
+JS origins https://piano-dev.dctdigital.cloud
+
+
+
+Esteban.mjones@dctmedia.co.uk
+
+12345678Ab
+
+
+
+registerDisplayed
+
+Till Boolean tricks with logical operators!
