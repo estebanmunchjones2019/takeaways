@@ -2910,48 +2910,494 @@ if (person.name !== undefined) {
 }
 ```
 
+### This keyword
+
+When using `this` inside functions, `this` refers to the thing calling that function.
+
+Don't use arrow functions when using `this`!
+
+````js
+const person = {
+  name: 'tebi', 
+  getFormattedName: function () { // ✅ function keyword
+    return this.name.toLocaleUpperCase();
+  }
+};
+
+// OR
+
+const person = {
+  name: 'tebi', 
+  getFormattedName() {  // it doesn use the function keyword, more in the next modules!
+    return this.name.toLocaleUpperCase() 
+  } 
+};
 
 
 
+console.log(person.getFormattedName()); // `TEBI`
+````
 
-Piano
+who is calling `getFormattedName`? `person`, because it's in front of the function call: `person.` 
 
-- I'll need to create https://piano-dev.dctdigital.cloud/thecourier/reset-password page that also loads the basic Piano JS scripts + [ID's reset password JavaScript](https://docs.piano.io/piano-id-password-reset-javascript/) 
-- 
+### This became the window object!!
 
-https://www.thecourier.co.uk/subscribe/ (register on checkout)
+```js
+const person = {
+  name: 'tebi', 
+  getFormattedName () { 
+    debugger;
+    return this.name.toLocaleUpperCase() } 
+};
 
-https://www.thecourier.co.uk/login/ (register)
+const { getFormattedName } = person;
+
+// here the this keyword inside the object refers to the 👉 window object!!
+console.log(getFormattedName()); 
+```
+
+Who called the function? no one! (well, the global execution context to be precise) there wasn't anything before `getFormattedName()` when calling it. So the window object is what the `this` keyword will default to, when using `non-strict` mode. 
+
+If we use `strict` mode:
+```js
+👉 "use strict"
+const person = {
+  name: 'tebi', 
+  getFormattedName () { 
+    debugger;
+    return this.name.toLocaleUpperCase() } 
+};
+
+// same as const getFormattedName = person.getFormattedName;
+const { getFormattedName } = person;
+
+// here the this keyword is 👉 `undefined`
+console.log(getFormattedName()); 
+```
+
+### Let's restructure + bind the function
+
+````js
+const person = {
+  name: 'tebi', 
+  getFormattedName () { 
+    debugger;
+    return this.name.toLocaleUpperCase() } 
+};
+
+let { getFormattedName } = person;
+
+// I can't do getFormattedName.bind(person)(), I need to do in 2 steps ❌
+getFormattedName = getFormattedName.bind(person);
+
+// here the this keyword inside the object refers to the 👉 window object!!
+console.log(getFormattedName()); // throws error
+````
+
+I had to bind and call the function in two steps, because I can't inmediately execute the function.
+
+.bind() is helpful for telling the function what the `this` keyword refers to inside it, when that function is executed in the future upon an event.
+
+The best option to configure the context when we're executing the function straight away is `.call`
+
+```js
+.bind // prepares the function
+.call OR .apply // prepares the function + executes it straight away
+```
+
+```js
+const person = {
+  name: 'tebi', 
+  getFormattedName () { 
+    debugger;
+    return this.name.toLocaleUpperCase() } 
+};
+
+const { getFormattedName } = person;
+
+// shorter than the previous example
+// prepare + call on one line! ✅
+console.log(getFormattedName.call(person)); 
+```
+
+Difference between .**bind** and .**apply**? .bind takes the prepended args separated with **commas**, whilst .apply takes them as an **array**
 
 
 
-Are we gonna use VX?
+### Event listners and the this value
+
+````js
+const li = document.querySelector('li');
+
+// using the function keyword
+// the browser binds the function to the Element that has the event listener attached.
+li.addEventListener('click', function () {
+  console.log(this); // li element
+});
+````
 
 
 
-### Piano Accounts ? are we using this?
+### Arrow function and the this keyword
 
-If you're using Piano Accounts, you'll need to set the useTinypassAccounts boolean on the tp global object to true. Like so:
+````js
+const li = document.querySelector('li');
 
-EXAMPLE CODE
+// using arrow function
+li.addEventListener('click', () => {
+  console.log(this); // Window
+});
+````
 
-1
+Arrow functions don't know this! 😅
+
+the `this` value is the same as the one outside the function. An object is not a place where you can write the `this` keyword, so that doesn't count. See example below:
+
+````js
+this // window object
+
+// using arrow function
+li.addEventListener('click', () => {
+  console.log(this); // Window object
+});
+
+
+
+// next place here
+this
+
+const person = {
+  name: 'tebi',
+  this ❌
+  getFormattedName: () => {
+    console.log(this); // Window // I can't type `this` inside an object, doesn;t count
+    // the next place would be outside the object 😮
+    return this.name.toLocaleUpperCase()
+  }
+};
+
+const { getFormattedName } = person;
+
+console.log(getFormattedName()); // it doesn't work!❌
+
+````
+
+Conclusion: using arrow functions makes the `what thing called the function` rule invalid, same with `use strict` mode. We can get rid of unpleasant side effects!
+
+In other words, using arrow functions doesn't let JS to bind it when called.
+
+Remember React, when using methods defined with arrow functions, I didn;t need to bind the methods before the constructor! ❓
+
+It will be useful to use arrow functions when creating objects with Classes.
+
+If "use strict" is used, then `this` is not `undefined` is still the window object
+
+
+
+### When an arrow function can be useful
+
+```js
+// arrow function callback
+const member = {
+  teamName: 'Blue rays',
+  memberNames: ['Max', 'Manu'],
+  printNames(){
+    this.memberNames.forEach(person => console.log(`${person}--${this.teamName}`)); // arrow function as the forEach callback. `this` is the same as the one inside the printNames method, which refers to the `member` object
+  }
+}
+
+member.printNames(); // Max--Blue rays Manu--Blue rays ✅
+```
+
+````js
+// function keyword callback
+const member = {
+  teamName: 'Blue rays',
+  memberNames: ['Max', 'Manu'],
+  printNames(){
+    this.memberNames.forEach(function(person){ 
+      console.log(this); // window object, no one's calling the callback function (well, the browser)
+      // is called by forEach function in our behalf, we don't call it () ourselves
+      console.log(`${person}--${this.teamName}`)
+    });
+  }
+}
+
+member.printNames(); // Max--undefined Manu--undefined ❌
+````
+
+
+
+### Quiz
+
+what's the purpose of using `this` inside non-arrow methods? To provide access to the thing that called the method
+
+
+
+### How to change props with what I know so far
+
+````js
+const member = {
+  teamName: 'Blue rays',
+  changeTeamName(newName){
+    this.teamName =  newName;
+  }
+}
+
+member.changeTeamName('Sparks');
+
+console.log(member);
+````
+
+
+
+### Getter and setters
+
+we can run some logic (e.g perform checks) before adding/changing/reading a prop of an object.
+
+Kind of security guards to enter, do things inside and exit the object
+
+we can have a propr with no setter, so it's a read only prop! that's neat
+
+````js
+const member = {
+  _teamName: 'Blue rays', // props with _ are not supposed to be accessed directly
+  get teamName(){
+    return this._teamName.toUpperCase();
+  },
+  set teamName(value){
+    if(value.includes('p')){
+      console.log('sorry, letter p is not allowed')
+    } else {
+      this._teamName = value;
+    }
+  }
+  
+}
+
+
+console.log(member._teamName); // Blue rays ❌ bad practice
+// ❌ member._teamName = 'something' bad practice
+console.log(member.teamName); // getter fired, prints BLUE RAYS
+
+member.teamName = 'pepe'; // setter fired , prints `sorry, letter p is not allowed`
+
+member.teamName = 'Argentina'; // setter fired
+
+console.log(member.teamName); // ARGENTINA
+
+console.log(Object.keys(member)); // ['_teamName', 'teamName']
+````
+
+
+
+### OOP programming
+
+so far, to render a list of products into a page with **functional programming**, we'd do:
+````js
+// function to fetch an API
+// function to iterate over the products and append it as a children
+````
+
+Simplified **functional programming** approach
+
+````js
+const productList = [{},{}];
+
+const renderProductList = () => {
+	// create a ul element
+	// iterate over products and append one by one the the ul element
+	// append the ul element to another element already in the HTML
+}
+
+renderProductList();
+````
+
+OOP approach
+
+````js
+const ProductList = {
+	products: [{},{}],
+	render() {
+		// create a ul element
+		// iterate over products 👉(this.products) and append one by one the the ul element
+		// append the ul element to another element already in the HTML
+	}
+}
+
+ProductList.render();
+````
+
+
+
+With OOP, we can have a class `Products`  that when instantiated, return  objects that have the list of products, a method to render it. Same for a class `Product` that holds props of the products and a method to render it (so that can be used inside the Products class when interating over the array of products).
+
+
+
+### Classes
 
 ```
-tp.push(["setUseTinypassAccounts", true]);
+class 👉Dog = {
+	sound 👉= 'wooof';👈
+}
+```
+
+The convention is to use first letter capitalized.
+
+equal signs and commas are used
+
+````js
+class Product {
+  constructor(title, price, description) {
+    this.title = title;
+    this.price = price;
+    this.description = description;
+  }
+}
+
+const product1 = new Product('Computer', 1000, 'a really nice computer');
+
+console.log(product1);// Product {title: 'Computer', price: 1000, description: 'a really nice computer'}
+// Prototype -> constructor: class Product
+
+
+// TS sugar
+class Product {
+  title;
+  price;
+  description;
+  constructor( private title, private, private description){}
+}  
+````
+
+the `constructor` method is autmatically called by JS when using the `new` keyword.
+
+We use classes to create objects that have logic (methods in it).
+
+We wouldn't use a class to create objects that just hold props , e.g { sound: 'woof'}
+
+In Max's example, Product can hold some props and a method to render it (e.g under /product?id=xx page);
+
+In the end Macx decided to use a class **Product** to just hold props, and then **ProductItem** that has the props + a render method
+
+Off topic example using an object from an API:
+
+````js
+class Product {
+  title = 'Default'; // ❌ Doesn't make sense in this case. We can define fields before the constructor
+  constructor(title, price, description) { 
+    this.title = title; // overrides default value
+    this.price = price;
+    this.description = description;
+  }
+  reducePrice(){
+    this.price = this.price * 0.8;
+  }
+}
+
+
+const productFromApi = {
+  title: 'computer',
+  price: 1000,
+  description: 'a nice computer'
+}
+
+const product = new Product(...Object.values(productFromApi)); 
+
+console.log(product); // Product {title: 'computer', price: 1000, description: 'a nice computer'}
+````
+
+```js
+class ProductV2 {
+  constructor(product){ // accepts the object, much more easier
+    this.title = product.title;
+    this.price = product.price
+    this.description = product.description
+  }
+  reducePrice(){
+    this.price = this.price * 0.8;
+  }
+  render(){ //return li node}
+}
+  
+const product = new Product(productFromApi);
 ```
 
 
 
-https://api.open-meteo.com/v1/forecast?latitude=55.860916&longitude=-4.251433&current_weather=true
+The order of classes doesn't matter.
+
+You can use classes into another classes even if the class is defined after it
+
+````js
+class ProductList { products = [new Product(someArgs)]}
+class Product{} // ✅ defined before executing the parent class
+const products  = new ProductList();
+
+````
 
 
 
-App editor config
+### Max's classes
 
-https://wpcstaging4.dctdigital.com/thecourier (redirect Uris)
+````js
+class Products {} // holds the props
+class ProductItem {} // holds the props + a render method that returns a li node element
+class ProductList {} // holds the products list + a render method that appens ul to the DOM
+````
 
-JS origins https://piano-dev.dctdigital.cloud
+he separated Products + ProductItem into 2 lists. I'd just merge them. I like holding data and methods to render that to the DOM altogether.
+
+````json
+ {
+            "name": "Launch currently open script",
+            "type": "php",
+            "request": "launch",
+            "program": "${file}",
+            "cwd": "${fileDirname}",
+            "port": 0,
+            "runtimeArgs": [
+                "-dxdebug.start_with_request=yes"
+            ],
+            "env": {
+                "XDEBUG_MODE": "debug,develop",
+                "XDEBUG_CONFIG": "client_port=${port}"
+            }
+        },
+        {
+            "name": "Launch Built-in web server",
+            "type": "php",
+            "request": "launch",
+            "runtimeArgs": [
+                "-dxdebug.mode=debug",
+                "-dxdebug.start_with_request=yes",
+                "-S",
+                "localhost:0"
+            ],
+            "program": "",
+            "cwd": "${workspaceRoot}",
+            "port": 9003,
+            "serverReadyAction": {
+                "pattern": "Development Server \\(http://localhost:([0-9]+)\\) started",
+                "uriFormat": "http://localhost:%s",
+                "action": "openExternally"
+            }
+        }
+
+
+[xdebug]
+xdebug.mode = debug
+xdebug_start_with_request = yes
+xdebug.client_host = host.docker.internal
+
+xdebug.log_level=7
+xdebug.log="/tmp/xdebug.log"
+xdebug.idekey=sts-debug
+xdebug.max_nesting_level=1500
+xdebug.connect_timeout_ms=60000
+````
+
+
 
 
 
@@ -2964,3 +3410,8 @@ Esteban.mjones@dctmedia.co.uk
 registerDisplayed
 
 Till Boolean tricks with logical operators!
+
+
+
+
+
