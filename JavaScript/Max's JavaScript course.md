@@ -3341,12 +3341,295 @@ const products  = new ProductList();
 ### Max's classes
 
 ````js
-class Products {} // holds the props
+class Products {} // holds the products
 class ProductItem {} // holds the props + a render method that returns a li node element
 class ProductList {} // holds the products list + a render method that appens ul to the DOM
 ````
 
 he separated Products + ProductItem into 2 lists. I'd just merge them. I like holding data and methods to render that to the DOM altogether.
+
+### How to update the cart UI when an item is added to it?
+
+```js
+class Cart {
+	items = [];
+	
+	addItem(product){
+		items.push(product); // I could use a setter instead, and assign a new array
+    // let's update the DOM
+		👉dynamicMarkupNode.innerHTML = <<div>Total: 1<div>;
+	}
+	
+	render(){
+		some external markup
+    // let's keep the Node as a prop
+		const 👉this.dynamicMarkupNode = // some Node with <div>Total: 0<div>;
+		return all the markup // used by a parent class Shop that renders all parts of the app
+	}
+}
+```
+
+### Static props, fields and methods
+
+A way to encapsulate all code on classes:
+
+```js
+// this was the only code of the app outside a class
+const shop = new Shop();
+shop.render
+```
+
+````js
+// let's put inside a box! 📦
+class App {
+	static init(){
+		const shop = new Shop();
+		shop.render();
+	}
+}
+
+App.init();
+````
+
+### How to add products to the cart?
+
+⚠️ **I need just one instance of the Cart class**, and then using all over the app. But where do I store that instance?
+
+In a class!!
+
+So the idea is that there is no global variables outside classes holding that, as I'd have with functional programming.
+
+```js
+//FP way of thinking ❌
+const 👉cart = new Cart();
+
+// then reuse that cart instance in classes
+class Product {
+	constructor(👉cart){}
+	// some methods that pushed to the 👉cart instance
+}
+```
+
+```js
+// OOP what of thinking ✅
+
+class Product {
+  App.cart.addItem(product);
+}
+
+class App {
+  static cart = new Cart // OR
+  
+  static someMethod(){
+    //some logic
+    this.cart = new Cart
+  }
+}
+```
+
+So a static field is really usefull for sharing a class instance!
+
+````js
+// FP concrete example ❌
+class Cart {
+  items = [];  
+  addItem(product) { 
+    this.items.push(product);
+  }  
+}
+
+class ProductList {
+    products = ['banana', 'bread', 'butter'];
+
+    constructor (cartInstance) { ❌
+        this.cartInstance = cartInstance;
+    }
+    pushRandomItem() {
+        this.cartInstance.addItem(this.products[Math.round(Math.random())]);
+    }
+}
+
+const cart = new Cart;
+
+const productList = new ProductList(cart);
+````
+
+The above way is not very helpful ❌. I don't want to use constructors 🤔
+
+I can keep those classes instances as static fields in a class, and access them everywhere without constructors!
+
+
+
+````js
+// OOP concrete example ✅
+
+class Cart {
+    items = [];  
+    addItem(product) { 
+      this.items.push(product);
+    }  
+  }
+  
+  class ProductList {
+      products = ['banana', 'bread', 'butter'];
+      pushRandomItem() {
+          👉 App.cart.addItem(this.products[Math.round(Math.random())]); // I could turn this into a static method as well?
+      }
+  }
+  
+  class Shop {
+      render(){
+        this.cart = new Cart;
+        // some more logic here
+      }
+  }
+  
+  class App {
+      // static cart; // 💡this can be ommitted
+
+      static init(){
+              const shop = new Shop(); 
+              this.cart = shop.cart; // 💡😮 it creates a static field, because we're inside a static method
+              shop.render();
+      }
+
+      static playWithClasses(){
+          const productList = new ProductList;
+          productList.pushRandomItem();
+          productList.pushRandomItem();
+          console.log(App.cart.items);
+      }
+  }
+
+  App.init();
+  App.playWithClasses();
+````
+
+
+
+To recap, static methods and props are good for sharing things across the app.
+
+Remember! class instances are objects, so I can do object destructuring for example:
+
+```js
+class Person {
+	constructor(age){
+		this.age = age;
+	}
+}
+
+const { age } = new Person(35);
+
+console.log(age); // logs 35
+```
+
+### When to use classes?
+
+when we plan to create the same object holding props multiple times.
+
+When we have some methods(logic)
+
+### When to use object literals?
+
+when there's no logic, and we need to have the object create once or so. It performs better than using classes to create it, but that perfomance difference can be seen if we create thouthands/millions of objects
+
+### Setters and getters
+
+we don't use them like this: ❌
+
+````js
+class Cart {
+	items = []; // naming colision here!!
+	set items(newArray){ //❌
+		debugger; //never runs
+        this.items = newArray;
+	}
+}
+
+class App {
+	static playWithCart(){
+		this.cart = new Cart;
+		this.cart.items = ['banana', 'bread']; // ⚠️doesn't trigger the setter, it just re-assigns the prop directly
+	}
+}
+````
+
+
+
+They can be syntax sugar to run some logic:
+
+````js
+class Cart {
+    items = [];
+      👉set cartItems(itemsArray){
+          this.items = itemsArray // reassigns the prop to a new array
+      // more logic here! like updating the DOM Node displaying the total price
+      console.log('running the setter!')
+      }
+  }
+  
+  class App {
+      static playWithCart(){
+          this.cart = new Cart;
+          this.cart.👉cartItems = ['banana', 'bread']; // ✅ triggers the setter
+      console.log(this.cart.items)
+      }
+  }
+
+  App.playWithCart();
+````
+
+**Without** a setter:
+
+```js
+class Cart {
+    items = [];
+      👉setCartItems(itemsArray){
+          this.items = itemsArray // reassigns the prop to a new array
+      // more logic here! like updating the DOM Node displaying the total price
+      console.log('running the setter!')
+      }
+  }
+  
+  class App {
+      static playWithCart(){
+          this.cart = new Cart;
+          this.cart.👉setCartItems(['banana', 'bread']);
+      console.log(this.cart.items)
+      }
+  }
+
+  App.playWithCart();
+```
+
+An example of getters:
+
+```js
+class Cart {
+    items = [];
+      set cartItems(itemsArray){
+          this.items = itemsArray // reassigns the prop to a new array
+      this.someNode.innerHTML = `<div>Total${this.👉total}</div>`; // 💡triggers the `total` getter
+      console.log('running the setter!')
+      }
+  
+  		👉get total(){
+        return items.reduce((prevValue, currValue, 0) => prevVal + currValue.price)
+      }
+  }
+  
+  class App {
+      static playWithCart(){
+          this.cart = new Cart;
+          this.cart.cartItems = ['banana', 'bread'];
+      console.log(this.cart.items)
+      }
+  }
+
+  App.playWithCart();
+```
+
+So, as we can see, OOP does't use much `const` and `let`, but uses `this` to store values, and they'r scoped to the objects, so that's really neat, we'r not polluting the global space.
 
 ````json
  {
@@ -3399,9 +3682,281 @@ xdebug.connect_timeout_ms=60000
 
 
 
+### Event listeners
+
+Two options to fix it: `.bind` the reference, or use arrow syntax
+
+```js
+class ProductItem {
+  constructor(product){
+    this.product = product;
+  }
+  someFunction() {
+    console.log(this.product) // ❌ undefined. This refers to the event object! who called the event listener? JS
+    console.log(this); // document object
+  }
+	render() {
+    document.addEventListener('click', this.someFunction);
+  }
+}
+
+Option #1: Bind the listener
+class ProductItem {
+  constructor(product){
+    this.product = product;
+  }
+  someFunction() {
+    console.log(this.product) // logs 'banana' !
+    console.log(this); // logs ProductItem
+  }
+	render() {
+    document.addEventListener('click', this.someFunction.bind(this)); // it works as longs as `render` is called as product1.render()
+  }
+}
 
 
-Esteban.mjones@dctmedia.co.uk
+// Option 2#: use arrow syntax to define the listener
+class ProductItem {
+  constructor(product){
+    this.product = product;
+  }
+  // `this` (I can type it at the class level, so that's why arrow function works well here)
+  someFunction = () => {
+    console.log(this.product) // logs 'banana' !
+    console.log(this); // logs ProductItem
+  }
+	render() {
+    document.addEventListener('click', this.someFunction);
+  }
+}
+
+
+
+const product1 = new ProductItem('banana');
+
+product1.render();
+```
+
+
+
+````php
+			if( function_exists('acf_add_local_field_group') ):
+
+acf_add_local_field_group(array(
+	'key' => 'group_63778ee798227',
+	'title' => 'Piano settings',
+	'fields' => array(
+		array(
+			'key' => 'field_63778f105c82b',
+			'label' => 'AID (Application ID)',
+			'name' => 'piano_aid',
+			'aria-label' => '',
+			'type' => 'text',
+			'instructions' => '',
+			'required' => 1,
+			'conditional_logic' => 0,
+			'wrapper' => array(
+				'width' => '',
+				'class' => '',
+				'id' => '',
+			),
+			'default_value' => '',
+			'maxlength' => '',
+			'placeholder' => '',
+			'prepend' => '',
+			'append' => '',
+		),
+		array(
+			'key' => 'field_63778f185c82c',
+			'label' => 'Piano Environment',
+			'name' => 'piano_environment',
+			'aria-label' => '',
+			'type' => 'select',
+			'instructions' => 'If you copied the AID from https://sandbox.piano.io/publisher/home select `Sandbox`. Otherwise, select `Production`.',
+			'required' => 1,
+			'conditional_logic' => 0,
+			'wrapper' => array(
+				'width' => '',
+				'class' => '',
+				'id' => '',
+			),
+			'choices' => array(
+				'production: Production' => 'production: Production',
+				'sandbox: Sandbox' => 'sandbox: Sandbox',
+			),
+			'default_value' => false,
+			'return_format' => 'value',
+			'multiple' => 0,
+			'allow_null' => 0,
+			'ui' => 0,
+			'ajax' => 0,
+			'placeholder' => '',
+		),
+		array(
+			'key' => 'field_6377905b5c82d',
+			'label' => 'Site ID',
+			'name' => 'piano_site_id',
+			'aria-label' => '',
+			'type' => 'text',
+			'instructions' => '',
+			'required' => 0,
+			'conditional_logic' => array(
+				array(
+					array(
+						'field' => 'field_63778f185c82c',
+						'operator' => '==',
+						'value' => 'production',
+					),
+				),
+			),
+			'wrapper' => array(
+				'width' => '',
+				'class' => '',
+				'id' => '',
+			),
+			'default_value' => '',
+			'maxlength' => '',
+			'placeholder' => '',
+			'prepend' => '',
+			'append' => '',
+		),
+	),
+	'location'              => [
+				[
+					[
+						'param'    => 'options_page',
+						'operator' => '==',
+						'value'    => 'piano-main-menu',
+					],
+				],
+			],
+	'menu_order' => 0,
+	'position' => 'normal',
+	'style' => 'default',
+	'label_placement' => 'top',
+	'instruction_placement' => 'label',
+	'hide_on_screen' => '',
+	'active' => true,
+	'description' => '',
+	'show_in_rest' => 0,
+));
+
+endif;		
+````
+
+````php
+https://wpcluster.test/thecourier/wp-admin/options-general.php?page=piano-main-menu	
+````
+
+````
+'location'              => [
+				[
+					[
+						'param'    => 'options_page',
+						'operator' => '==',
+						'value'    => 'piano-main-menu',
+					],
+				],
+			],
+````
+
+
+
+
+
+````
+<?php
+defined( 'ABSPATH' ) or die();
+
+/**
+ * Settings page
+ *
+ * @return void
+ */
+function piano_settings_page() {
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_die( 'You do not have sufficient permissions to access this page.' );
+	}
+
+	$piano_environment = get_option( 'piano_environment' ); ?>
+
+	<div class="wrap">
+		<h1>Piano Options</h1>
+		<form method="post" action="options.php">
+			<?php
+			settings_fields( 'piano-options-group' );
+			do_settings_sections( 'piano-options-group' );
+			?>
+			<table class="form-table">
+				<tr vertical-align="top">
+					<th scope="row">AID (Application ID) *</th>
+					<td><input type="text" name="piano_aid" required
+					           value="<?php echo esc_attr( get_option( 'piano_aid' ) ); ?>"/></td>
+				</tr>
+				<tr vertical-align="top">
+					<th scope="row">Site ID</th>
+					<td>
+						<input type="text" name="piano_site_id"
+						       value="<?php echo esc_attr( get_option( 'piano_site_id' ) ); ?>"/>
+						<p>Fill in this field only in the production site</p>
+					</td>
+				</tr>
+
+				<tr vertical-align="top">
+					<th scope="row">Piano Environment *</th>
+					<td>
+						<label class="radio" for="piano-environment-production">
+							<input type="radio" id="piano-environment-production" name="piano_environment"
+							       value="production"
+							       required<?php checked( 'production', esc_attr( $piano_environment ) ); ?> />
+							<strong>Production</strong>
+						</label>
+						<br/>
+						<br/>
+						<label class="radio" for="piano-environment-sandbox">
+							<input type="radio" id="piano-environment-sandbox" name="piano_environment"
+							       value="sandbox" <?php checked( 'sandbox', esc_attr( $piano_environment ) ); ?> />
+							<strong>Sandbox</strong>
+						</label>
+					</td>
+				</tr>
+			</table>
+			<?php submit_button(); ?>
+		</form>
+	</div>
+<?php }
+
+/**
+ * Register fields to save
+ *
+ * @return void
+ */
+function piano_register_settings() {
+	$args = [
+			'type'              => 'string',
+			'sanitize_callback' => 'sanitize_text_field',
+	];
+
+	register_setting( 'piano-options-group', 'piano_aid', $args );
+	register_setting( 'piano-options-group', 'piano_site_id', $args );
+	register_setting( 'piano-options-group', 'piano_environment', $args );
+}
+
+add_action( 'admin_init', 'piano_register_settings' );
+
+
+
+````
+
+````
+	register_setting( 'piano-options-group', 'piano-aid', $args );
+	register_setting( 'piano-options-group', 'piano-site-id', $args );
+	register_setting( 'piano-options-group', 'piano-environment', $args );
+````
+
+
+
+https://wpcluster.test/thecourier/event-listener-testEsteban.mjones@dctmedia.co.uk
 
 12345678Ab
 
