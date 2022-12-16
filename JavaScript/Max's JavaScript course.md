@@ -3525,13 +3525,13 @@ console.log(age); // logs 35
 
 ### When to use classes?
 
-when we plan to create the same object holding props multiple times.
+when we plan to create the same object holding props and logic multiple times.
 
 When we have some methods(logic)
 
 ### When to use object literals?
 
-when there's no logic, and we need to have the object create once or so. It performs better than using classes to create it, but that perfomance difference can be seen if we create thouthands/millions of objects
+when there's no logic, and we need to have the object create once or so. It performs better than using classes to create it, but that perfomance difference can be seen if we create thousands/millions of objects
 
 ### Setters and getters
 
@@ -3539,7 +3539,7 @@ we don't use them like this: ❌
 
 ````js
 class Cart {
-	items = []; // naming colision here!!
+	items = []; // naming colision here 💥!!
 	set items(newArray){ //❌
 		debugger; //never runs
         this.items = newArray;
@@ -3579,6 +3579,8 @@ class Cart {
   App.playWithCart();
 ````
 
+Please note there's no such cartItems prop at all inside the class, but calling the setter syntax is like assigning that prop.
+
 **Without** a setter:
 
 ```js
@@ -3594,7 +3596,7 @@ class Cart {
   class App {
       static playWithCart(){
           this.cart = new Cart;
-          this.cart.👉setCartItems(['banana', 'bread']);
+          this.cart.👉setCartItems(['banana', 'bread']); // parenthesis syntax
       console.log(this.cart.items)
       }
   }
@@ -3614,15 +3616,16 @@ class Cart {
       }
   
   		👉get total(){
-        return items.reduce((prevValue, currValue, 0) => prevVal + currValue.price)
+        return items.reduce((prevValue, currValue) => prevVal + currValue.price, 0);
       }
   }
   
   class App {
       static playWithCart(){
           this.cart = new Cart;
-          this.cart.cartItems = ['banana', 'bread'];
-      console.log(this.cart.items)
+          this.cart.cartItems = [{ name: 'banana', price: 10} , { name: 'bread', price: 20 }];
+      console.log(this.cart.items);
+      console.log(this.cart.total);  
       }
   }
 
@@ -3630,55 +3633,6 @@ class Cart {
 ```
 
 So, as we can see, OOP does't use much `const` and `let`, but uses `this` to store values, and they'r scoped to the objects, so that's really neat, we'r not polluting the global space.
-
-````json
- {
-            "name": "Launch currently open script",
-            "type": "php",
-            "request": "launch",
-            "program": "${file}",
-            "cwd": "${fileDirname}",
-            "port": 0,
-            "runtimeArgs": [
-                "-dxdebug.start_with_request=yes"
-            ],
-            "env": {
-                "XDEBUG_MODE": "debug,develop",
-                "XDEBUG_CONFIG": "client_port=${port}"
-            }
-        },
-        {
-            "name": "Launch Built-in web server",
-            "type": "php",
-            "request": "launch",
-            "runtimeArgs": [
-                "-dxdebug.mode=debug",
-                "-dxdebug.start_with_request=yes",
-                "-S",
-                "localhost:0"
-            ],
-            "program": "",
-            "cwd": "${workspaceRoot}",
-            "port": 9003,
-            "serverReadyAction": {
-                "pattern": "Development Server \\(http://localhost:([0-9]+)\\) started",
-                "uriFormat": "http://localhost:%s",
-                "action": "openExternally"
-            }
-        }
-
-
-[xdebug]
-xdebug.mode = debug
-xdebug_start_with_request = yes
-xdebug.client_host = host.docker.internal
-
-xdebug.log_level=7
-xdebug.log="/tmp/xdebug.log"
-xdebug.idekey=sts-debug
-xdebug.max_nesting_level=1500
-xdebug.connect_timeout_ms=60000
-````
 
 
 
@@ -3710,7 +3664,7 @@ class ProductItem {
     console.log(this); // logs ProductItem
   }
 	render() {
-    document.addEventListener('click', this.someFunction.bind(this)); // it works as longs as `render` is called as product1.render()
+    document.addEventListener('click', this.someFunction.👉bind(this)); // it works as longs as `render` is called as product1.render()
   }
 }
 
@@ -3721,7 +3675,7 @@ class ProductItem {
     this.product = product;
   }
   // `this` (I can type it at the class level, so that's why arrow function works well here)
-  someFunction = () => {
+  someFunction 👉= () => {
     console.log(this.product) // logs 'banana' !
     console.log(this); // logs ProductItem
   }
@@ -3739,234 +3693,701 @@ product1.render();
 
 
 
-````php
-			if( function_exists('acf_add_local_field_group') ):
+### Inheritance
 
-acf_add_local_field_group(array(
-	'key' => 'group_63778ee798227',
-	'title' => 'Piano settings',
-	'fields' => array(
-		array(
-			'key' => 'field_63778f105c82b',
-			'label' => 'AID (Application ID)',
-			'name' => 'piano_aid',
-			'aria-label' => '',
-			'type' => 'text',
-			'instructions' => '',
-			'required' => 1,
-			'conditional_logic' => 0,
-			'wrapper' => array(
-				'width' => '',
-				'class' => '',
-				'id' => '',
-			),
-			'default_value' => '',
-			'maxlength' => '',
-			'placeholder' => '',
-			'prepend' => '',
-			'append' => '',
-		),
-		array(
-			'key' => 'field_63778f185c82c',
-			'label' => 'Piano Environment',
-			'name' => 'piano_environment',
-			'aria-label' => '',
-			'type' => 'select',
-			'instructions' => 'If you copied the AID from https://sandbox.piano.io/publisher/home select `Sandbox`. Otherwise, select `Production`.',
-			'required' => 1,
-			'conditional_logic' => 0,
-			'wrapper' => array(
-				'width' => '',
-				'class' => '',
-				'id' => '',
-			),
-			'choices' => array(
-				'production: Production' => 'production: Production',
-				'sandbox: Sandbox' => 'sandbox: Sandbox',
-			),
-			'default_value' => false,
-			'return_format' => 'value',
-			'multiple' => 0,
-			'allow_null' => 0,
-			'ui' => 0,
-			'ajax' => 0,
-			'placeholder' => '',
-		),
-		array(
-			'key' => 'field_6377905b5c82d',
-			'label' => 'Site ID',
-			'name' => 'piano_site_id',
-			'aria-label' => '',
-			'type' => 'text',
-			'instructions' => '',
-			'required' => 0,
-			'conditional_logic' => array(
-				array(
-					array(
-						'field' => 'field_63778f185c82c',
-						'operator' => '==',
-						'value' => 'production',
-					),
-				),
-			),
-			'wrapper' => array(
-				'width' => '',
-				'class' => '',
-				'id' => '',
-			),
-			'default_value' => '',
-			'maxlength' => '',
-			'placeholder' => '',
-			'prepend' => '',
-			'append' => '',
-		),
-	),
-	'location'              => [
-				[
-					[
-						'param'    => 'options_page',
-						'operator' => '==',
-						'value'    => 'piano-main-menu',
-					],
-				],
-			],
-	'menu_order' => 0,
-	'position' => 'normal',
-	'style' => 'default',
-	'label_placement' => 'top',
-	'instruction_placement' => 'label',
-	'hide_on_screen' => '',
-	'active' => true,
-	'description' => '',
-	'show_in_rest' => 0,
-));
+what if two classes have a method that does more or less the same?
 
-endif;		
-````
-
-````php
-https://wpcluster.test/thecourier/wp-admin/options-general.php?page=piano-main-menu	
-````
-
-````
-'location'              => [
-				[
-					[
-						'param'    => 'options_page',
-						'operator' => '==',
-						'value'    => 'piano-main-menu',
-					],
-				],
-			],
-````
-
-
-
-
-
-````
-<?php
-defined( 'ABSPATH' ) or die();
-
-/**
- * Settings page
- *
- * @return void
- */
-function piano_settings_page() {
-	if ( ! current_user_can( 'manage_options' ) ) {
-		wp_die( 'You do not have sufficient permissions to access this page.' );
+````js
+class someClass {
+	render(){
+		// creates Node // shared code ✅
+		// appends some stuff to it (differs from class to class) ❌
+    // appends node to an anchor ✅
+		// return Node // shared code ✅
 	}
+}
+````
 
-	$piano_environment = get_option( 'piano_environment' ); ?>
+Example:
 
-	<div class="wrap">
-		<h1>Piano Options</h1>
-		<form method="post" action="options.php">
-			<?php
-			settings_fields( 'piano-options-group' );
-			do_settings_sections( 'piano-options-group' );
-			?>
-			<table class="form-table">
-				<tr vertical-align="top">
-					<th scope="row">AID (Application ID) *</th>
-					<td><input type="text" name="piano_aid" required
-					           value="<?php echo esc_attr( get_option( 'piano_aid' ) ); ?>"/></td>
-				</tr>
-				<tr vertical-align="top">
-					<th scope="row">Site ID</th>
-					<td>
-						<input type="text" name="piano_site_id"
-						       value="<?php echo esc_attr( get_option( 'piano_site_id' ) ); ?>"/>
-						<p>Fill in this field only in the production site</p>
-					</td>
-				</tr>
+````js
+class Component {
+  constructor(anchorElementId){
+    this.anchorElementId = anchorElementId;
+  }
+  
+  createNode(tag, classes, attributes){
+		...
+    return someNode;
+  }
+}
+````
 
-				<tr vertical-align="top">
-					<th scope="row">Piano Environment *</th>
-					<td>
-						<label class="radio" for="piano-environment-production">
-							<input type="radio" id="piano-environment-production" name="piano_environment"
-							       value="production"
-							       required<?php checked( 'production', esc_attr( $piano_environment ) ); ?> />
-							<strong>Production</strong>
-						</label>
-						<br/>
-						<br/>
-						<label class="radio" for="piano-environment-sandbox">
-							<input type="radio" id="piano-environment-sandbox" name="piano_environment"
-							       value="sandbox" <?php checked( 'sandbox', esc_attr( $piano_environment ) ); ?> />
-							<strong>Sandbox</strong>
-						</label>
-					</td>
-				</tr>
-			</table>
-			<?php submit_button(); ?>
-		</form>
-	</div>
-<?php }
+```js
+class Cart extends Component {
+	render(){
+		const node = this.createNode('section', 'cart');
+		// add some content to the node
+		return node;
+	}
+}
+```
 
-/**
- * Register fields to save
- *
- * @return void
- */
-function piano_register_settings() {
-	$args = [
-			'type'              => 'string',
-			'sanitize_callback' => 'sanitize_text_field',
-	];
 
-	register_setting( 'piano-options-group', 'piano_aid', $args );
-	register_setting( 'piano-options-group', 'piano_site_id', $args );
-	register_setting( 'piano-options-group', 'piano_environment', $args );
+
+Extended example:
+````js
+class Component {
+  constructor(renderHookId) {
+    this.hookId = renderHookId;
+  }
+
+  createRootElement(tag, cssClasses, attributes) {
+    // 1- Node creation
+    const rootElement = document.createElement(tag);
+    if (cssClasses) {
+      rootElement.className = cssClasses;
+    }
+    if (attributes && attributes.length > 0) {
+      for (const attr of attributes) {
+        rootElement.setAttribute(attr.name, attr.value);
+      }
+    }
+    // 2 - Node appended
+    document.getElementById(this.hookId).append(rootElement);
+    
+    //3-  Node returned
+    return rootElement; // it returns the node to append things to it later on
+  }
 }
 
-add_action( 'admin_init', 'piano_register_settings' );
 
 
-
+class ShoppingCart extends Component {
+  ...
+  render() {
+    // get the node using the inherited parent method
+    const cartEl = this.createRootElement('section', 'cart');
+    // add some content to the node
+    cartEl.innerHTML = `
+      <h2>Total: \$${0}</h2>
+      <button>Order Now!</button>
+    `;
+    // store some of the Node displaying the total, to be updated when a new item is added to the cart
+    this.totalOutput = cartEl.querySelector('h2');
+  }
+}
 ````
 
+
+
+### Constructors of parent and the extended class
+
+```js
+class Parent {
+	constructor(someArgs){} // get's called ✅
+}
+
+class Child extends Parent {
+  // no constructor here
+}
+
+const newChild = new Child(someArgs);
+```
+
+```js
+class Parent {
+	constructor(someArgs){} // doesn't get called! ❌
+}
+
+class Child extends Parent {
+  	constructor(someArgs){} // get's called ✅
+}
+
+const newChild = new Child(someArgs);
+```
+
+How to solve this problem?
+
+````js
+class Parent {
+	constructor(someArgs){} // doesn't get called second! ✅
+}
+
+class Child extends Parent {
+  	constructor(someArgs){ // get's called first ✅
+  		👉 super(someArgs);
+      // I can now access this, as the object has been initialized
+      this.something = something;
+      //etc
+  	} 
+}
+
+const newChild = new Child(someArgs);
 ````
-	register_setting( 'piano-options-group', 'piano-aid', $args );
-	register_setting( 'piano-options-group', 'piano-site-id', $args );
-	register_setting( 'piano-options-group', 'piano-environment', $args );
+
+
+
+An example:
+
+```js
+class Parent {
+    constructor(sound){ // gets called ✅
+        this.sound = sound;
+    }
+    makeSound(){
+        console.log(this.sound);
+    }
+}
+
+class Child extends Parent { // no contructor here
+}
+
+const newChild = new Child('wohoo!');
+newChild.makeSound(); // prints wohoo! 
+```
+
+if I add a contructor to `Child`, I get this error:
+````js
+// app.js:12 Uncaught ReferenceError: Must call super constructor in derived class before accessing 'this' or returning from derived constructor
 ````
 
+```js
+class Parent {
+    constructor(sound){
+        this.sound = sound;
+    }
+    makeSound(){
+        console.log(this.sound);
+    }
+}
+
+class Child extends Parent { 
+	 constructor(sound, a, b, c,etc){
+        super(sound);
+        // some other logic here, assigning new props using a,b,c
+    }
+}
+
+const newChild = new Child('wohoo!', a,b,c ,etc);
+newChild.makeSound(); // prints wohoo!🎉
+```
+
+When not using TS, a way to ensure a function get objects of the expected shape in a method, is to generate objects using a class for it and pass it to the method.
+
+TS is much better, as we'll find the error before the JS runs in the browser.
 
 
-https://wpcluster.test/thecourier/event-listener-testEsteban.mjones@dctmedia.co.uk
 
-12345678Ab
+### Refactoring rendering methods
+
+classes with the render method can now extend the Component class, and use that logic
+
+`ProductList` and `Cart` are appended to and Node element with id `app`, so they'r the app's top 2 level components.
+
+ProductList needs to be rendered before ProductItem, because ProductItems needs the `ul` element to be added to DOM when in renders.
+
+the original render methods used to return the Node element in order to be appended by the code calling the .render() method. But now, the parent .render() method appends it, so no need to return it anymore.
 
 
 
-registerDisplayed
+### Let's add some code in the parent constructors
+
+```js
+class Shop {
+  render() {
+    this.cart = new ShoppingCart('app');
+    this.cart.render(); ❌ // let's move both calls to the sub-class constructor
+    this.productList = new ProductList('app');
+    this.productList.render(); ❌
+  }
+}
+
+class ProductList extends Component {
+    // add content to the node
+    for (const prod of this.products) {
+      const productItem = new ProductItem(prod, 'product-list');
+      productItem.render(); ❌
+    }
+  }
+}
+
+```
+
+```js
+// how not to do it ❌
+class ShoppingCart extends Component {
+	  constructor(renderHookId) {
+    super(renderHookId);
+    this.render();
+  }
+}
+```
+
+```js
+// how to do it ✅
+
+ class Component {
+  constructor(renderHookId) {
+    this.hookId = renderHookId;
+    this.render(); // who called the constructor of this function? the sub-class when instantiated with the `new` keyword. 1 object is being created, and that's an object based on the sub-class (+parent).
+  }
+   
+   // I can ommit having a render method in this class
+   // or add it as an empty method, like this: render(){}
+   // then, it get's 👉overriden by the render method of the sub-class
+
+  createRootElement(tag, cssClasses, attributes) {
+    const rootElement = document.createElement(tag);
+    if (cssClasses) {
+      rootElement.className = cssClasses;
+    }
+    if (attributes && attributes.length > 0) {
+      for (const attr of attributes) {
+        rootElement.setAttribute(attr.name, attr.value);
+      }
+    }
+    document.getElementById(this.hookId).append(rootElement);
+    return rootElement;
+  }
+}
+  }
+}
+```
+
+
+
+```js
+// much more simpler than before
+class Shop extends Component{
+  constructor(){
+    super();
+  }
+  render() {
+    this.cart = new ShoppingCart('app');
+    new ProductList('app');
+  }
+}
+
+//OR
+class Shop { // it's an overkill to extend Component here, for just self-rendering functionality
+  constructor(){
+    this.render()
+  }
+  render() {
+    this.cart = new ShoppingCart('app');
+    new ProductList('app');
+  }
+}
+```
+
+now, classes rendered themselves when instantiated, that's neat!
+
+#### Golden rule: `this` inside the parent constructor referes to the created object from the sub-class
 
 Till Boolean tricks with logical operators!
 
+### Constructor execution, Order & this
+
+````js
+// I get the error: this.products is not iterable
+
+class ProductList extends Component {
+
+  products = [
+    new Product(
+      'A Pillow',
+      'https://www.maxpixel.net/static/photo/2x/Soft-Pillow-Green-Decoration-Deco-Snuggle-1241878.jpg',
+      'A soft pillow!',
+      19.99
+    ),
+    new Product(
+      'A Carpet',
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Ardabil_Carpet.jpg/397px-Ardabil_Carpet.jpg',
+      'A carpet which you might like - or not.',
+      89.99
+    )
+  ];
+
+  constructor(renderHookId) {
+    super(renderHookId);
+  }
+
+  render() {
+    // create the node element and append it
+    const prodListdEl = this.createRootElement('ul', 'product-list', [new ElementAttribute('id', 'product-list')]);
+
+    // add content to the node
+    for (const prod of this.products) { // `this` only has the parent class props at this point
+      const productItem = new ProductItem(prod, 'product-list');
+    }
+  }
+}
+````
 
 
 
+````js
+class Component {
+  constructor(renderHookId) {
+    this.hookId = renderHookId;
+    this.render(); // get's called before the sub-class constructor finishes running, so the fields to be converted to props in the sub-class are not ready yet (not initialized), e.g products
+  }
+
+  createRootElement(tag, cssClasses, attributes) {
+    const rootElement = document.createElement(tag);
+    if (cssClasses) {
+      rootElement.className = cssClasses;
+    }
+    if (attributes && attributes.length > 0) {
+      for (const attr of attributes) {
+        rootElement.setAttribute(attr.name, attr.value);
+      }
+    }
+    document.getElementById(this.hookId).append(rootElement);
+    return rootElement;
+  }
+}
+````
+
+
+
+2 approaches to fix this:
+
+1. fetch products, and after they're set, render them + add some if check to only render them if set
+
+```js
+class ProductList extends Component {
+
+  constructor(renderHookId) {
+    super(renderHookId);
+    👉this.fetchProducts();
+  }
+
+  fetchProducts(){
+    // some call to an API
+    this.products = [
+      new Product(
+        'A Pillow',
+        'https://www.maxpixel.net/static/photo/2x/Soft-Pillow-Green-Decoration-Deco-Snuggle-1241878.jpg',
+        'A soft pillow!',
+        19.99
+      ),
+      new Product(
+        'A Carpet',
+        'https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Ardabil_Carpet.jpg/397px-Ardabil_Carpet.jpg',
+        'A carpet which you might like - or not.',
+        89.99
+      )
+    ];
+
+    👉this.renderProducts()
+
+  }
+
+  👉renderProducts(){
+     // add content to the node
+     for (const prod of this.products) {
+      const productItem = new ProductItem(prod, 'product-list');
+    }
+  }
+
+  render() {
+    // create the node element and append it
+    const prodListdEl = this.createRootElement('ul', 'product-list', [new ElementAttribute('id', 'product-list')]);
+    👉if (this.products && this.products.length > 0) {
+      this.renderProducts();
+    }
+  }
+}
+```
+
+
+
+2. Modify the parent class to accept a boolean to decide to render or not when instantiated, and call this.render manually inside the sub-class constructor.
+
+   ````js
+   class Component {
+     constructor(renderHookId, 👉shouldRender = true) {
+       this.hookId = renderHookId;
+       👉if (shouldRender){
+         this.render();
+       }
+     }
+     //etc
+   }
+   
+   
+   
+   class ProductItem extends Component{
+     constructor(product, renderHookId) {
+       👉super(renderHookId, false);
+       👉this.product = product;
+       👉this.render();
+     }
+   
+     render() {
+       const prodEl = this.createRootElement('li', 'product-item');
+     
+       prodEl.innerHTML = `
+           <div>
+             <img src="${this.product.imageUrl}" alt="${this.product.title}" >
+             <div class="product-item__content">
+               <h2>${this.product.title}</h2>
+               <h3>\$${this.product.price}</h3>
+               <p>${this.product.description}</p>
+               <button>Add to Cart</button>
+             </div>
+           </div>
+         `;
+   
+       const addCartButton = prodEl.querySelector('button');
+       addCartButton.addEventListener('click', this.addToCart.bind(this));
+     }
+   }
+   ````
+
+   
+
+### Adding event listeners
+
+option 1: bind the method passed a as a listener:
+
+````js
+class someClass {
+	someListener(){
+		console.log(this);
+	}
+  
+  render(){
+    someNode.addEventListener('click', this.someListener);
+  }
+}
+````
+
+option 2:
+
+````js
+class someClass {
+	someListener(){
+		console.log(this);
+	}
+  
+  render(){
+    someNode.addEventListener('click', 👉() => this.someListener()👈); // arrow functions don't know `this`
+  }
+}
+````
+
+option 3:
+
+````js
+class someClass {
+	someListener = () => {
+		console.log(this);
+	}
+	
+	render(){
+		someNode.addEventListener('click', this.someListener); ❌ // this doesn't have that propr when render is called, so it attaches `undefined`;It works for other scenarios
+	}
+}
+````
+
+
+
+### Private fields, properties and methods
+
+````js
+class ProductList {
+	products = [];
+  
+  fetchProducts(){
+    //API call
+		this.products = something;
+    render();
+  }
+}
+````
+
+I don't want other devs setting products externally, because that wouldn't be reflected in the UI. (plus, I don't have setters in the class that would update the UI when the setter is called);
+
+So let's make `product` field and the fetchProducts method private 🚫
+
+````js
+class ProductList extends Component {
+
+  👉#products = []; 
+
+  constructor(renderHookId) {
+    super(renderHookId, 👉false);
+    👉this.render();
+    this.#fetchProducts();
+  }
+
+	👉#fetchProducts(){}
+  
+  //replace this.products by this.#products in all instances
+}
+
+const productList = new ProductList();
+productList.#products // throws this error: // Uncaught SyntaxError: Private field '#age' must be declared in an enclosing class (at app.js:195:19)
+````
+
+At this point, having the parent class Component with the selfcalled render() method doesn't make much sense because it's almost always not run because the parent constructor is passed false as a `shouldRender` , but it made sense at the time.
+
+### OOP exercise
+
+````js
+class TheoreticalCourse extends Course {
+    // constructor(title, length, price){ 👈 not needed! in the abscence of it, the parent one will run
+    //     super(title,length, price);
+    // }
+    publish(){
+        console.log('published!');
+    }
+}
+````
+
+getters and setters
+
+```js
+class Course {
+    #price;
+    set price(price){
+        if(price < 0){
+            throw Error('invalid value!');
+        }
+        this.#price = price;
+    }
+
+    get price(){
+        return `$${this.#price}`;
+    }
+    constructor(title, length, price){
+        this.title = title;
+        this.length = length;
+        this.price = price; // triggers the setter
+    }
+
+    calculateRatio(){
+        return this.length/this.#price;
+    }
+
+    printSummary(){
+        console.log(`title: ${this.title}, length: ${this.length}, price: ${this.price}`); // triggers the getter
+    }
+}
+```
+
+I could use `_price` or the newly `#price` syntax
+
+The disadvantage of using `_price` as a prop is that devs can call it from outside the class or inside, and mess things up.
+
+the `#price` really prevents that by throwing an error if tried to use outiside the class.
+
+### Instanceof
+
+it's an operator, like <, >, etc
+
+````
+const numbers = [1,2,3]; 
+console.log(numbers);// 👉Array(3) [ 1, 2, 3 ]
+numbers instanceof Array; // true
+
+````
+
+using [] instantiates an Array class under the hood (maybe not with the new keyword exactly??, because it has slower performance than using the literal notation []);
+
+```js
+const numbers = new Array(1,2,3);
+console.log(numbers);// 👉Array(3) [ 1, 2, 3 ], same result as above
+```
+
+
+
+### Object descriptors
+
+it's just some metadata about object props
+
+````js
+const person = {
+    name: 'tebi',
+    printName(){
+        console.log(this.name)
+    }
+}
+
+console.log(Object.getOwnPropertyDescriptors(person));
+
+Object { name: {…}, printName: {…} }
+  name: Object { value: "tebi", writable: true, enumerable: true, … }
+  configurable: true  // the object can be deleted
+  enumerable: true // it can be used in a for loop (useful for skipping methods while looping, and get props, or it can useful for excluding some props)
+  value: "tebi"
+  writable: true // props can be changed
+  etc
+}  
+````
+
+let's lock the name prop! 🔒
+
+```js
+Object.defineProperties(person, {
+    name: {
+        configurable: true,
+        enumerable: true,
+        value: person.name,
+        writable: false
+    }
+});
+
+person.name = 'new name'; // it doesn't throw an error though
+console.log(person.name); // old prop value kept
+```
+
+
+
+### Who is Object?
+
+it's a class, with some static methods, like `assign` method
+
+````js
+const person = new Object(); 
+console.log(person); {}
+````
+
+
+
+### Life before the `class` keyword
+
+#### constructor functions
+
+capital leters are used to indicate that constructor functions should be called with the `new`  keyword, not just as a normal function call
+
+```js
+// class Person {
+//     name = "Max";
+
+//     constructor(){
+//         this.age = 30;
+//     }
+
+//     printGreeting(){
+//         console.log(`Hi I'm ${this.name}`);
+//     }
+// }
+
+function Person (){
+    this.name = 'Max'; // this is not technically the same as the name = "Max in the class above, tbd"
+    this.age = 30;
+    this.printGreeting = function(){
+        console.log(`Hi I'm ${this.name}`);
+    }
+ // there's no return! it returns an object just because was called with the 👉 `new` keyword
+}
+
+const person = new Person();
+
+console.log(person); // Object { name: "Max", age: 30, printGreeting: printGreeting() }
+```
 
