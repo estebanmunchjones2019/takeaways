@@ -3556,7 +3556,7 @@ class App {
 
 
 
-They can be syntax sugar to run some logic:
+They can be syntactic sugar to run some logic:
 
 ````js
 class Cart {
@@ -4349,11 +4349,14 @@ console.log(person.name); // old prop value kept
 
 ### Who is Object?
 
-it's a class, with some static methods, like `assign` method
+it's constructor function with some static methods, like `assign` method
 
 ````js
 const person = new Object(); 
-console.log(person); {}
+console.log(person); // {}
+
+console.log(Object); // function Object(){ getOwnPropertyDescriptor: function(){}, etc, etc}
+// there are some static methods inside the object, no need to run the Object function with `new` keyword to access them.
 ````
 
 
@@ -4362,7 +4365,9 @@ console.log(person); {}
 
 #### constructor functions
 
-capital leters are used to indicate that constructor functions should be called with the `new`  keyword, not just as a normal function call
+⚠️capital leters are used to indicate that constructor functions should be called with the `new`  keyword, not just as a normal function call
+
+the magic to create the object is given by the usage of the `new` keyword.
 
 ```js
 // class Person {
@@ -4377,10 +4382,11 @@ capital leters are used to indicate that constructor functions should be called 
 //     }
 // }
 
+// ⚠️ the function below doesn't really represent the class, TBD
 function Person (){
-    this.name = 'Max'; // this is not technically the same as the name = "Max in the class above, tbd"
+    this.name = 'Max'; 
     this.age = 30;
-    this.printGreeting = function(){
+    this.printGreeting = function(){ // ⚠️this is not technically the same as the printGreeting(){} in the class above, tbd"
         console.log(`Hi I'm ${this.name}`);
     }
  // there's no return! it returns an object just because was called with the 👉 `new` keyword
@@ -4390,4 +4396,595 @@ const person = new Person();
 
 console.log(person); // Object { name: "Max", age: 30, printGreeting: printGreeting() }
 ```
+
+
+
+### what does the new keyword does to the called function??
+
+```js
+function person (){
+    this = {};
+    this.name = 'Max'
+    // etc
+    return this;
+}
+```
+
+
+
+### the class keyword and how it calls a constructor function under the hood
+
+the class keyword is syntactic sugar 🍭, that runs a constructor function under the hood, providing a better dev experience syntax wise
+
+### What are prototypes?
+
+It's a prop of all JS objects, that is used to share code from other objects, which are  👉 **fallback objects** 👈.
+
+If JS doesn't found a propr in an object, it will look for it in the prototype.
+
+JS is a prototype + constructor functions based language!
+
+the prototype is a **prop** of the constructor **function pointer**:
+
+```
+const Person = (){//some code};
+Person.prototype; //prints Object { … } 
+```
+
+All objects in JS have this `Object.prototype`  as the most parent prototype.
+
+````js
+function Human(){
+    this.breathes = true;
+    this.printAge = function() {
+        console.log(this.age);
+    }
+}
+
+function Person (){
+    this.name = 'Max'; // this is not technically the same as the name = "Max in the class above, tbd"
+    this.age = 30;
+    this.printGreeting = function(){
+        console.log(`Hi I'm ${this.name}`);
+    }
+
+}
+
+// extends keyword does this for me under the hood!
+Person.prototype = new Human(); // there are more ways to assing the prototype, see below
+
+const person = new Person();
+
+
+console.log(person); // Object { name: "Max", age: 30, printGreeting: printGreeting() }
+console.log(person.breathes);
+person.printAge(); //prints 30 // the `this` inside printAge refers to what called printAge, which is person in this case, it works!
+
+console.log(Person.prototype === person.__proto__); // true! is the very same object in memory, not copies 😮
+````
+
+When a propr or method is called, JS checks the chain up one by one:
+
+````js
+const person = new Person();
+person.breathes; 
+// JS will check first in the person object, then in the person.__proto__, if not, person.__proto__.__proto__
+````
+
+double underscore AKA dunderscore 😅
+
+`__proto__` is a prop  in every JS object, but `prototype` only on function objects (pointers);
+
+### Ways to assign the prototype
+
+````js
+// extends keyword does this for me under the hood!
+Person.prototype = new Human();
+//OR
+Person.prototype = {
+    breathes: true,
+    printAge: function(){
+        console.log(this.age);
+    }
+}
+// OR
+Person.prototype.breathes = true;
+Person.prototype.printAge = function(){
+    console.log(this.age);
+}
+````
+
+
+
+### How to prevent overriding the default prototype of a function?
+
+````
+Person.prototype.someNewMethod = function(){}
+````
+
+### What is the `__proto__.constructor`? 
+
+is the reference of the constructor function used to create the object:
+
+````js
+function Person (){
+    this.name = 'Max'; // this is not technically the same as the name = "Max in the class above, tbd"
+    this.age = 30;
+    this.printGreeting = function(){
+        console.log(`Hi I'm ${this.name}`);
+    }
+
+}
+
+Person.prototype.breathes = true;
+Person.prototype.printAge = function(){
+    console.log(this.age);
+}
+
+
+const person = new Person();
+
+const person2 = new person.__proto__.constructor();
+
+console.log(person2); // same as person
+````
+
+
+
+### the static keyword under the hood
+
+```js
+class Person {
+	static sayHello(){
+		console.log('hello');
+	}
+}
+
+// is translated to this under the hood
+function Person(){} // a constructor function is create
+
+//then a prop is added
+Person.sayhello = function(){
+  console.log('hello');
+}
+```
+
+
+
+#### 👉 All objects in JS have this `Object.prototype`  as the most parent prototype.👈
+
+What's inside there? Some prop which are like static methods of classes:
+`````js
+console.log(Object.prototype);
+{
+	apply: function apply()
+  arguments: 
+  bind: function bind()
+  call: function call()
+  caller: 
+  constructor: function Function()
+  length: 0
+  name: ""
+  toString: function toString()
+  Symbol(Symbol.hasInstance): function Symbol.hasInstance()
+}	
+`````
+
+#### All objects in JS can use this methods 👆
+
+that' is why I can call `person.toString() ` without getting an error:
+
+```
+person.toString();
+"[object Object]" 
+```
+
+What other things are inside the Object function: (⚠️Firefox browser).
+````
+assign: function assign()
+create: function create()
+defineProperties: function defineProperties()
+defineProperty: function defineProperty()
+entries: function entries()
+freeze: function freeze()
+fromEntries: function fromEntries()
+getOwnPropertyDescriptor: function getOwnPropertyDescriptor()
+getOwnPropertyDescriptors: function getOwnPropertyDescriptors()
+getOwnPropertyNames: function getOwnPropertyNames()
+getOwnPropertySymbols: function getOwnPropertySymbols()
+getPrototypeOf: function getPrototypeOf()
+hasOwn: function hasOwn()
+is: function is()
+isExtensible: function isExtensible()
+isFrozen: function isFrozen()
+isSealed: function isSealed()
+keys: function keys()
+length: 1
+name: "Object"
+preventExtensions: function preventExtensions()
+prototype: Object { … }
+seal: function seal()
+setPrototypeOf: function setPrototypeOf()
+values: function values()
+<prototype> (or ⚠️__proto__ in chrome): function ()
+````
+
+That is why we can't call `isFrozen` in person:
+````
+person.isFrozen(); //❌ Uncaught TypeError: person.isFrozen is not a function
+````
+
+static methods OR, under the hood, properties of constructor functions, can only be called without executing the function/instantianting the class:
+````js
+Object.isFrozen(); // true
+````
+
+```js
+class Dog {
+    static bark(){
+        console.log('woof');
+    }
+}
+
+const dog = new Dog();
+dog.bark(); // Uncaught TypeError: dog.bark is not a function
+Dog.bark(); // work fine
+```
+
+### Where does the chain of prototypes end then?
+
+````js
+console.log(Object.prototype.__proto__); // null 
+````
+
+the fallback object of the objects created wuth Object function don't have a further fallback than the prototype.
+
+### `.__proto__` vs  `.prototype` props: 
+
+__proto__ is the assigned fallback object. Only present on functions.
+
+**prototype** is the to be assigned fallback object. Present on all objects
+
+
+
+### How classes are really translated behind the scenes 
+
+methods are instantiated in a different way, let's start seeing where it has been added: really nested!
+
+````js
+class Human {
+  	👉breathes = true; 
+    👉greet(){
+        console.log('hello');
+    }
+}
+
+class Person extends Human {
+    name = 'Max';
+  	sayBye(){
+      console.log('bye!');
+    }
+}
+
+
+const person = new Person();
+console.log(person);
+
+//{
+	name: 'Max',
+  breathes: true, // 👈 was added to the top level 😮
+  __proto__: { // ⚠️ extra proto added automatically when instanting the class
+    constructor: class Person{},
+    sayBye: function sayBye() // nested inside __proto__ 😮, not a top level prop 
+    __proto__: class Human {
+      prototype: {
+        constructor: class Human {},
+        👉greet: function greet(){} 👈 // not part of the top level object 😮
+      }
+    }
+  }  
+}
+````
+
+I have 2 `__protos__`, and I was expencting only one, (to be the pooped object from the Human class). It seems that using `class` keyword generates the extra one.
+
+On the other hand, fields are added like this:
+
+
+````js
+class Person extends Human {
+    👉name = 'Max'; // under the hood, this is added to the object after calling super
+    
+    constructor(){
+      super();
+      this.age = 30;
+      // this happens under the hood, added AFTER the super() call
+      🔎 this.name = 'Max';
+    }
+}
+````
+
+Everything that is included in the constructor of a class, can me replicated by adding that code to the body a constructor function, and the result will be the same.
+
+### The extra `__proto__`
+
+````js
+class Person extends Human {
+    name = 'Max';
+  	sayBye(){
+      console.log('bye!');
+    }
+}
+
+
+const person = new Person();
+console.log(person);
+
+//{
+	name: 'Max', // this might be assigned other value after object creation
+  breathes: true, 
+  __proto__: { 👈
+    constructor: class Person{},
+    sayBye: function sayBye() // popped objects aren't gonna change the function logic...so
+````
+
+the function is added to the extra photo because all objects created refer to just a single object, which is the `__proto__`, which is very efficient.
+
+Let's prove that 2 objects are using the same `__proto__` object reference!
+
+```js
+class Person extends Human { 
+  name = 'Max';
+  sayBye(){
+    console.log('bye!');
+  }
+}
+
+
+const person1 = new Person();
+const person2 = new Person();
+
+console.log(person1.__proto__.sayBye === person2.__proto__.sayBye); // true!
+```
+
+The same behaviour would be achieved by this:
+
+````js
+function Person(){
+	this.name = 'Max';
+}
+
+Person.prototype = function sayBye(){
+	console.log('bye!');
+}
+````
+
+
+
+### How not to write methods ❌
+
+```js
+class Person extends Human { 
+  name = 'Max';
+  constructor(){
+  	sayBye(){
+  		console.log('bye!'); ❌
+  	}
+  }
+  this.sayBye = function(){ // ❌
+    console.log('bye!');
+  }
+  
+  sayBye = ()=> { // ✅ only acceptable as an event listener, to avoid using .bind()
+  	console.log();
+  }
+}
+```
+
+`.bind` is less readable than having arrow functions (even though is less performant).
+
+### Prototypes are everywhere!
+
+let's override `.forEach` method of an Array:
+
+```js
+(2) ['messi', 'martinez']
+0 "messi"
+1"martinez"
+length: 2
+[[Prototype]]:  // console representation of `__proto__`
+	forEach: ƒ forEach()
+```
+
+
+
+### Hijacking .forEach
+
+```js
+const players = ['messi', 'martinez'];
+
+// just do this when developing ⚠️
+players.__proto__.forEach = function(){
+    console.log('forEach has been hacked!');
+}
+
+// the official way ✅
+Object.setPrototypeOf(players, {
+    ...Object.getPrototypeOf(players),
+    forEach(){
+        console.log('forEach has been hacked!');
+    }
+});
+
+players.forEach(); // 'forEach has been hacked!'
+```
+
+that is why we see the MDN docs as Array.prototype.forEach, because it's added to the Array constructor function in with that syntax, added that way to the function pointer.
+
+In objects, it's not neccessary to spread the prototype:
+
+````js
+const player = {
+    isRightHanded: false
+}
+
+// player.__proto__ is Object
+
+Object.setPrototypeOf(players, {
+    // ...Object.getPrototypeOf(players)// no need to spread Object, because it will be the protype of the object I'm writing this from
+    forEach(){
+        console.log('forEach has been hacked!');
+    }
+});
+````
+
+
+
+### A new way to create objects
+
+````js
+const player = {};
+const player = new Object();
+const player = Object.create(prototypeHere); // 👈
+````
+
+````js
+const player = Object.create({ 
+    shoutGoal(){
+        console.log('goooooool');
+    }
+}, someOptionalDescriptorHere);
+
+console.log(player);
+
+// {}
+//     [[Prototype]]: Object
+//     	shoutGoal: ƒ shoutGoal()
+//     	[[Prototype]]: Object
+//         constructor: ƒ Object()
+//         hasOwnProperty: ƒ hasOwnProperty()
+
+player.isRightHanded = false;
+
+// Or I could use
+Object.defineProperty('isRightHanded', false, someOptionalDescriptorHere);
+````
+
+Side note: to keep all the default descriptors an modify one, I could do:
+
+````js
+Object.defineProperty('isRightHanded', false, {
+	...Object.getOwnPropertyDescriptor(player),
+	...writable: false
+});
+````
+
+### Differences between constructor functions vs classes
+
+````
+constructor functions:
+- can be called with new
+- all props and METHODS are enumarable
+- not in strict mode by default
+
+classes:
+- must be called with new
+- METHODS are not enumerable (out of the top level object)
+- always strict mode
+
+````
+
+
+
+Practice OOP classes:
+
+Max's approach
+
+- each part of the UI is a class
+- the state is in the DOM (pre-rendered from the backend)
+
+- classes shouldn't have if blocks. Instead, they should accept a parameter in the constructor that drives specific behaviour
+
+- Approach 1: each button should remove the item from the parent ProjectList class, and add it to the other instance, and render it, of course. As we know, instances can be stored in App class. Best approach!✅ 
+
+- Approach 2: using a callback function passing the class instances to both classes ProjectList. Really complex code🤔
+
+- No need to remove element from the DOM, just moving to another position in the DOM removes it from the original position! 😮
+
+- After moving the item in the DOM, it needs to have a new event listener attached (and the old removed!);
+
+- There were 2 instances of ProjectList (active and finished) holding an array the respectives projects instances.
+
+- binded functions to update each others class instance state are passed, such a mess (it's far better to store the instances as static props of App).
+
+- there's no need to keep all the data of the projects as part of the ProjectList instances, as the DOM elements are being moved around by cloning (to delete event listeners) and appending them to the other list
+
+  
+
+hot tip to remove items! 🔥
+
+````
+// remove a project
+const filteredProjects = this.projects.filter(project => project.id === someId); 🔥
+
+const index = this.projects.findIndex(project => project.id === someId); // also good ✅
+this.projects.splice(index, 1);
+
+````
+
+hot tip to remove event listeners!🔥
+
+intead of holding a reference to the function attached, it's easier to clone the element!
+
+````
+const element = document.querySelector(someElementSelector);
+const clonedElement = element.clone(); // it doesn't clone the event listeners!
+element.replaceWith(clonedElement); 🔥 
+````
+
+
+
+My approach:
+
+- it was more client side, by querying data from API and rendering it, all client side.
+- Initially, one instance of Projects was used, and upon change on Projects `projects` propr, a massive re-render happens, not very efficient re-adding every project to the DOM. 
+- The single instance of Projects But it represents 2 pieces of UI, so it's better to instantiate the class twice and split the state. see below.
+
+My second approach:
+
+- have to instances of Projects and keep the instances as static methods of App
+
+My third approach:
+
+Lift state from HTML to JS, and then remove the elements + re-render after the first element has been moved 💡
+
+### Using `dataset`: HTML metadata!
+
+In Max's example, the description of the Project is not kept as state in JS, so it needs to be picked up from the template using
+
+````html
+<li id="p1" data-tooltip-content="hello world"></li>
+````
+
+I can pick up that data by:
+
+````js
+document.getElementById('p1').dataset.tootipContent; // "hello world"
+// alternatevily
+document.getElementById('p1').dataset['tootipContent']; // "hello world"
+````
+
+The advantage is that data doesn't need to be stored in JS, but stored in the DOM, not affecting the UI
+
+properties are camelCased! dashed are stripped out
+
+`dataSet` is DOMStringMap, an object
+
+We can change the `data-tooltip-content` dynamically (changing the markup) by:
+
+````js
+document.getElementById('p1').dataset.tootipContent = 'some other value here'
+````
+
+
 
