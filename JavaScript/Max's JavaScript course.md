@@ -4976,7 +4976,7 @@ document.getElementById('p1').dataset['tootipContent']; // "hello world"
 
 The advantage is that data doesn't need to be stored in JS, but stored in the DOM, not affecting the UI
 
-properties are camelCased! dashed are stripped out
+properties are camelCased! Dashes are stripped out
 
 `dataSet` is DOMStringMap, an object
 
@@ -4988,3 +4988,572 @@ document.getElementById('p1').dataset.tootipContent = 'some other value here'
 
 
 
+### Getting element dimensions and relative coordinates in JS
+
+````js
+$0.getBoundingClientRect();
+// DOMRect {x: 266, y: 205, width: 606, height: 169.8125, top: 205, …}
+// bottom: 374.8125
+// height: 169.8125
+// left: 266
+// right: 872
+// top: 205
+// width: 606
+// x: 266
+// y: 205
+````
+
+When there's a negative width, x and left, and y and top can differ
+
+Top and left are the to left part of the box
+
+Bottom and right are the bottom right part of the box
+
+The values CHANGE upon scrolling, because they'r relative to the viewport
+
+### Getting document abosolute coordinates
+
+They don't change when scrolling, they'r relative to the html document, not the viewport
+
+```
+$0.offsetTop
+$0.offsetLeft
+```
+
+### Internal coordinates (or inner positioning of the content)
+
+```js
+$0.clientTop
+$0.clientLeft
+```
+
+position of the content (content doesn't count borders or scrollbars) and top left point relative to the outer top left edge of the box's border (usual point for meassuring x, y, etc)
+
+### Getting the box dimentions INCLUDING borders and scrollbars
+
+```js
+// same as getBoundingClientRect(); -> width
+$0.offsetWidth
+```
+
+### Getting the box dimentions WITHOUT borders and scrollbars
+
+```js
+$0.clientWidth
+```
+
+### How to know about scrolling boxes
+
+```
+$0.scrollHeight; // includes not yet visible part
+$0.scrollTop// pixeles the user scrolled already
+```
+
+
+
+### How to get the width and height without scrolling bars
+
+````js
+// scrollbar is included in the values ❌
+window.innerWith;
+window.innerHeight;
+
+// scrollbar is NOT included in the values ✅
+document.documentElement.clientWidth;
+document.documentElement.clientHeight;
+````
+
+documentElement includes the head and body of the HTML (head is not rendered in the UI)
+
+Here is the summary:
+
+![](./images/dimensions.png)
+
+### Exercise: positioning the tooltip better
+
+```
+// #1: get coordinates from the host element
+// #2: use coordinates to change the `style.something` prop of the tooltip
+```
+
+````js
+const clientRects = this.hostElement.getClientRects();
+const x = clientRects[0].x;
+const y = clientRects[0].y + clientRects[0].height - 10;
+
+tooltipElement.style.position = 'absolute';
+tooltipElement.style.top = y + 'px'; // we must pass the units when setting it
+tooltipElement.style.left = x + 'px';
+````
+
+if I had used `offsetLeft` and `offsetTop` props of the host, all relative to the html element, not the viewport
+
+Max's approach (more complex to show more features)
+
+````js
+const hostPosLeft = this.hostElement.offsetLeft;
+const hostPosTop = this.hostElement.offsetTop;
+const height = this.hostElement.clientHeight; // without borders
+const scrolledHeight = this.hostElement.parentElement.scrollTop
+
+const x = hostPosLeft + 20;
+const y = hostPosTop -10 + height - scrolledHeight;
+
+tooltipElement.style.position = 'absolute';
+tooltipElement.style.top = y + 'px'; // we must pass the units when setting it
+tooltipElement.style.left = x + 'px';
+````
+
+`offsetTop` doesn't care if the element is not visible or not in the scroll box, it returns the top from the document, not the viewport
+
+Something scrollable has the same relative postition to the html before and after it has been scrolled, that's why the scrollTop prop of the parent was used to correct that. My approach was easier, because it was relative to the viewport!
+
+To have a sticky Tooltip, I'd need event listeners to listen to the scroll event, and grab the scrollTop prop, and adjust the top prop of the tolltip
+
+### Let's scroll users to a part of the doc!
+
+```js
+element.scrollIntoView({behavior: 'smooth'});
+```
+
+
+
+### Avoid mixing JS and HTML as strings
+
+```js
+element.innerHTML = `<h2>More info</h2><p>${this.someContent}</p>`; ❌
+```
+
+We can store the HTML template in the markup
+
+````html
+<body>
+    <template id="tooltip">
+      <h2>More info</h2>
+      <p></p>
+    </template>
+````
+
+No dynamic values in the template 😕
+
+Max's way:
+
+```js
+const templateElement = document.getElementById('tooltip');
+// deep clone the content, keeping props
+const tooltipBody = document.importNode(templateElement.content, true);
+tooltipElement.append(tooltipBody);
+tooltipElement.querySelector('p').textContent = content;
+```
+
+.content is only a prop of a  HTMLTemplateElement: https://developer.mozilla.org/en-US/docs/Web/API/HTMLTemplateElement/content
+
+My first try:
+
+```
+// target the template 
+// get it's innerHTML
+// set the innerHTML of the the tooltip equal to the above innerHTML
+```
+
+````js
+const templateContent = document.getElementById('tooltip').innerHTML;
+// I loose props here, as templateContent is just a string ⚠️
+tooltipElement.innerHTML = templateContent;
+tooltipElement.querySelector('p').textContent = content;
+````
+
+
+
+### Importing and executing JS files programatically
+
+```js
+// let's import secondary.js and run it when I want (maybe after a really intensive task), e.g here, for demo //purposes
+const script = document.createElement('script');
+script.src = 'assets/scripts/secondary.js'; // ⚠️ write the path as if it were added to the HTML
+document.head.append(script);
+```
+
+​	Tinypass library is loaded like this!
+
+In the Network tab, `Initiator` is set to `app.js`
+
+For app.js, `Initiator` is set to `index.html`
+
+⚠️ Always sanitize the JS content, in case the JS depends on some user input
+
+### Window.setInterval & window.setTimeout
+
+there browser APIs, it's part of the language itself. Same with window.console.log
+
+````js
+this.interval = setInterval(()=> console.log('setInterval working'), 1000); // returns an id e.g 1 
+
+this.timeOut = setTimeout(()=> console.log('setTimeout working'), 2000); // 2
+
+function clear(){
+debugger;
+clearInterval(this.interval); // let's use the id. e.g hey, stop interval 1!
+clearTimeout(this.timeOut);
+}
+
+document.getElementById('stop').addEventListener('click', clear.bind(this));
+````
+
+
+
+### Location
+
+```js
+location.href = 'https://google.com'; // I can go back to the previous page
+location.replace('https://google.com'); // I CAN'T go back
+```
+
+### History
+
+```js
+history.length; // 24 pages visited in the same tab
+history.back();
+history.forward();
+history.go(5);
+```
+
+It's not a good UX to move users from page to page ⚠️
+
+### Navigator
+
+````js
+navigator.userAgent;
+// 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 // Safari/537.36'
+````
+
+What?? Chrome is pretending to be all browser, so it gets all the features that old apps use to restrict to some browsers
+
+Give me all baby!
+
+The most reliable way to know which browser it is, is to check if some features are available.
+
+````js
+navigator.geolocation.getCurrentPosition((data) => console.log(data));
+````
+
+````js
+const getMacBattery = async () => {
+    const data = await navigator.getBattery();
+    console.log(data);
+};
+getMacBattery();
+// BatteryManager{}
+````
+
+
+
+### Date object
+
+Really handy to perform calculations:
+
+````js
+const today = new Date;
+const birthday = new Date('07/23/1989');
+(today - birthday) / 1000 / 60 / 60 / 24
+12212.483495393519
+````
+
+
+
+### Error
+
+you can throw anything in JS
+
+````js
+throw 'something went wrong'; // string;
+VM2962:1 Uncaught something went wrong // NO stacktrace ❌
+(anonymous) @ VM2962:1
+
+throw new Error('something went wrong'); // an Error object
+VM3013:1 Uncaught Error: something went wrong // stacktrace ✅
+    at <anonymous>:1:7
+````
+
+````js
+const customError = new Error('something went wrong');
+customError.code = 404; // code is a new prop added to the object
+console.dir(customError);
+
+Error: something went wrong
+    at <anonymous>:1:21
+code: 404
+message: "something went wrong"
+stack: "Error: something went wrong\n    at <anonymous>:1:21"
+[[Prototype]]: Object
+````
+
+Error object is good for custom error handling (checking codes, etc)
+
+### Events
+
+https://developer.mozilla.org/en-US/docs/Web/API/Event
+
+How to add them?
+
+```tex
+buttonElement.addEventlistener('click', printHello); ✅ // passes the pointer
+pros: separation of concerns HTML and JS + add and remove multiple event listeners to/from and element
+
+<button onclick="printHello()👈;">Click me</button> // ❌ // ⚠️executes the function with parenthesis
+// everything inside the strings is JS, so I could write inline JS there
+
+buttonElement.onclick = printHello; // pass a named function ❌ drawback: we can only add 1 event handler per element, booo!
+buttonElement.onclick = function(){ console.log('hello')} // anonymous function
+
+```
+
+
+
+### Remove event listeners
+
+````js
+buttonElement.addEventListener('click', printHello); // printHello needs to be the exact same pointer
+
+buttonElement.removeEventListener('click', printHello);
+````
+
+example of pitfall:
+
+````js
+buttonElement.addEventListener('click', () => console.log('clicked!'));
+buttonElement.removeEventListener('click', () => console.log('clicked!')); // different pointer! 🚨 doesn't get removed
+
+
+
+buttonElement.addEventListener('click', printHello.bind(this)); // ⚠️.bind return a new function pointer
+buttonElement.removeEventListener('click', printHello.bind(this)); // different pointer! 🚨  doesn't get removed
+````
+
+Workaround to add binded functions:
+
+```js
+const boundPrintHello = printHello.bind(this);
+
+buttonElement.addEventListener('click', boundPrintHello);
+buttonElement.removeEventListener('click', boundPrintHello); // same pointer ✅
+```
+
+
+
+### Event object
+
+````js
+const clickHandler = (event) => {
+    event.target.style.backgroundColor = 'yellow'; // event.target has the node element!🎉
+}
+
+const buttonElement = document.querySelector('button');
+
+buttonElement.addEventListener('click', clickHandler);
+````
+
+when event listeners run, they can get all the info about the event 🔥
+
+
+
+### preventDefault()
+
+a submit button inside a form sends a POST request if clicked
+
+We might want to validate the data with JS, and send a request programatically from the browser, avoiding a page reload, giving a better user experience.
+
+````js
+formElement.addEventListener('submit', (event) => {
+    event.preventDefault();
+    console.log(event)
+})
+
+<form method="post">
+	<button>Submit form</button>
+</form>
+````
+
+
+
+### Capturing and bubbling
+
+#### Capturing:
+
+the browser checks, from outside to the inside (event.target) , if there's a `capture` event listener registered 
+
+when an event happens, the browser goes from the outisde to the inside of the event target, checking if there are event listeners registered.
+
+#### Bubbling:
+
+Each event listener is executed, from the inside (target) to the outside.
+
+````js
+const clickHandler = (event) => { // 1️⃣
+    debugger;
+    event.target.style.backgroundColor = 'yellow';
+}
+
+const clickHandlerBody = () => { // 2️⃣
+    debugger;
+}
+
+const buttonElement = document.querySelector('button');
+
+buttonElement.addEventListener('click', clickHandler);
+
+document.body.addEventListener('click', clickHandlerBody);
+````
+
+### Let's run the listeners in different order than above!
+
+````js
+
+buttonElement.addEventListener('click', clickHandler); // 2️⃣
+
+document.body.addEventListener('click', clickHandlerBody, true); // 👈 1️⃣
+````
+
+That way, on the trip from the outside to the inside, the browser executes the functions that have the capture option set to `true`.
+
+### Stop propagation (bubbling)! 🛑
+
+```js
+const clickHandler = (event) => {
+    debugger;
+    event.stopPropagation(); 👈 // events on the same element will still run, but not on parents
+    event.target.style.backgroundColor = 'yellow';
+}
+
+const clickHandlerBody = () => { // never runs!😮
+    debugger;
+}
+
+const buttonElement = document.querySelector('button');
+
+buttonElement.addEventListener('click', clickHandler);
+
+document.body.addEventListener('click', clickHandlerBody);
+```
+
+we can stop the event propagating up.
+
+### How to prevent executing other listeners of the element?
+
+```js
+event.stopImmediatePropagation();
+```
+
+### How to quickly find out if event propagates (bubbles) up?
+
+````js
+event.bubbles; // true or false
+````
+
+### Event delegation pattern
+
+let's change the background colour of items:
+
+```js
+document.querySelectorAll('li').forEach(li => {
+    li.addEventListener('click', event => { // ❌ performance issues, a lot of listeners!
+        event.target.classList.toggle('highlight')}
+    );
+});
+```
+
+let's use the delegation pattern instead:
+
+````js
+document.querySelector('ul').addEventListener('click', event => event.target.classList.toggle('highlight')); // ✅
+````
+
+It get's messy when the <li> has nested structures, and I want to colour the whole <li>, not what was clicked (e.g button):
+
+````html
+<li>
+	<h2>Some title</h2>
+  <button>Click me</button>
+</li>
+````
+
+so, when I click on the button, h2, or li, I want the whole li item to have the color changed.
+
+Workaround: DOM traversal
+
+````js
+document.querySelector('ul').addEventListener('click', event => event.target.👉closest('li').classList.toggle('highlight'));
+````
+
+closes returns the 'li' element if it was clicked, so that's neat!
+
+### CurrentTarget
+
+is the element **which registered the event listener** that is running ATM
+
+Remember: target is the element where the event happened
+
+
+
+### Clicking elements and submitting forms programatically
+
+we can simulate clicks and submissions by:
+
+````js
+element.click();
+someForm.submit(); // ⚠️ exception here: on submit event listeners won't run!
+````
+
+
+
+### This in the event listener
+
+it refers to the `currentTarget`:
+
+```js
+document.querySelector('ul').addEventListener('click', function (event) {
+    event.target.closest('li').classList.toggle('highlight');
+    console.log(this); // ul element , the currentTarget! (not the target, aka, the element that triggered the event)
+});
+```
+
+### Dragging items!
+
+Some notes:
+
+drag enter (can be omitted) vs drag over(triggers in child elements)
+
+preventDefault, because the default is to cancel the dragging
+
+listen to the `drop` event in receiving element
+
+dragend event is always fired in the dragged element, even if the drag was cancelled
+
+seeing the element being dragged doesn't meant it moved in the DOM, we need to do it ourselves programatically
+
+
+
+### Let's do it!
+
+1) Mark elements as `dragable="true"`. ⚠️ just `draggable` is not enough, we need `="true"`
+
+   ```html
+   <li draggable="true">
+   ```
+
+2) React to the `drag` event on the dragged element
+
+   ````js
+   this.projectItemElement.addEventListener('dragstart', function (event) {
+     event.dataTransfer.setData('text/plain', this.id);
+     event.dataTransfer.effectAllowed = 'move';
+   });
+   ````
+
+3) Define the dropzone and prevent the default
+
+   ````
+   keep working on this tomorrow, not working
+   ````
+
+   
