@@ -1251,11 +1251,11 @@ Var vs Let & Const
 
 1) **Better scoping**
 
-`var` respects `global` and `function` scopes, while `let` and `const`  respects `curly braces` (present in for loops, if blocks, functions):
+#### Var = leaking from curly braces {}🚰 
+
+`var` respects `global` and `function` scopes, while **`let` and `const`  respects `curly braces`** (present in for loops, if blocks, functions):
 
 ```js
-const name = 'Max';
-
 if (name === 'Max') {
     var hobbies = ['coding', 'cooking'];
 }
@@ -1266,8 +1266,6 @@ console.log(hobbies); // prints the hobbies, it was defined
 ```
 
 ```js
-const name = 'Max';
-
 if (name === 'Max') {
     let hobbies = ['coding', 'cooking'];
 }
@@ -1277,13 +1275,13 @@ console.log(hobbies); // throws an error (not defined)
 // because let saw the curly braces!
 ```
 
-So, using `var` causes variable polution, and using `const` and `let` keeps them better scoped.
+⚠️ So, **using `var` causes variable polution**, and using `const` and `let` keeps them better scoped.
 
 
 
 2. **Better variables and usage order declaration**
    
-   variables with `var` can be declared at the bottom of the files, after they have been used.
+   ⚠️ variables with `var` can be declared at the bottom of the files, after they have been used.
 
 ```js
 console.log(userName);
@@ -1326,7 +1324,7 @@ let userName = "Manuel" // Throws an error!
 // Uncaught SyntaxError: Identifier 'userName' has already been declared
 ```
 
-
+⚠️ var allows re-declaring variables, the perfect recipe for disaster!
 
 4. Strict-mode can be enabled
    
@@ -1336,12 +1334,12 @@ let userName = "Manuel" // Throws an error!
    // behaviour no 1: assigning a non declared variable
    
    userName = 'Max' // assigning value to a non declared variable
-   console.log(userName); // prints Max, wow!
+   console.log(userName); // prints Max, wow! 
    
    'use strict'
    userName = 'Max'
    console.log(userName); // throws an error
-   // ncaught ReferenceError: userName is not defined
+   // uncaught ReferenceError: userName is not defined
    
    ```
 
@@ -5535,13 +5533,13 @@ seeing the element being dragged doesn't meant it moved in the DOM, we need to d
 
 ### Let's do it!
 
-1) Mark elements as `dragable="true"`. ⚠️ just `draggable` is not enough, we need `="true"`
+1. Mark elements as `dragable="true"`. ⚠️ just `draggable` is not enough, we need `="true"`
 
    ```html
    <li draggable="true">
    ```
 
-2) React to the `drag` event on the dragged element
+2. React to the `drag` event on the dragged element (<li>)
 
    ````js
    this.projectItemElement.addEventListener('dragstart', function (event) {
@@ -5550,10 +5548,674 @@ seeing the element being dragged doesn't meant it moved in the DOM, we need to d
    });
    ````
 
-3) Define the dropzone and prevent the default
+3. Add event listeners in the drop zones (<ul>) and prevent the default, which is canceling the `drop` event
 
-   ````
-   keep working on this tomorrow, not working
-   ````
-
+   ````js
+   // 'dragenter'
+   // 'dragover'
+   // 'dragleave'
    
+   
+   const ulElement = document.querySelector(`#${this.type}-projects ul`)
+   
+    ulElement.addEventListener(👉'dragover', function(event){ // children elements are included
+      // Here, I can only read the type, not the payload, 🤔 ( I can do it only on the drop event)
+      if (event.dataTransfer.types[0] === 'text/plain'){
+        // only avoid canceling the drop event when the data is the one we expect
+        event.preventDefault();
+      }
+      // If I'm droping any other thing here than the li I expect, the drop event will be cancelled by default
+   
+    });
+   
+   ulElement.addEventListener(👉'dragenter', function(event){
+     if (event.dataTransfer.types[0] === 'text/plain'){
+       event.preventDefault();
+       ulElement.parentElement.classList.add('droppable');
+     }
+   });
+   
+   ulElement.addEventListener(👉'dragleave', event => {
+     // if dragged element is on top of the other list, then remove the class
+     if (!event.relatedTarget.closest(`#${this.type}-projects ul`)) {
+       ulElement.parentElement.classList.remove('droppable');
+     }
+   })
+   ````
+
+4. Add the an event listener for a `drop` event, in the drop zone, to move the element basically:
+
+   Here is what it gets complex. as the methods I had to push to the projects array and move the DOM element around worked when I was calling that from the origin box. In this case, the I want to trigger that after a `drop` event from inside the reveiving box, so the class instance `project` is not available when calling :
+   
+   ```js
+   this.switchHandler(this.projects.find(p => p.id === projectId));
+   ```
+   
+   Max's workaround was to trigger a click programatically in the `Status` button, in the to be moved element.
+   
+   I'd like to refactor the code a little bit, so I do it without that workaround, using the callback pattern, works like a charm!
+   
+   ````js
+   class ProjecList{
+     connectDroppable(){
+     ...
+     ulElement.addEventListener('drop', event => {
+       ulElement.parentElement.classList.remove('droppable');
+       const droppedId = event.dataTransfer.getData('text/plain');
+       if (this.projects.find(project => project.id === droppedId)){
+       return;
+       }
+       this.selfAddProject(droppedId);
+   	});
+   }
+   
+   selfAddProject(droppedId){
+     DOMHelper.moveElement(droppedId, `#${this.type}-projects ul`);
+   
+     // let's get the project's instance from the other list/box
+     const project = this.getProjectHandler(droppedId);
+   
+     this.projects.push(project);
+     project.update(this.switchProject.bind(this), this.type);
+   }
+     
+   setGetProjectHandler(getProjectHandlerFunction){
+     this.getProjectHandler = getProjectHandlerFunction;
+    }
+   
+   getProject(projectId){
+       return this.projects.find(p => p.id == projectId);
+    }
+   }
+   
+   
+   class App {
+     static init() {
+       const activeProjectsList = new ProjectList('active');
+       const finishedProjectsList = new ProjectList('finished');
+   
+       activeProjectsList.setSwitchHandlerFunction(
+         finishedProjectsList.addProject.bind(finishedProjectsList)
+       );
+       activeProjectsList.setGetProjectHandler(finishedProjectsList.getProject.bind(finishedProjectsList));  
+   
+       finishedProjectsList.setSwitchHandlerFunction(
+         activeProjectsList.addProject.bind(activeProjectsList)
+       );
+       finishedProjectsList.setGetProjectHandler(activeProjectsList.getProject.bind(activeProjectsList));
+     }
+   }  
+   ````
+   
+   
+   
+   #### Bonus
+   
+   the `dragend` event can be listened to in the dragged element:
+   
+   ```js
+    connectDrag(){
+       this.projectItemElement.addEventListener('dragstart', event => {
+         event.dataTransfer.setData('text/plain', this.id);
+         event.dataTransfer.effectAllowed = 'move';
+         // let's add a class
+         this.projectItemElement.classList.add('dragging');
+       });
+   
+       this.projectItemElement.addEventListener('dragend', () => {
+         // let's remove the class
+         this.projectItemElement.classList.remove('dragging'));
+       }				       
+     }
+   ```
+   
+   we can also look at the `event` object and see if the drop event was fired, hence the 
+
+`event.dataTransfer.dropEffect` is can be `none` or `move`, or maybe something else, that gives info if the item was moved after dropping. I didn't magage to have `none` as value when dropping in the same box, anyway.
+
+
+
+### Pure functions
+
+they return the same output for the same inputs, and they don't modify things outside it
+
+```js
+function add(a,b){
+	return a + b;
+}
+```
+
+
+
+### Impure function
+
+```js
+function addRandom(a) {
+	return a + Math.random(); // returns different output for same inputs
+}
+```
+
+````
+results = [];
+function add(a,b) {
+	const sum = a + b;
+	results.push(sum); // side effect
+	return sum; // even if it returns same output for same input
+}
+````
+
+
+
+````js
+let acumulated = 0;
+
+function acumulate(a){
+    debugger;
+	acumulated = acumulated + a;
+    return acumulated; // different output for same input + side effects, the most impure function 😅
+}
+
+console.log(acumulate(1)) // 1
+console.log(acumulate(3)) // 4
+````
+
+In the case above, the function reads and changes a variable of the outside
+
+````js
+const printHobbies(h) { // passing pointers to functions is a side effect!
+	h.push('fishing');
+	console.log(h);
+}
+
+const hobbies = ['cooking'];
+
+printHobbies(hobbies); 
+
+console.log(hobbies); // ['cooking', 'fishing'] something outisde the function changed!
+````
+
+
+
+### Factory functions
+
+functions that create a function inside and return it, so it's pre-configured(with a locked-in value inside);
+
+Imagine we wanna calculate the vat and income tax in many parts of the app
+
+````
+const calculateTax(amount, tax){
+	return amount * tax;
+}
+
+const vat1 = calculateTax(100, .2);
+const vat2 = calculateTax(50, .2);
+const vat3 = calculateTax(20, .2); // I'm repeating the .2 a lot!! 🚨
+
+const income1 = calculateTax(100, .4);
+const income2 = calculateTax(80, .4);
+const income1 = calculateTax(70, .4);
+````
+
+let's preconfigure a function with the .2 value baked in!
+
+````js
+const calculateTax = (tax) => {
+    return (amount) => {
+        return amount * tax; // tax got locked in ✅
+    }
+}
+
+const calculateVat = calculateTax(0.2);
+const calculateIncome = calculateTax(0.40);
+
+console.log(calculateVat(100));
+console.log(calculateIncome(100));
+````
+
+### Closures: snapshot of lexical environments that updates
+
+#### 🏅golden rule: every function is a closure
+
+When a function is registered (created, not executed), it closes the values of the sorrouning lexical env, and closes them (memorises them, take a snapshot). And it will get the updated values if they change 😁
+
+Functions look at changes of variables of the outer scopes, and if they change they will get the updated values. In case of a factory function, the argument of the outer function never changes for that same inner function
+
+##### Inner functions have the outer function args `locked in`, e.g remain uncheangable in it's lexical environment, with the value of when if was created (the value was closed, memorized);
+
+In reality, the value is not locked in, it happens that it never changes 😅
+
+Every function can access it's arguments and global variables inside the function
+
+things created inside the function + arguments, are only accessible inside the curly braces
+
+a nested function can access global + outer functions things + inner function things
+
+lexical environments: function have their own lexical env, and variables are registered there:
+
+so, an inner function env has a locked in value registered of the outer function arguments! 
+
+Functions look at changes of variables of the outer scopes, and if they change they will get the updated values. In case of a factory function, the argument of the outer function never changes for that same inner function
+
+
+
+### Closures in practice
+
+```js
+let userName = "Max";
+
+function greet(){
+	console.log('hi' + userName); 
+}
+
+userName = "Manuel";
+
+greet(); // prints `hi Manuel` , as the snapshot is updatable
+```
+
+````js
+let userName = "Max";
+
+function greet(){
+	const name = userName; // when the function runs, it still assigns the updated value of userName
+	console.log('hi' + name); 
+}
+
+userName = "Manuel";
+
+greet(); // prints `hi Manuel` , as the snapshot is updatable
+````
+
+````js
+let userName = "Max";
+
+function greet(){
+  const userName = "Anna";
+	console.log('hi' + userName); 
+}
+
+greet(); // prints `hi Anna` , as the inner lexical environment is looked up first, and if the variable doesn't exists, it goes to the parent, and so on.
+
+// in this case, userName has been shadowed
+````
+
+````js
+function greet(){
+	console.log('hi' + userName); // JS can't find userName in the function lexical env, so it goes to the global one to look for it
+}
+
+const userName = 'Anna'
+
+greet(); // prints `hi Anna`, as the variable exists in the global lexical env
+````
+
+### **IIFEs: Immediately **I**nvoked **F**unction **Expression ()()
+
+it was a trick to keep the var variables scoped, and prevent global polution, by declaring the variables and using them right inside functions, hence having function scope, the only scope that var respected.
+
+Nowadays, let and const are blocked (curly braces) scoped, so we could safely use 
+
+````js
+(function() { // self called anonymous function. ❌ clunky ()() syntax
+    var age = 30;
+    console.log(age); // 30
+})()
+
+console.log(age); // Error: "age is not defined"
+````
+
+```js
+// another way to do it: I had to keep everything inside a big function and then call it, to keep things scoped to that function, and avoid var polution the global space
+function printAge(){ // big function ❌
+	var age = 30;
+	console.log(age);
+}
+
+printAge(); ❌ // call the function
+
+console.log(age); // Error: "age is not defined"
+```
+
+it has been relaced by `{}` and `const` and `let` usage!
+
+```js
+// let and const can be used inside curly braces (if blocks, for loops, etc) without polutiong the global namespace
+{ // not clunky ()(), just scoped to {} ✅
+	const age = 30; 
+	console.log(age);// 30
+}
+
+console.log(age); // Error: "age is not defined"
+```
+
+
+
+### Recursion
+
+functions that call themselves from inside.
+
+Be sure to add an exit condition!
+
+````js
+// without recursion
+const powerOf = (x,n) => {
+	let result = 1;
+	
+	for(let i = 0; i<n; i++){
+		result *= x;
+	}
+	
+	return result;
+}
+
+console.log(powerOf(2,3)); // prints 8
+````
+
+````js
+// with recursion
+const powerOf = (x,n) => {
+    // exit condition
+    if (n === 1){
+        return x;
+    }
+
+    return x * powerOf(x, n - 1); 
+}
+
+console.log(powerOf(2,3)); // prints 8
+````
+
+```js
+// shorter version
+const powerOf = (x,n) => {
+    return n === 1 ? x : x * powerOf(x, n - 1);
+}
+```
+
+There's a chain of returns 
+
+````js
+powerOf(2,3)
+return // 8
+	return 2* powerOf(2,2) // 2 * 4
+		return 2 * powerOf(2,1) // 2 * 2 // JS starts calling the fns from here, upwards 👆
+			return 2 
+````
+
+### Advanced recursion: facing unnknow object depths!
+
+We know the shape of each object.
+
+Best case scenario: I know the depth, but the function has a bunch of nested loops, hard to read!
+
+worst case (usual case): the depth is unknown!
+
+```
+const getAllFriendsNamesArray = (person) => {
+    let allNames = [];
+
+    if (!person.friends){
+        return [];
+    }
+
+    for(let friend of person.friends){
+        // push the name of the friend and a function call to find the friend's friends!
+        allNames = [...allNames, friend.name, ...getAllFriendsNamesArray(friend)];
+    }
+
+    return allNames;
+}
+
+console.log(getAllFriendsNamesArray(mySelf));// [ "Chris", "Caroline", "tomy", "flor", "pao" ] 😮
+```
+
+
+
+### Numbers in JS
+
+every number is a float
+
+```js
+const age = 5; // stored as 5.0
+```
+
+Let's find JS number limits
+
+````js
+Number.MAX_SAFE_INTEGER; // a really big number
+````
+
+Sidenote: reminders of static props in constructor functions:
+
+```js
+// constructor function reminder
+
+function NumberCons(){
+    // some interesting props and methods here
+}
+
+NumberCons.MAX_SAFE_INTEGER = 'big number here';
+
+console.log(NumberCons.MAX_SAFE_INTEGER);
+```
+
+
+
+### Undertanding unexpected decimals
+
+```js
+.2 + .4; // 0.6000000000000001 🤔
+```
+
+```js
+.2 + .4 === 0.6; // false 
+```
+
+it's because the binary system (numbers stored as 1 and 0s)
+
+```
+1️⃣  .2 + .4 decimal numbers are transformed to the binary system to perform the calculation
+2️⃣ converting .2 to binary is something imperfect 🚨, like when doing 1/3 in the decimal (yields 1.3 periodic)
+2️⃣ the calculation is then transformed back to decimal, carrying out that imperfection
+```
+
+let's see the .2 conversion to binary in action:
+
+````js
+0.2.toString(2)' //0.001100110011001100110011001100110011001100110011001101' periodic! 🚨
+(2) is the base (binary)
+````
+
+that's why, when converted back it doesn't yield a number with a single decimal
+
+````
+1/3 + 1/3 + 1/3; // 1, so there's some automatic rounding done by JS
+````
+
+### How to prevent presenting weird numbers to users (as a string)?
+
+```js
+(.2 + .4).toFixed(1); '0.6' (string)
+```
+
+### How to prevent this binary imperfection?
+
+Charging million of users:
+
+````js
+0.6000000000000001 
+//instead of 0.6 could mean a lot of money!
+````
+
+
+
+1) Using integers, by multiplying by *100, and using cents instead of dollars, etc
+
+```js
+0.6 * 100; // 600 I can work with this number
+```
+
+2. Libraries
+
+### BigInt: a primite value
+
+manages big numbers (bigger than the JS limit `Number.MAX_SAFE_INTEGER`) as strings, so we can surpass that limit!
+
+```js
+// Max JS integer
+Number.MAX_SAFE_INTEGER ;//9007199254740991
+
+// let's work with a number bigger than that
+const mySuperNumber = 90071992547409911000000n;
+
+typeof mySuperNumber; // "bigint"
+
+10n + 4; //Error: Uncaught TypeError: can't convert BigInt to number
+
+// we nee to convert it ourselves
+parseInt(10n) + 4; // 14
+
+
+10n + BigInt(4); // 14n
+
+10n/3n; // 3n no decimals in the bigint world, it's for big boys
+```
+
+it doesn't support decimal places.
+
+I can only be used in operations with another bigInts
+
+
+
+### Number and Math objects
+
+They are constructor functions, with some static methods as well.
+
+```js
+// static prop
+Number.Infinity
+// or the same static prop in the windows object
+window.Infinity
+// is a new value!
+
+1/0; //Infinity
+
+Number.isFinite(Infinity); // false
+
+// try this in the console
+// for an insantiated number from Number
+const two = 2;
+two.toFixec(2); //10, in the binary system
+```
+
+### String
+
+strings have a lot of methods:
+
+```js
+String.toUpperrCase(); 
+etc
+
+
+'hello'.toUpperCase(); // 'HELLO'
+```
+
+
+
+### Template literals + tagged templates
+
+```js
+`My name is ${name}`
+// any expression, (not if statements ⚠️)
+`my name is ${getName()}`
+```
+
+#### this is what styled components use!!! 😮
+
+useful to alter the returned template literal, checking some variables values, and then altering the text:
+
+#### Useful for altering strings before they reach the user!
+
+```js
+`this is ${adjective}`
+
+// I want to add another part that says that I'm enjoying it if it's cool
+
+if adjective === cool => I want to add `and I'm enjoying it!`
+```
+
+let's not reveal expensive prices!!
+
+````js
+const productDescription = (strings, prodName, prodPrice) => { // string array has variables + 1 elements
+  debugger;
+  if (prodPrice > 10){
+    return `${strings[0]}${prodName}, but it's reallty expensive!${strings[2]}`;
+  }
+  return `${strings[0]}${prodName}${strings[1]}${prodPrice}${strings[2]}`;
+  
+  // I could also create an object here, and not return a string
+  return {
+    prodName,
+    prodPrice
+  }
+  
+  // OR convert it to CSS somehow! like styled components
+  
+}
+
+const productName = 'Salami';
+const productPrice = 100;
+
+const productOutput = () => productDescription`This product is named: ${productName} and it costs ${productPrice}`;
+
+console.log(productOutput());
+````
+
+
+
+### Regex
+
+````js
+const regex = /^\S+@\S+\.\S+$/; // sugar syntax `//`, same as [] when creating arrays
+
+console.log(regex.test('test@test.com')); // true
+````
+
+just google for `email regex JS`
+
+Done
+
+```js
+const regex = /hello/;
+
+regex.exec('hello there'); // array with info about where the math happened, etc
+// []'hello', index: 👉0, input: 'hello there', groups: undefined]
+```
+
+or use the .match method on strings:
+
+````js
+const regex = /hello/;
+console.log('hello there'.match(regex));// ['hello', index: 0, input: 'hello there', groups: undefined]
+````
+
+### Asynchronous code
+
+JS in single threaded:
+task A , B, C, D, happen one after the other one, like selection a button, creating a function, attaching that function as an event listener.
+
+What about long tasks (reaching to a server!)? do I wanna block the code below from running like PHP does? surely not!
+
+The browser listens to DOM events and registers timeouts,and the pushed the callback funtions to the stack via the message queue and the event loop.
+
+The same with timeouts: the browser makes the countdown and pushes the callback to the stack
+
+### Event loop
+
+recap: heap and stack are part of the JS engine
+
+The event loop is part of the browser (not the JS engine). It's an ongoing process that:
+
+#### The event loop coordinates the message queue and the stack. When the stack is free, it pushes the things from the queue to the stack.
+
+the browser uses the `message queue` to push things to the stack in order.
