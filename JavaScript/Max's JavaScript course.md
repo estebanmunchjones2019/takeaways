@@ -2124,7 +2124,7 @@ liItemElement.addEventListener('click', liItemHandler.bind(this, movie.id));
 Then, `liItemHandler` can also add an binded event listener to the `Yes` button, but that will need to be added an removed each time the modal opens and closes, OR, as Max did, clone, remove and re-add the buttons to the DOM, so the event listeners are cleared
 
 ```js
-yesDeleteButton.replaceWith(yesDeleteButton.clone(true));
+yesDeleteButton.replaceWith(yesDeleteButton.cloneNode(true));
 ```
 
 The most elegant solution is to read the `event.target` value inside the event handler, instead of binding the event handler.
@@ -6188,7 +6188,7 @@ Done
 ```js
 const regex = /hello/;
 
-regex.exec('hello there'); // array with info about where the math happened, etc
+regex.exec('hello there'); // array with info about where the match happened, etc
 // []'hello', index: 👉0, input: 'hello there', groups: undefined]
 ```
 
@@ -6219,3 +6219,689 @@ The event loop is part of the browser (not the JS engine). It's an ongoing proce
 #### The event loop coordinates the message queue and the stack. When the stack is free, it pushes the things from the queue to the stack.
 
 the browser uses the `message queue` to push things to the stack in order.
+
+
+
+### Geolocation
+
+is a task handled to the browser, hence, it needs to use the message queue to push the callbacks into the stack
+
+```js
+document.querySelector('li').addEventListener('click', () => {
+  navigator.geolocation.getCurrentPosition((data) => {
+    debugger;
+    console.log(data)
+  }, error => console.log(error) );
+  console.log('getCurrentPosition spinning wheels, it will return soon!');// gets printed first
+});
+```
+
+when offloading things to the browser, even a timeout with 0ms, that needs to go through the message queue:
+
+```js
+setTimeout(() => console.log('this was through the message queue'), 0);
+console.log('this prints first');
+```
+
+The browser is multi-threaded, to handle setTimeout, for example
+
+### Promises
+
+they avoid nested callbacks (callback hell), so there's one level of nesting
+```js
+someLongTask((data) = > {
+  // do something
+  return (modifiedData) => {
+  	// do something
+  	return (modifiedData) => {
+  			// callback hell!
+		}
+	} 
+})
+
+
+
+someLongTask()
+// chain of callbacks, instead of nesting them
+.then(data => {
+  // do something
+  return modifiedData
+})
+.then(data => {
+  // do something
+  return modifiedData
+})
+.then(data => {
+  // do something
+  return modifiedData
+}) 
+
+
+
+
+```
+
+
+
+promises are objects. When creating it with the word `new`, it takes an argument, which is a fn that runs straigth away:
+
+the resolve and reject functions can return anything (strings, objects, etc);
+
+we can call .then methid on the object, that will run when the status of the objects is marked as fulfilled 
+
+the object state can pending, fulfilled, rejected
+
+````js
+// we have a top level function that return the promise object
+// object is created and instructions on how to update the state of the object are set up
+// the resolve or the reject functions are called in another thread (browser)
+// resolve and reject change the state of the object, and
+// the object is returned
+
+// we can add .then and .catch methods to the top level fn call to react to the change of the object state
+````
+
+```js
+const fetch = (url) => {
+  // resolve and reject are functions that updates the state of the object and can return data.
+  // callback fn (executor) runs straigh away in the Stack
+	const promise = new Promise((resolve, reject) => {
+    // make http request to the url, a long process
+    resolve({res: 'the response here'})
+    // reject('Im a promise that always rejects!');
+  });
+  debugger;
+	return promise;
+}
+
+fetch()
+.then(res => console.log(res))
+.catch(error => console.log(error));
+```
+
+The resolve function comes from the JS engine.
+
+#### 👉 The browser executes the resolve and reject functions. 
+
+#### It's the same as the timeOut. We will never see setTimeOut fn in the Stack
+
+#### We will never see `reject` or `resolve` in the Stack👈
+
+```js
+const fetch = (url) => {
+
+	const promise = new Promise((resolve, reject) => {
+    debugger; // 👉 appears as (anonymous) in the stack, because it's an anonymous fn
+    resolve({res: 'the response here'})
+  });
+	return promise;
+}
+
+fetch()
+.then(res => {
+  debugger; // ⚠️ appears as `(anonymous) Promise.then async` in the stack
+  console.log(res)
+})
+```
+
+#### 👉async code is pushed to the stack via the message queue (same as event listeners callbacks)👈
+
+
+
+### let's promisify setTimeout(), so we can use .then
+
+```js
+const SetTimeOutPromsified = (duration) => {
+  const promise = new Promise((resolve, reject) => {
+    // I need the timeout to have the countdown
+    setTimeout(() => resolve(), duration);
+  });
+
+  return promise;
+}
+
+SetTimeOutPromsified(1000).then(() => console.log('1000ms passed'));
+```
+
+
+
+### Let's promisify getCurrentLocation
+
+````js
+const getCurrentPositionPromisified = (options) => {
+  const promise = new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, reject, options);
+  });
+
+  return promise;
+}
+
+getCurrentPositionPromisified().then(data => console.log(data)).catch(error => console.log(error));
+````
+
+above, we get resolve(GeolocationPosition) and reject(GeolocationPosition) called under the hood, and that way I can use .then(data => etc);
+
+
+
+### Promise chaining
+
+I want to do one async thing after the other, always waiting for the previous thing to finish
+
+````js
+let position; // I use this to have the variable accessible throughout the .then chain
+
+getCurrentPositionPromisified() 
+.then(data => {
+  position = data; // async task1
+  return SetTimeOutPromsified(1000); //return a promise
+})
+.then(() => {
+  console.log('the position is: ', position); // async task 2
+})
+.catch(error => console.log(error));
+````
+
+if things other than promises are returned inside a .then block, the it gets automatically promisified and resolved immediately:
+```js
+getCurrentPositionPromisified()
+.then(data => {
+  return 'someString'; // 👈 get's promisified and resolves inmediately
+})
+.then((data) => {
+  console.log(data); // 'someString'
+})
+.catch(error => console.log(error));
+
+```
+
+#### 👉The outer promise state: Pending -> Fulfilled -> Pending -> Fullfilled👈
+
+TODO: replicate currentposition with async await, I wasn't able to catch the error
+
+### Error handling
+
+.catch method is fired when any of the outer promise changes the state to `rejected`.
+
+it can be added anywhere, but it makes more sense to add it the end, so it's a catch all strategy.
+
+```
+// long chain of async stuff
+.catch(error => console.log(error));
+```
+
+2 nd argument of .then, not the best approach
+
+````js
+.then
+.then(successCallback, error => console.log(error)); // catches the error here, but not on the next promise
+.then // this will run
+````
+
+````js
+// same result as above
+.then
+.then
+.catch
+.then // this will run 😮
+````
+
+````js
+const alwaysResolves = () => {
+  const promise = new Promise((resolve, reject) => {
+    resolve('success!');
+  });
+  return promise;
+}
+
+const alwaysRejects = () => {
+  const promise = new Promise((resolve, reject) => {
+    reject('error!');
+  });
+  return promise;
+}
+
+alwaysResolves()
+.then(data => console.log(data))
+.then(data => alwaysRejects())
+.catch(error => console.log(error)) // it doesn't stop other .then methods from beeing called
+.then(data => console.log('this runs!')); 👈
+````
+
+we can return values in this middle catch methods, so the value is picked up in the next .then method
+
+````js
+.then
+.then
+.catch(error => 'someValueHere');
+.then(data => //do something) // this will run, and can picked `someValueHere` as the `data` argument
+````
+
+we can also have multiple catch
+
+````js
+.then
+.then
+.catch(error => 'someValueHere');
+.then // this will run
+.catch(error => console.log(error));
+````
+
+
+
+### Async await
+
+👉it can only used in functions👈
+
+adding the keyword `async` in the fn declaration, makes it return a promise, even though there's no `return` keyword.
+
+````js
+const example = async () => { // const example: () => Promise<void>
+}
+````
+
+it replicates the .then method chainging in the end, under the hood
+
+#### Danger: don't be confused! it could look like async code blocks JS from going to the next line, but it's not like that, it's just the way it looks.
+
+in the end, like inside a .then block, we wait for the promise to change state to fire the next .then method.
+
+#### Await = await changes in the promise state, to move to the next line, inside an async fn
+
+
+
+### Downside of async await
+
+#1: async tasks can be fired one after the other
+
+````js
+const example = () => {
+	longTask1() // fired straight away
+	.then
+	catch
+	
+	longTask2() // fired straight away
+	.then
+	.catch
+}
+````
+
+
+
+````js
+const example = async () => {
+	try {
+			const data1 = await longTask1()
+	
+			const data2 = await longTask2(); // ❌ I need to wait for the promise above to resolve
+	} catch (error) {
+		console.log(error);
+	}
+  
+	// code that runs even after getting an error
+	console.log('this always runs after waiting for the async stuff');
+}
+````
+
+
+
+The workaround? just move `longTask2` call to a different fn, and call it right after calling `example`
+
+2# Only available inside fns
+
+````js
+// top level in a JS file
+await setTimer(1000).then(() => console.log('1 second passed')); // ❌ await is only valid in async functions and the top level bodies of modules
+````
+
+Workaround? use an IIFE
+
+````js
+(async () => {
+  await SetTimeOutPromsified(1000);
+  console.log('1 second passed');  
+})();
+````
+
+
+
+### Promise.race: 
+
+#### Let's play! Races!
+
+I just want to react to the fastest promise of two, or more
+```js
+const example = async () => {
+  const data = await Promise.race([getCurrentPositionPromisified(), alwaysResolves()]);
+  console.log(data); // 'success'
+}
+
+example();
+```
+
+the looser promise was resolved, but we don't care about it's result
+
+
+
+### Promise.all
+
+#### Let's get the result of more than one promise in an array, after they'r all done
+
+````js
+const example = async () => {
+  const combinedData = await Promise.all([getCurrentPositionPromisified(), alwaysResolves()]);
+  console.log(combinedData); // [GeolocationPosition, 'success']
+}
+
+example();
+````
+
+if one promises fails, then we just go to the catch block
+
+### Promise.allSettled
+
+returns an array with promises states and returned values!
+
+````js
+const example = async () => {
+  const combinedData = await Promise.allSettled([getCurrentPositionPromisified(), alwaysRejects()]);
+  console.log(combinedData); // [GeolocationPosition, 'success']
+}
+
+example(); //[{status: 'fulfilled', value: GeolocationPosition}, {status: 'rejected', reason: 'error!'}]
+````
+
+we wait for things that might not succed, and I wanna do things afterwards checking that array's values
+
+TODO: check the middle catch blocks results
+
+````js
+const myPromise = new Promise((resolve, reject) => {
+    setTimeout(() => {
+        resolve('Timer completed!');
+    }, 1000);
+})
+    .then((text) => { throw new Error('Failed!') }); // this didn't stop code execution
+    .catch(err => console.log(err)) // this caught the thrown error, same as catch block on try catch syntax
+		// catch resolves, as resolve(undefined);
+    .then((data) => console.log('Does that execute?', data)); // 'Does that execute?', undefined
+````
+
+catch method returns a promise that resolves immediately (if a value other than a promise is returned or no value is returned at all?)
+
+
+
+### Http requests
+
+XML way:
+
+````js
+const xhr = new XMLHttpRequest();
+
+xhr.open('GET', 'someUrl');
+
+xhr.send();
+````
+
+Default request headers are added by the browser
+
+
+
+Let's use the data!
+
+we need to run a function after the `load` event. And the data needs to be converted from JSON to JS (an array of objects);
+
+`addEventListener` was not supported in all browser when Max recorded the video
+
+````js
+const xhr = new XMLHttpRequest();
+
+xhr.open('GET', 'https://jsonplaceholder.typicode.com/posts');
+
+xhr.addEventListener('load', function(){ // 💡 OR xrh.onload = function(){}
+  console.log(xhr.response); // prints the JSON (text (string type) that looks like JS)
+})
+
+xhr.send();
+````
+
+the JSON object has 2 methods:
+
+1. Parse: to convert json to JS
+2. Stringify: to convert JS to json
+
+If we wanna avoid calling JSON.parse() ourselves, there's a trick:
+
+```js
+xhr.responseType = 'json'; 👈
+
+xhr.addEventListener('load', function(){
+  console.log(xhr.response); // 👈converted to JSON behind the scenes for us
+})
+```
+
+
+
+### Let's promisify an xhr request
+
+```js
+const xhrPromisified = (method, url) => {
+
+  const promise = new Promise((resolve, reject) => {
+
+    const xhr = new XMLHttpRequest();
+  
+    xhr.open(method, url);    
+  
+    xhr.responseType = 'json';
+
+    // debugger;
+
+    xhr.addEventListener('load', function(){
+      debugger;
+      resolve(xhr.response);
+    });
+
+    xhr.send();
+  });
+
+  return promise;
+}
+```
+
+let's use that fn
+
+```js
+xhrPromisified('GET', 'https://jsonplaceholder.typicode.com/posts')
+.then(res => {
+  const tenPosts = res.slice(0,10);
+  tenPosts.forEach(post => {
+    const postNode = document.importNode(postTemplate.content, true);
+    postNode.querySelector('h2').innerText = post.title;
+    postNode.querySelector('p').innerText = post.body;
+    listElement.append(postNode);
+  });
+});
+
+
+// OR
+
+const fetchPosts = async () => {
+  const posts = await xhrPromisified('GET', 'https://jsonplaceholder.typicode.com/posts');
+  const tenPosts = posts.slice(0,10);
+  tenPosts.forEach(post => {
+    const postNode = document.importNode(postTemplate.content, true);
+    postNode.querySelector('h2').innerText = post.title;
+    postNode.querySelector('p').innerText = post.body;
+    listElement.append(postNode);
+  });
+}
+
+fetchPosts();
+```
+
+the method can also be `get` in lower case, but the convention is to use uppercase `GET`
+
+### Wiring up buttons to functions
+
+````js
+addButton.addEventListener('click', function(event){
+  event.preventDefault();
+  const title = titleInput.value.trim();
+  const content = contentInput.value.trim();
+
+  if (title && content){
+    createPost(title, content);
+  } else {
+    alert('title and content can not be empty');
+  }
+}); 
+
+//OR 
+// there's a button <button type="submit" inside the form
+form.addEventListener('submit', function(event){
+  event.preventDefault();
+  const title = event.currentTarget.getElementById('title').trim();
+  const content = event.currentTarget.getElementById('content').trim();
+
+  if (title && content){
+    createPost(title, content);
+  } else {
+    alert('title and content can not be empty');
+  }
+}); 
+
+
+fetchPostsButton.addEventListener('click', fetchPosts);
+````
+
+### Reacting to `Delete` button clicks
+
+option 1: add an event listener to every li element
+
+````js
+  tenPosts.forEach(post => {
+    const postNode = document.importNode(postTemplate.content, true);
+    postNode.querySelector('h2').innerText = post.title;
+    postNode.querySelector('p').innerText = post.body;
+    postNode.querySelector('li').id = post.id;
+    👉postNode.querySelector('button').addEventListener('click', deletePost.bind(null, post.id));
+    listElement.append(postNode);
+  });
+````
+
+option 2: use event delegation
+
+```js
+ulElement.addEventListener('click', function(event){
+  debugger;
+  const target = event.target;
+  if (target.tagName !== 'BUTTON'){
+    return;
+  }
+  const id = target.parentNode.id; // target.closest(li); better, in case button is nested deeper in the future
+  deletePost(id);
+})
+```
+
+### Handling errors
+
+#### 👉Our code needs to throw (or reject, in promises) errors when things we don't control don't follow the happy path, so we can react in our and run some alternative one after we catch them down the line!👈
+
+let's see why we need to throw (and catch) errors:
+
+```js
+xhr.addEventListener('load', function(){
+	resolve(xhr.response);    
+});
+```
+
+````js
+const fetchPosts = async () => {
+  const posts = await xhrPromisified('GET', 'https://jsonplaceholder.typicode.com/postsss'👈);
+  const tenPosts = posts.slice(0,10); // 🚨 Uncaught (in promise) TypeError: posts.slice is not a function
+    // at HTMLButtonElement.fetchPosts
+  console.log('this wont run');
+  //some more code here
+}
+````
+
+our app broke, bravo!
+
+side note: 
+
+````js
+// we'll see a red line in the console:
+// 🚨 GET https://jsonplaceholder.typicode.com/postsss 404 (anonymous) 
+
+// that didn't seem prevent the code from runnning
+````
+
+
+
+Let's now reject some errors when we know we didn't send the request, or the request wasn't what we were expecting.
+
+👉our xhrPromisified executor fn needs to reject 👈 when either:
+
+- the request wasn't sent
+- the response came with a code outside 200 and 299
+
+````js
+ ⚠️ // it only handles Network errors, but not 404 errors, like when hitting wrong url
+ // happens when the request is not sent
+xhr.addEventListener('error', function(){
+  debugger;
+  reject();
+})
+````
+
+final solution
+
+```js
+xhr.addEventListener('load', function(){
+  // 200 to 299 range, success reponse!
+  if (xhr.status >= 200 && xhr.status < 300) {
+    resolve(xhr.response);
+  } else {
+    // I just throw an error with a message because the API sends empty responses {}
+    reject(new Error('something went wrong'));
+  }
+});
+
+
+xhr.addEventListener('error', function(){
+  // triggered when, e.g there's no internet
+  reject(new Error('failed to send request!'));
+})
+```
+
+How to handle the error then?
+
+````js
+const fetchPosts = async () => {
+  // we can declare some variables with let before the try block and change their values inside the try and catch blocks
+  try {👈
+    const posts = await xhrPromisified('GET', 'https://jsonplaceholder.typicode.com/posts');
+    const tenPosts = posts.slice(0,10);
+    tenPosts.forEach(post => {
+      const postNode = document.importNode(postTemplateElement.content, true);
+      postNode.querySelector('h2').innerText = post.title;
+      postNode.querySelector('p').innerText = post.body;
+      postNode.querySelector('li').id = post.id;
+      // postNode.querySelector('button').addEventListener('click', deletePost.bind(null, post.id));
+      ulElement.append(postNode);
+    });
+  } catch (error){👈
+    console.log(error.message);
+  }
+  // here more code that will always run ✅, react depending on the values of variables declares with let before the try and catch blocks
+}
+````
+
+disabling the internet console.log `failed to send request!`
+
+sending request to wrong url console.log `something went wrong'`
+
+👉 test http request error handling by changing the network to `offline` and hitting the wrong url👈
+
+
+
