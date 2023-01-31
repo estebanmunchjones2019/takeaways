@@ -6644,7 +6644,7 @@ xhr.send();
 
 Default request headers are added by the browser
 
-
+Fun fact: it's called XMLHttpRequest because it was originally used to fetch XML data
 
 Let's use the data!
 
@@ -6827,6 +6827,8 @@ const fetchPosts = async () => {
 
 our app broke, bravo!
 
+#### 👉Xhr and fetch don't throw errors when the the reponse has a status out of the 200 range, so we need to do it ourselves👈
+
 side note: 
 
 ````js
@@ -6901,7 +6903,397 @@ disabling the internet console.log `failed to send request!`
 
 sending request to wrong url console.log `something went wrong'`
 
-👉 test http request error handling by changing the network to `offline` and hitting the wrong url👈
+#### 👉 test http request error handling by changing the network to `offline` and hitting the wrong url👈
 
 
 
+### Fetch API
+
+what does the API return?
+```js
+Response
+	body: ReadableStream
+```
+
+That can't be converted with JSON.parse(), that converts the stream in JSON into a snapshot in JS
+
+But the .json() method does that, just by calling it on the response (not the body)
+
+```js
+const sendHttpRequest = (method, url, body) => {
+	return fetch(url, options)
+  .then(res => res.json());
+}
+```
+
+Remember, use these two together:
+
+#### 👉 fetch() + reponse.json()👈
+
+```
+reponse.text(); // just converts the stream to a snapshot
+response.blob(); // gets me a file after downloading it
+```
+
+
+
+To recap, let's just compare the two ways:
+
+```js
+const sendHttpRequest = (method, url, body) => {
+
+  // const promise = new Promise((resolve, reject) => {
+
+  //   // const xhr = new XMLHttpRequest();
+  
+  //   // xhr.open(method, url);    
+  
+  //   // xhr.responseType = 'json';
+
+  //   // xhr.setRequestHeader('Content-type', 'application/json; charset=UTF-8');
+
+  //   // xhr.addEventListener('load', function(){
+  //   //   debugger;
+  //   //   if (xhr.status >= 200 && xhr.status < 300) {
+  //   //     resolve(xhr.response);
+  //   //   } else {
+  //   //     // I just throw an error with a message because the API sends empty responses {}
+  //   //     reject(new Error('something went wrong'));
+  //   //   }
+  //   // });
+
+  //   // xhr.addEventListener('error', function(){
+  //   //   debugger;
+  //   //   reject(new Error('failed to send request!'));
+  //   // })
+
+  //   // xhr.send(JSON.stringify(body)); // it's ok to send undefined
+  // });
+
+  // return promise;
+
+
+  const options = {
+    method,
+    headers: {
+      'Content-Type': 'application/json; charset=UTF-8'
+    },
+    body: JSON.stringify(body); // other data type is supported, apart from JSON
+  }
+
+  return fetch(url, options)
+  .then(res => res.json());
+}
+```
+
+
+
+### Headers: metadata
+
+we can tell the server which type of data we're sending in the body of the request, or an authentication token, for example.
+
+Hey server, my request has JSON data in the body:
+
+```js
+ headers: {
+   'Content-Type': 'application/json; charset=UTF-8'
+ },
+```
+
+
+
+### Browser support
+
+Fetch not supported by Opera Mini, but it could be polyfilled
+
+
+
+### Error handling when using fetch
+
+same as using XmlHttpRequest approach: we need to throw the error ourselves, in the case the request was sent, but the status is not in the 200 range:
+
+Challenge: if the request came with status not in 200 range, I wanna console.log(snapshoted res body) and throw an error saying that there was a problem server side)
+
+the problem is that:
+
+1. if I do res.json early in the code, I loose the status!
+
+2. and if I wanna do console.log(res.json()); it prints a Promise!
+
+it can be solved by using nested .then blocks 🪺
+
+```js
+  let hasErrorBeenThrown = false; 
+
+  return fetch(url, options)
+  .then(res => {
+    // I can still access the save Response object
+    if (res.status >= 200 && res.status < 300){
+      return res.json(); // returns the response body in JS format
+    } else {
+      return res.json()
+        .then(data => { // nested .then blocks will run and then the result will be returned the outer .then block
+        // being promisified automatically
+          console.log(data);// I wanna console log the res body! ✅
+          hasErrorBeenThrown = true;
+          throw new Error('oops, there was an error server side, status not in the 200 range');
+        })
+    }
+  })  
+  .catch(error => {
+    if (hasErrorBeenThrown){
+      throw error; // just forward the error
+    } else {
+      debugger;
+      console.log(error)
+      throw new Error('oops, the request didnt leave the browser'); // throw a new Error
+    }
+  })
+}
+```
+
+#### 👉Consider using a library (like Axios!) that has the error handling logic baked in a fn that wraps the fetch API👈
+
+
+
+### Working with FormData
+
+we can send JSON to ther server as a req body, but we can also send FormData
+
+the fetch API will add the right headers to tell the server that it's a FormData body,  not JSON
+
+the advantage over JSON? 
+
+1. we can append a file
+
+2. We can map the input values to the object FormData object created (mimiquing what the browser does by default when submiting forms)
+
+   Make sure you add the name attribute to the form inputs!!
+
+   
+
+````html
+<form>
+        <div class="form-control">
+          <label for="title">Title</label>
+          <input type="text" id="title" name="title"👈/>
+        </div>
+        <div class="form-control">
+          <label for="content">Content</label>
+          <textarea rows="3" id="content" name="body" 👈></textarea>
+        </div>
+        <button type="submit">ADD</button>
+      </form>
+````
+
+
+
+
+
+````js
+const formElement = document.getElementsByTagName('form')[0];
+
+
+const sendHttpRequest = (method, url, body) => {
+	const options = { // the headers are added by the fetch API automatically when it detects that the body is FormData
+    method,
+    body
+  }
+  
+  let hasErrorBeenThrown = false;
+
+  return fetch(url, options)
+  // more code here for error handling and converting response to JSON
+}
+
+const createPost = async (title, content) => {
+  const userId = Math.round(Math.random()*100);
+  // const post = {
+  //   title,
+  //   body: content,
+  //   userId
+  // }
+  const post = new FormData(formElement); // I pass the form Node here
+  post.append('userId', userId);
+  // I can append files, etc ✅
+
+  try {
+    const response = await sendHttpRequest('POST', 'https://jsonplaceholder.typicode.com/posts', post);
+    // more code here
+  }   
+````
+
+
+
+We can see under Network -> Fetch/XHR -> Payload:
+
+```js
+Form Data
+  title: hey
+  body: ho
+  userId: 94
+```
+
+
+
+### Let's use Axios!
+
+it's a breeze to handle error, so much detail in them!
+
+```js
+const fetchPosts = async () => {
+  try {
+		// it automatically converts response body to JSON
+    const {data: posts} = await axios.get('https://jsonplaceholder.typicode.com/postss');
+    debugger;
+    const tenPosts = posts.slice(0,10);
+    tenPosts.forEach(post => {
+      const postNode = document.importNode(postTemplateElement.content, true);
+      postNode.querySelector('h2').innerText = post.title;
+      postNode.querySelector('p').innerText = post.body;
+      postNode.querySelector('li').id = post.id;
+      // postNode.querySelector('button').addEventListener('click', deletePost.bind(null, post.id));
+      ulElement.append(postNode);
+    });
+  } catch (error){
+    debugger;
+    console.log(error.message);
+  }
+}
+```
+
+
+
+Wrong url error:
+
+```json
+{
+    "message": "Request failed with status code 404",
+    "name": "AxiosError",
+    "stack": "AxiosError: Request failed with status code 404\n    at https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js:1:21092\n    at XMLHttpRequest.d (https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js:1:21237)",
+    "config": {
+        "transitional": {
+            "silentJSONParsing": true,
+            "forcedJSONParsing": true,
+            "clarifyTimeoutError": false
+        },
+        "adapter": [
+            "xhr",
+            "http"
+        ],
+        "transformRequest": [
+            null
+        ],
+        "transformResponse": [
+            null
+        ],
+        "timeout": 0,
+        "xsrfCookieName": "XSRF-TOKEN",
+        "xsrfHeaderName": "X-XSRF-TOKEN",
+        "maxContentLength": -1,
+        "maxBodyLength": -1,
+        "env": {},
+        "headers": {
+            "Accept": "application/json, text/plain, */*"
+        },
+        "responseType": "json",
+        "method": "get",
+        "url": "https://jsonplaceholder.typicode.com/postss"
+    },
+    "code": "ERR_BAD_REQUEST",
+    "status": 404
+}
+```
+
+Offline (Network) error:
+
+```json
+{
+    "message": "Network Error",
+    "name": "AxiosError",
+    "stack": "AxiosError: Network Error\n    at u.onerror (https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js:1:21782)",
+    "config": {
+        "transitional": {
+            "silentJSONParsing": true,
+            "forcedJSONParsing": true,
+            "clarifyTimeoutError": false
+        },
+        "adapter": [
+            "xhr",
+            "http"
+        ],
+        "transformRequest": [
+            null
+        ],
+        "transformResponse": [
+            null
+        ],
+        "timeout": 0,
+        "xsrfCookieName": "XSRF-TOKEN",
+        "xsrfHeaderName": "X-XSRF-TOKEN",
+        "maxContentLength": -1,
+        "maxBodyLength": -1,
+        "env": {},
+        "headers": {
+            "Accept": "application/json, text/plain, */*"
+        },
+        "responseType": "json",
+        "method": "get",
+        "url": "https://jsonplaceholder.typicode.com/postss"
+    },
+    "code": "ERR_NETWORK",
+    "status": null
+}
+```
+
+Wow! 
+
+Let's POST some data!
+
+I don't need to add headers, telling the server which type of data I'm sending. It's added automatically!
+
+I don't need to convert the JS object to JSON!
+
+```javascript
+const createPost = async (title, content) => {
+  const userId = Math.round(Math.random()*100);
+  const post = {
+    title,
+    body: content,
+    userId
+  }
+  try {
+    const response = await axios.post('https://jsonplaceholder.typicode.com/posts', post);
+    console.log('post created with this data: ', response);
+  } catch (error) {
+    console.log(error.message);
+  }
+}
+```
+
+I can also pass a FormData object as `post` and that will be also have the headers automatically added!
+
+### CDN and their downside
+
+we import the whole library and we might be using just one or two functions, so not really optimised.
+
+It's better to have a buid process, install the library with npm and import the fns we need with require and so on
+
+
+
+### Modules
+
+we could split the code into multiple files and add them to the html
+
+```js
+<script src='file1.js'>
+<script src="file2.js">
+```
+
+Downsides:
+
+1. to many concurrent script downloads in the browser
+2. if file2.js uses things from file1.js and I change the order of the scripts, I get an error of x is not defined
+3. every new file created needs to be added to the HTML
+4. all the variables are in the global scope (e.g any other files can use them, provided the right file was imported before)
+5. 
