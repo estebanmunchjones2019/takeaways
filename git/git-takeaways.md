@@ -2034,11 +2034,9 @@ git push -u origin new-feature:tebi
 git push -u origin new-feature
 ```
 
-<<<<<<< HEAD
-### How to revert commits on master?
-=======
+
+
 ### How to revert commits on master? (didnt work, created a detached head)
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 
 ```bash
 $ git checkout <commit-id> .
