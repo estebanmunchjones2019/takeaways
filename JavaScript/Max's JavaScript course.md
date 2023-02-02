@@ -133,12 +133,9 @@ adding dinamyc values to strings:
 let fullName = 'Esteban ' + surname + ' some extra random surname'
 ```
 
-<<<<<<< HEAD
-the `+` operator here doesn't SUM numbers but it joins strings into a single one. Downside? messy syntax. It's better to do **strint interpolation**.
-=======
-the `+` operator here doesn't SUM numbers but it joins strings into a single one. Downside? messy syntax. It's better to do **string interpolation**.
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 
+
+the `+` operator here doesn't SUM numbers but it joins strings into a single one. Downside? messy syntax. It's better to do **string interpolation**.
 ### From top to bottom
 
 the JS code is **Parsed, compiled and executed** from **TOP to BOTTOM**
@@ -163,11 +160,9 @@ The above does print the single quote string on the html, yes!
 
 ### Template literals or string interpolation
 
-<<<<<<< HEAD
-is the solution to string concatenation, wich is ugly.
-=======
 is the solution to string concatenation, which is ugly.
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
+
+
 
 ```js
 let greeting = `Welcome onboard ${userName}`
@@ -245,12 +240,7 @@ function addNumbers (num1, num2) {
 
 we have the function keyword, the function name, the parameters, and the body of the function inside the {}.
 
-<<<<<<< HEAD
-#### IMPORTANT: usually no `;` is added after the the funcion `}` closing curly brace.
-=======
 #### IMPORTANT: usually no `;` is added after the the funcion `}` closing curly brace, in function declarations, but it's added to function expressions (functions saved in constants)
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
-
 `num1` variable is defined inside the function body of the function, which is a block, but can't be used outside the function.
 
 There are built in functions when the JS runs on the browser, thanks to the `window` objetc:
@@ -271,24 +261,14 @@ const result = addNumbers(1,2);
 
 ### The order in code matters
 
-<<<<<<< HEAD
-variables and constants should be declared (not neccessarly defined, with a value, or, in other words, initialize it) before using them.
-=======
 variables and constants should be declared (not neccessarly defined, with a value, or, in other words, initialized) before using them.
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
-
 ```js
 let greeting;
 
 console.log(greeting); // doesn't break the code, prints undefined
 ```
 
-<<<<<<< HEAD
-on the other hand, having functions declared with the keyword `function` can be place anywhere in the code, because the browser takes them to the top after parsing the JS code. This is called hoisting.
-=======
 on the other hand, having functions declared with the keyword `function` can be placed anywhere in the code, because the browser takes them to the top after parsing the JS code. This is called **hoisting**.
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
-
 ```js
 addNumbers (1,2); //works thanks to hoisting
 
@@ -330,11 +310,7 @@ function addNumber(num1, num2) {
     return result;
 }
 
-<<<<<<< HEAD
-// even calling addNumber(1,2) here doesn't make the result variable available outside the function
-=======
 // even calling addNumber(1,2) here doesn't make the `result` variable available outside the function
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 
 console.log(result); // will throw an error "result is not defined"
 ```
@@ -350,11 +326,7 @@ function greetUser(name) {
   alert(userName);
 }
 userName = 'Manu';
-<<<<<<< HEAD
-greetUser('Max');
-=======
 greetUser('Max'); // will still greet Max
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 ```
 
 the local `userName` variable inside the funtion is `shadowed`, so it doesn't overwrite the global variable, it's a different variable than the global one, named the same, inside the function block.
@@ -406,12 +378,7 @@ add
 
 are inputs for the function, that are available just inside the function, like local variables.
 
-<<<<<<< HEAD
-### Input values are always strings
-=======
 ### Input values from forms are always strings
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
-
 if you get a number from a form, the value is a string, so it's needs to be converted to a number:
 
 ```js
@@ -477,21 +444,14 @@ Using numbers inside a literal string, has `.toString()` applied to those number
 
 ```js
 const calcDescription = `${currentResult} + ${userInput.value}`
-<<<<<<< HEAD
-// it has currentResult.toString() under the hood
+
 ```
 
-## 
-=======
 // it has currentResult.toString() under the hood 😮
-```
-
-
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 
 ### Comments
 
-```js
+```
 // this is a comment
 
 /* this is a block comment
@@ -541,12 +501,7 @@ console.log(logEntries[1]) // returns undefined
 
 ### Console.log(myArray)
 
-<<<<<<< HEAD
-Funny facts: the order of the keys an an object may change, to be ****sorted alphabetically****:
-=======
 Funny facts: the order of the keys an an object may change, to be **sorted alphabetically** in the dev tools:
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
-
 ```js
 0:
  currentResult: 2
@@ -590,12 +545,7 @@ let someArray = [1];
 console.log(someArray[3]); // prints undefined
 ```
 
-<<<<<<< HEAD
-Never assign `undefined` manually to a variable!!
-=======
 ⚠️ Never assign `undefined` manually to a variable!!
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
-
 #### Null
 
 is **never** assumed by default, and is assigned manually to reset a variable
@@ -604,25 +554,18 @@ is **never** assumed by default, and is assigned manually to reset a variable
 userName = 'Esteban'
 
 // the form was submitted
-<<<<<<< HEAD
-// instead of assigning an empty string, null is assigned
-userName = null
-```
 
-`undefined & null` are great for managing empty data, either because it hasn't been set, or it has been reseted.
-=======
 // instead of re-assigning an empty string, null is assigned
 userName = null
 ```
 
 #### 💡 `undefined & null` are great for managing empty data, either because it hasn't been set, or it has been reseted.
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 
 #### NaN
 
 is NOT a `type` (is of type `number`) and can be used in calculations, is kind of an error code we get from a calculation (e.g multiplication of strings);
 
-```js
+```
 console.log(1/'a'); // prints NaN
 ```
 
@@ -647,15 +590,11 @@ typeof {name: "tebi"} // prints "object"
 typeof [1,2] // prints "object"
 ```
 
-<<<<<<< HEAD
-### Async and defer
-=======
 ### Async and defer: never blocks HTML parsing 😉
 
 #### ⚠️ make sure you start downloading your scripts in the head!
 
 Keep this word in mind: **HTML parsing**
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 
 If `JS` code depends on `HTML` (like accessing DOM elements), the `JS` files can be imported at the end of the `<body>`:
 
@@ -688,12 +627,7 @@ Option 1: (not recommended)
 </body>
 ```
 
-<<<<<<< HEAD
-It throws an error because the `JS` code targets DOM elements not yet parsed.
-=======
 ⚠️ It throws an error because the `JS` code targets DOM elements not yet parsed.
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
-
 ```bash
 Uncaught ReferenceError: addBtn is not defined
     at app.js:59
@@ -703,14 +637,9 @@ The download of the `JS` files blocks (or stops) the HTML parsing.
 
 ### Defer attribute: when the JS targets the DOM
 
-<<<<<<< HEAD
-it tells the browser to download the `JS` files straight away, no blocking the HTML parsing, and execute the `JS` after the HTML has been parsed.
-=======
 Download JS -> execute it when the HTML parsing finished.
 
 it tells the browser to download the `JS` files straight away, no blocking the **HTML parsing**, and execute the `JS` after the HTML has been parsed.
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
-
 ```html
 <head>
   <script src="assets/scripts/vendor.js" defer></script>
@@ -720,21 +649,14 @@ it tells the browser to download the `JS` files straight away, no blocking the *
 </body>
 ```
 
-<<<<<<< HEAD
-The time difference between the end of the HTML parse and the `Script execution` is much shorter than when importing the scripts at the end of the `<body>`.
-=======
 💡The time difference between the end of the HTML parse and the `Script execution` is much shorter than when importing the scripts at the end of the `<body>`.
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 
 With `defer` the scripts execution follows the order they're listed on the HTML.
 
 ### Async attribute: when the JS doesn't target the DOM
 
-<<<<<<< HEAD
-=======
 Download JS -> execute when finished downloading
 
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 when the  `JS` doesnt target the DOM, why bothering waiting for the HTML parse to finish? it just executes the `JS` when the download finished.
 
 ```html
@@ -748,12 +670,7 @@ when the  `JS` doesnt target the DOM, why bothering waiting for the HTML parse t
 
 when using `async` the order of the scripts executions depends on which one gets downloaded first.
 
-<<<<<<< HEAD
-`async & defer` doesn't have any effect when used here:
-=======
 ⚠️`async & defer` doesn't have any effect when used here:
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
-
 ```html
 //No effect!
 <script defer or async>
@@ -761,12 +678,7 @@ when using `async` the order of the scripts executions depends on which one gets
 </script>
 ```
 
-<<<<<<< HEAD
-because there's no such `JS` file to download.
-=======
 because there's no such `JS` file to download.😅
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
-
 ```html
 // DONT combine inline JS and src
 // the inline script will be ignored!
@@ -818,11 +730,7 @@ After hitting a `debugger` keyword in the code or `breakpoint` applied on the Ch
    currentResult += enteredNumber;
   ```
 
-<<<<<<< HEAD
-- down arrow: Step into next function call:
-=======
 - down arrow: Step into next function call (chain of function calls)
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 
 Will get you inside this function:
 
@@ -936,11 +844,7 @@ In order to get this booleans values, `boolean operators` are used:
 
 1) `==` and `!=` equal and un equal operators, they check value. e.g: `3 == '3'` return `true`
 
-<<<<<<< HEAD
-2) `===` and `!===` strict equan and un equal operators. They check value and type. e.g `3 === '3'` returns `false`.
-=======
 2) `===` and `!===` **strict** equal and un equal operators. They **check value and type**. e.g `3 === '3'` returns `false`.
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 
 3) `> >= ` and `< <=` for numbers and strings
 
@@ -957,20 +861,11 @@ event the content is the same, they're different pointers (not copies, like `str
 
 ### Early return
 
-<<<<<<< HEAD
-it's better to have early return, so the main logic is not nested in an `if` block:
-=======
 it's better to have early returns, so the main logic is not nested in an `if` block:
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
-
 ```javascript
 // early return
 const someFunction() {
-<<<<<<< HEAD
-    if (conditio I don't want) {
-=======
     if (condition I don't want) { ✅
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
         return
     }
 
@@ -979,11 +874,7 @@ const someFunction() {
 ```
 
 ```javascript
-<<<<<<< HEAD
-// nested main code here, bad practice
-=======
 // nested main code here, bad practice ❌
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 const someFunction() {
     if (condition I want) {
         //rest of the logic
@@ -998,11 +889,7 @@ Which operators are executed first by JS in the same line?
 ```javascript
 3 + 2 < 7 + 20 //returns true
 
-<<<<<<< HEAD
-// + operator has precedence over < operator        
-=======
 // + operator has precedence over < operator  (is executed first) 
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 ```
 
 check out the list of operators precedence here: [Operator precedence - JavaScript | MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Operator_Precedence)
@@ -1024,13 +911,8 @@ if("Hola"){// gets executed} // non-empty strings evaluate to true
 if(0){//doesn't get executed}
 if(-1){//gets executed} // numbers != 0 evaluate to true
 
-<<<<<<< HEAD
-if({}){// all objects are truthy}
-if([]){// all arrays are truthy}
-=======
 if({}){// all objects are truthy} ⚠️
 if([]){// all arrays are truthy} ⚠️
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 
 if(null) if(undefined) if(Nan){//all are falsy}
 ```
@@ -1069,12 +951,7 @@ function attack(mode) {
     if (mode === ATTACK) {...
 ```
 
-<<<<<<< HEAD
-write the string once, and use the variable instead, smart!
-=======
 write the string once, and use the variable instead, smart 💡!
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
-
 ### Declaring a constant with 2 possible values
 
 It's a great scenario for a `ternary operator`:
@@ -1083,12 +960,7 @@ It's a great scenario for a `ternary operator`:
 const userName = isLoggedIn ? 'Max' : null;
 ```
 
-<<<<<<< HEAD
-use for simple stuff, not nesting it, because gets unreadable.
-=======
 use for simple stuff, not nesting it, because gets unreadable ⚠️.
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
-
 ### Expression vs Statement
 
 ```js
@@ -1097,15 +969,10 @@ use for simple stuff, not nesting it, because gets unreadable ⚠️.
 isLoggedIn ? 'Max' : null;
 
 //statement. It CAN'T be used on the right hand side of assignment operators
-<<<<<<< HEAD
-const userName = isLoggedIn ? 'Max' : null;
 
-// an if STATEMENT is an example
-=======
 const username = const somethingelse ❌
 
 // an `if` STATEMENT is an example
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 ```
 
 ### Boolean tricks with logical operators
@@ -1175,12 +1042,7 @@ for (let i = 0; i < 10; i++){
 
 `i++` is a code that runs after every iteration.
 
-<<<<<<< HEAD
-### For of
-=======
 ### For of (arrays)
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
-
 ```js
  for (const el of log) {
     console.log(el);
@@ -1210,12 +1072,7 @@ let i = 0;
  }
 ```
 
-<<<<<<< HEAD
-### For in
-=======
 ### For in (objects)
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
-
 ```js
 const offer = {
         price: 10,
@@ -1384,19 +1241,11 @@ Var vs Let & Const
 
 1) **Better scoping**
 
-<<<<<<< HEAD
-`var` respects `global` and `function` scopes, while `let` and `const`  respects `curly braces` (present in for loops, if blocks, functions):
-
-```js
-const name = 'Max';
-
-=======
 #### Var = leaking from curly braces {}🚰 
 
 `var` respects `global` and `function` scopes, while **`let` and `const`  respects `curly braces`** (present in for loops, if blocks, functions):
 
 ```js
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 if (name === 'Max') {
     var hobbies = ['coding', 'cooking'];
 }
@@ -1407,36 +1256,21 @@ console.log(hobbies); // prints the hobbies, it was defined
 ```
 
 ```js
-<<<<<<< HEAD
-const name = 'Max';
-
-=======
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 if (name === 'Max') {
     let hobbies = ['coding', 'cooking'];
 }
-
 
 console.log(hobbies); // throws an error (not defined)
 // because let saw the curly braces!
 ```
 
-<<<<<<< HEAD
-So, using `var` causes variable polution, and using `const` and `let` keeps them better scoped.
-
-2. **Better variables and usage order declaration**
-   
-   variables with `var` can be declared at the bottom of the files, after they have been used.
-=======
-⚠️ So, **using `var` causes variable polution**, and using `const` and `let` keeps them better scoped.
+1. ⚠️ So, **using `var` causes variable polution**, and using `const` and `let` keeps them better scoped.
 
 
 
 2. **Better variables and usage order declaration**
    
-   ⚠️ variables with `var` can be declared at the bottom of the files, after they have been used.
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
-
+   ⚠️ variables with `var` can be declared at the bottom of the files, after they have been used
 ```js
 console.log(userName);
 var userName = "Max"; // returns `undefined` but not an error
@@ -1444,10 +1278,6 @@ var userName = "Max"; // returns `undefined` but not an error
 
 what happens is that the JS engine does this under the hood, with `hosting`:
 
-<<<<<<< HEAD
-=======
-
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 ```js
 var userName;
 
@@ -1458,11 +1288,6 @@ userName = "Max";
 
 but with `let` or `const`, an error is thrown:
 
-<<<<<<< HEAD
-=======
-
-
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 ```js
 console.log(userName);
 let userName = 'Max'; // throws this error:
@@ -1471,12 +1296,7 @@ let userName = 'Max'; // throws this error:
 
 we're forced into declaring the variable first and then use it.
 
-<<<<<<< HEAD
-=======
-
-
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
-3. Avoids redeclaring variables:
+3. **Avoids redeclaring variables**:
 
 ```js
 var userName = "Max";
@@ -1487,12 +1307,9 @@ let userName = "Manuel" // Throws an error!
 // Uncaught SyntaxError: Identifier 'userName' has already been declared
 ```
 
-<<<<<<< HEAD
-=======
 ⚠️ var allows re-declaring variables, the perfect recipe for disaster!
 
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
-4. Strict-mode can be enabled
+4. **Strict-mode can be enabled**
    
    use `use strict` mode at the file or function level, to avoid unexpected behaviours, that browser vendors do when executing the JS code. Generally, it's not neccessary.
    
@@ -1500,50 +1317,33 @@ let userName = "Manuel" // Throws an error!
    // behaviour no 1: assigning a non declared variable
    
    userName = 'Max' // assigning value to a non declared variable
-<<<<<<< HEAD
-   console.log(userName); // prints Max, wow!
-=======
    console.log(userName); // prints Max, wow! 
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
+   
    
    'use strict'
-   userName = 'Max'
-   console.log(userName); // throws an error
-<<<<<<< HEAD
-   // ncaught ReferenceError: userName is not defined
-=======
+    userName = 'Max'
+    console.log(userName); // throws an error
    // uncaught ReferenceError: userName is not defined
-   
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
-   ```
+
+​		  
 
 ```js
-   // behaviour no 2: assigning a reserved name
-   var undefined = 'foo' // doesnt throw an error
-<<<<<<< HEAD
+ // behaviour no 2: assigning a reserved name
+ var undefined = 'foo' // doesnt throw an error
 
-   'use strict'
-   var undefined = 'foo' // Uncaught TypeError: Cannot assign 
-   // to read only property 'undefined' of object '#<Window>'
+ 'use strict'
+ var undefined = 'foo' // Uncaught TypeError: Cannot assign 
+ // to read only property 'undefined' of object '#<Window>'
 
-=======
-   
-   'use strict'
-   var undefined = 'foo' // Uncaught TypeError: Cannot assign 
-   // to read only property 'undefined' of object '#<Window>'
-   
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
-   //using let or const, also disables this behaviour
-   let undefined = 'foo';
-   const undefined = 'foo'; // Uncaught SyntaxError: Identifier 
-   //'undefined' has already been declared
+
+ //using let or const, also disables this behaviour
+ let undefined = 'foo';
+ const undefined = 'foo'; // Uncaught SyntaxError: Identifier 
+ //'undefined' has already been declared
 ```
 
-<<<<<<< HEAD
-=======
 
 
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 ## JS engines and what they do
 
 #### Parsing and compilation
@@ -1552,11 +1352,6 @@ code is interpreted to `bytecode` (faster) and starts execution, but still low p
 
 What are browser APIs? bridges between the JS code and C++ code built in the browser, like `window.document`, etc
 
-<<<<<<< HEAD
-=======
-
-
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 #### Execution: inside the JS engine
 
 1) Managing memory: `heap` is long term memory. The `stack` is the short term memory and manages which function is executing and if there's a return, to which function is returning a value to.
@@ -1567,16 +1362,9 @@ What are browser APIs? bridges between the JS code and C++ code built in the bro
 
 2) Managing execution steps
 
-<<<<<<< HEAD
-### The `stack`
-
-=======
-
 
 ### The `stack`
 
-
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 the first thing to be pushed to the `stack` is all the code present in the file, and it's kind of wrapped in an `anonymous` function. Then, the function `greet()` is added to the top of the stack, so the thing on top of th stack is the thing that is currently running.
 Then, `getName()` is added to the top of the stack; Then `prompt()` is added to the top of the stack.
 
@@ -1604,11 +1392,6 @@ greet();
 
 The stack is a shortlive data structure to keep track of which functions are being executed.
 
-<<<<<<< HEAD
-=======
-
-
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 #### Debugger & the stack
 
 go to `Sources`, place a breakpoint, and the check the stack, you'll see the functions there stacked.
@@ -1617,26 +1400,13 @@ So to sum it up JS engine = heap + stack.
 
 If event listeners have been set up, the `Event loop` knows them and it will reach the JS engine and push callback functions to the stack.
 
-<<<<<<< HEAD
-### Primitive vs Reference values
-
-=======
-
 
 ### Primitive vs Reference values
 
-
-
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 #### Primitives
 
- are shared by copy
+ are shared by copy (they'r cheap to re-create! stored in the stack (short term things))
 
-<<<<<<< HEAD
-=======
-
-
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 ```js
 let name = "Max";
 let anotherName = name; // "Max" was copied, stored in the stack,
@@ -1648,22 +1418,13 @@ console.log(anotherName) // still prints "Max";
 
 name.length(), tells us that a string can be temparely be transformed to an object to access some properties.
 
-<<<<<<< HEAD
+
 #### Reference values:
 
 when assigning an object to a variable, the pointer is stored in that variable, not the object itself.
 
-=======
+they're expensive to re-create (stored in the heap)
 
-
-#### Reference values:
-
-
-when assigning an object to a variable, the pointer is stored in that variable, not the object itself.
-
-
-
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 ```js
 let userData = {
     name: 'tebi',
@@ -1679,10 +1440,6 @@ console.log(newUserData.name) = 'Sarah';
 
 How to avoid mutating the object? cloning objects and arrays
 
-<<<<<<< HEAD
-=======
-
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 ```js
 let newUserData = {...userData};
 userData.name = 'Sarah'; // 
@@ -1690,20 +1447,10 @@ console.log(newUserData.name) = 'tebi'; // different pointer
 // it's pointing to another object, a clone one
 ```
 
-<<<<<<< HEAD
-=======
-
-
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 ### Garbage collection
 
 JS engines have garbage collectors that delete stored things in the heap.
 
-<<<<<<< HEAD
-=======
-
-
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 ```js
 let person = {name: 'Max'};
 person = null; 
@@ -1719,11 +1466,6 @@ when you keep having references to objects in the code, but you don't use them, 
 
 adding `click` event listeners to a button will always result on event listener replacement `if the same function pointer is passed as callback`, so a button will woun't trigger 2 callback functions.
 
-<<<<<<< HEAD
-=======
-
-
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 ```js
 function print() {
     console.log('button clicked');
@@ -1742,9 +1484,6 @@ someHtmlElement.addEventListener('click', function() {console.log('button clicke
 // 2 functions that do the same are stored in the heap!
 // that's a memory leak;
 ```
-<<<<<<< HEAD
-=======
-
 
 
 ## More on functions
@@ -7522,4 +7261,4 @@ Downsides:
 3. every new file created needs to be added to the HTML
 4. all the variables are in the global scope (e.g any other files can use them, provided the right file was imported before)
 5. 
->>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
+
