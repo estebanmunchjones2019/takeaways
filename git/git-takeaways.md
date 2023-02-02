@@ -2041,6 +2041,14 @@ $ git checkout <commit-id> .
 $ git add .
 $ git commit -m "Reverting to <commit-id>"
 $ git push -u origin <branch-name>
+
+
+Or
+
+$ git reset <commit-id>
+$ git checkout .
+$ git commit -m "Reverting to <commit-id>"
+$ git push -u origin <branch-name>
 ```
 
 ### Don't forget the period `.`when checking out   How to pull a remote branch?

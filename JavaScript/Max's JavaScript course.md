@@ -1271,8 +1271,6 @@ console.log(hobbies); // throws an error (not defined)
 
 So, using `var` causes variable polution, and using `const` and `let` keeps them better scoped.
 
-
-
 2. **Better variables and usage order declaration**
    
    variables with `var` can be declared at the bottom of the files, after they have been used.
@@ -1284,7 +1282,6 @@ var userName = "Max"; // returns `undefined` but not an error
 
 what happens is that the JS engine does this under the hood, with `hosting`:
 
-
 ```js
 var userName;
 
@@ -1295,8 +1292,6 @@ userName = "Max";
 
 but with `let` or `const`, an error is thrown:
 
-
-
 ```js
 console.log(userName);
 let userName = 'Max'; // throws this error:
@@ -1304,8 +1299,6 @@ let userName = 'Max'; // throws this error:
 ```
 
 we're forced into declaring the variable first and then use it.
-
-
 
 3. Avoids redeclaring variables:
 
@@ -1317,8 +1310,6 @@ let userName = "Max";
 let userName = "Manuel" // Throws an error!
 // Uncaught SyntaxError: Identifier 'userName' has already been declared
 ```
-
-
 
 4. Strict-mode can be enabled
    
@@ -1334,24 +1325,21 @@ let userName = "Manuel" // Throws an error!
    userName = 'Max'
    console.log(userName); // throws an error
    // ncaught ReferenceError: userName is not defined
-   
    ```
 
 ```js
    // behaviour no 2: assigning a reserved name
    var undefined = 'foo' // doesnt throw an error
-   
+
    'use strict'
    var undefined = 'foo' // Uncaught TypeError: Cannot assign 
    // to read only property 'undefined' of object '#<Window>'
-   
+
    //using let or const, also disables this behaviour
    let undefined = 'foo';
    const undefined = 'foo'; // Uncaught SyntaxError: Identifier 
    //'undefined' has already been declared
 ```
-
-
 
 ## JS engines and what they do
 
@@ -1360,8 +1348,6 @@ let userName = "Manuel" // Throws an error!
 code is interpreted to `bytecode` (faster) and starts execution, but still low performance, so it's then compiled to `machine code` (OS code) that runs on the chip.
 
 What are browser APIs? bridges between the JS code and C++ code built in the browser, like `window.document`, etc
-
-
 
 #### Execution: inside the JS engine
 
@@ -1373,10 +1359,7 @@ What are browser APIs? bridges between the JS code and C++ code built in the bro
 
 2) Managing execution steps
 
-
-
 ### The `stack`
-
 
 the first thing to be pushed to the `stack` is all the code present in the file, and it's kind of wrapped in an `anonymous` function. Then, the function `greet()` is added to the top of the stack, so the thing on top of th stack is the thing that is currently running.
 Then, `getName()` is added to the top of the stack; Then `prompt()` is added to the top of the stack.
@@ -1405,8 +1388,6 @@ greet();
 
 The stack is a shortlive data structure to keep track of which functions are being executed.
 
-
-
 #### Debugger & the stack
 
 go to `Sources`, place a breakpoint, and the check the stack, you'll see the functions there stacked.
@@ -1415,17 +1396,11 @@ So to sum it up JS engine = heap + stack.
 
 If event listeners have been set up, the `Event loop` knows them and it will reach the JS engine and push callback functions to the stack.
 
-
-
 ### Primitive vs Reference values
-
-
 
 #### Primitives
 
  are shared by copy
-
-
 
 ```js
 let name = "Max";
@@ -1438,14 +1413,9 @@ console.log(anotherName) // still prints "Max";
 
 name.length(), tells us that a string can be temparely be transformed to an object to access some properties.
 
-
-
 #### Reference values:
 
-
 when assigning an object to a variable, the pointer is stored in that variable, not the object itself.
-
-
 
 ```js
 let userData = {
@@ -1462,7 +1432,6 @@ console.log(newUserData.name) = 'Sarah';
 
 How to avoid mutating the object? cloning objects and arrays
 
-
 ```js
 let newUserData = {...userData};
 userData.name = 'Sarah'; // 
@@ -1470,13 +1439,9 @@ console.log(newUserData.name) = 'tebi'; // different pointer
 // it's pointing to another object, a clone one
 ```
 
-
-
 ### Garbage collection
 
 JS engines have garbage collectors that delete stored things in the heap.
-
-
 
 ```js
 let person = {name: 'Max'};
@@ -1492,8 +1457,6 @@ Nowadays, browsers are intelligent enough to check if `person` is being used or 
 when you keep having references to objects in the code, but you don't use them, so it's means keeping space in memory for nothing.
 
 adding `click` event listeners to a button will always result on event listener replacement `if the same function pointer is passed as callback`, so a button will woun't trigger 2 callback functions.
-
-
 
 ```js
 function print() {
