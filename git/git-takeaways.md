@@ -2034,13 +2034,18 @@ git push -u origin new-feature:tebi
 git push -u origin new-feature
 ```
 
+<<<<<<< HEAD
 ### How to revert commits on master?
+=======
+### How to revert commits on master? (didnt work, created a detached head)
+>>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 
 ```bash
 $ git checkout <commit-id> .
 $ git add .
 $ git commit -m "Reverting to <commit-id>"
 $ git push -u origin <branch-name>
+<<<<<<< HEAD
 
 
 Or
@@ -2052,6 +2057,21 @@ $ git push -u origin <branch-name>
 ```
 
 ### Don't forget the period `.`when checking out   How to pull a remote branch?
+=======
+```
+
+Don't forget the period `.`when checking out   
+
+```
+git reset --hard HEAD~1
+```
+
+HEAD~1 is a shorthand for the commit before head. Alternatively you can refer to the SHA-1 of the hash you want to reset to. Note that when using --hard any changes to tracked files in the working tree since the commit before head are lost.
+
+
+
+### How to pull a remote branch?
+>>>>>>> b44fece963608e2f2308836159fe01a1b75eb2e4
 
 ```
 git pull {repo} {remotebranchname}:{localbranchname}
@@ -2064,3 +2084,14 @@ When you are on the master branch you also could first checkout a branch like:
 ```
 git checkout -b xyz
 ```
+
+
+
+How to abort merge with untracked files?
+
+https://stackoverflow.com/questions/4858047/gitignore-and-the-following-untracked-working-tree-files-would-be-overwritten
+
+```
+git clean  -d  -f .  
+```
+
