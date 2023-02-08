@@ -7247,6 +7247,8 @@ It's better to have a buid process, install the library with npm and import the 
 
 ### Modules
 
+How not to split the code:
+
 we could split the code into multiple files and add them to the html
 
 ```js
@@ -7257,8 +7259,685 @@ we could split the code into multiple files and add them to the html
 Downsides:
 
 1. to many concurrent script downloads in the browser
+
 2. if file2.js uses things from file1.js and I change the order of the scripts, I get an error of x is not defined
+
 3. every new file created needs to be added to the HTML
-4. all the variables are in the global scope (e.g any other files can use them, provided the right file was imported before)
-5. 
+
+4. #### 👉all the variables are in the global scope🤭 (e.g any other files can use them, provided the right file was imported before)👈
+
+
+
+#### How to switch to modules?
+
+1. add the word `export` before the things you want to reuse in files
+
+2. add:
+   ````js
+   <script src="someFile" type="module"
+   ````
+
+it tells the browser: hey! that script, and any scripts referenced by it will use modules
+
+But I get this error! 🚨
+
+````js
+Access to script at 'file:///Users/estebanmunchjones/Documents/Coding/javascript-the-complete-guide-code/arrays-04-splice/app.js' from origin 'null' has been blocked by CORS policy: Cross origin requests are only supported for protocol schemes: http, data, isolated-app, chrome-extension, chrome, https, chrome-untrusted.
+````
+
+As scripts can import scripts (maybe from other domains!), the browser needs to be careful
+
+#### 👉The problem is that we'r serving the html file with the `File protocol`, different that how to browser receives an html page from a web server👈
+
+### We need a development server!
+
+````bash
+$ npm i -g serve
+````
+
+then serve the project with that, and the error should be gone at `http://localhost:3000/` 🎉
+
+### How to change the global node version?
+
+````bash
+$ node -v // 10.0.0 (I don't like it)
+
+$ nvm install 18.13.0
+
+$ node -v //18.13.0
+````
+
+
+
+Let's import things!
+
+```js
+<script src="app.js" defer type="module"></script>
+```
+
+````js
+// component.js
+export const Button = () => {
+    const buttonElement = document.createElement('button');
+    buttonElement.textContent = 'click me';
+    document.body.append(buttonElement);
+}
+````
+
+Using just `export` , means we could be exporting multiple things in the file by using that keyword multiple times
+
+```js
+// component.js // named exports, the best approach! ✅
+export fn1(){}
+export fn2(){}
+```
+
+````js
+//app.js // the entry point file or root
+import {fn1, fn2} from './component.js';
+````
+
+If I wanna export just one thing, I can use `export default` and then `import Button from '/.path.js'`, but has the downside of wild-west naming when using it ❌, more about it in the coming blocks
+
+````js
+// app.js
+// let's pick one of the things exported from that module
+import { Button} from './component.js'; //👈 .js or some people will use .mjs (stands for `module`)
+
+import {} from './component';
+
+Button();
+````
+
+Autocompletion trick:
+
+```
+import { // ctrl + space wil pop up Button} from './component';
+```
+
+please check for referenced things in a module that are referenced at run time!
+
+````js
+//e.g
+someElement.addEventListener('click', () => {
+	someImportedFn();
+})
+````
+
+make sure you run the code in the browser to find those missing imports!!
+
+
+
+### Named exports syntax variations
+
+**Bundling multiple exports**
+
+what if I want to import all things exported from a file?
+
+```js
+import * as Components from './components.js'; // we bundle all exports in a Module object
+
+Components.Button();
+Components.Paragraph();
+
+console.log(Components);
+
+// Module
+Button: (...)
+Paragraph: (...)
+Symbol(Symbol.toStringTag): "Module"
+get Button: ƒ ()
+set Button: ƒ ()
+get Paragraph: ƒ ()
+set Paragraph: ƒ ()
+```
+
+**Renaming imports**
+
+by asigning an alias
+
+````js
+import { Button as RenamedButton }
+````
+
+**Export default**
+
+````js
+export const Button = function(){}
+
+export const Paragraph = function(){}
+
+// we can have just one default export per file
+export default function(){alert('boooo')} // ❌ wild west naming! 🤠
+````
+
+````js
+import 👉booFunction, {Button as RenamedButton, Paragraph}from './components.js';
+
+// debugger;
+
+RenamedButton();
+Paragraph();
+
+booFunction();
+````
+
+I just imported outside the brackets and name it whatever, wild west mess 🤠❌
+
+### Network tab
+
+the network tab has `app.js` and `components.js` files requested. That's not ideal, I want bundled JS, otherwise it's consuming the max concurrent number of files that the browser can download, latency of requests, parsing the JS, etc, etc, there a lot of "dead time"
+
+### Dynamic imports (load modules conditionally)
+
+Static imports will request the files when the importer file executes e.g app.js
+
+```js
+// static imports, statically defines the dependancy of a file
+// at the top of the file
+import {Button, Paragraph} from './components.js';
+```
+
+Dynamic imports will only be loaded when when something that we don't control happens (e.g click event)
+
+Lazy loading uses this feature (maybe when the user scrolls down or we load certain routes?)
+
+```js
+import {Button} from './components.js';
+
+const buttonElement = Button();
+
+buttonElement.addEventListener('click', async () => {
+  const module = await 👉import('./more-components.js');
+  module.Card();
+});
+```
+
+```js
+// more-components.js
+export const Card = () => {
+    // fake card here XD
+    alert('card component rendered!');
+}
+
+console.log('this will run once, even if the file is imported in many places, e.g the button clicked many times'); // 😦
+```
+
+so, non exported code also runs (once), because the file is executed in the browser
+
+When it's imported for the first time in the code, then the network request happens
+
+It wouldn't make sense to have a lot of network requests for the same file
+
+#### 👉Non exported code (with the keyword `export`) DOES execute👈 👆👆👆👆👆
+
+But it's not polluting the global namespace (e.g there won't be name clashing)
+
+### Scope
+
+let's try declaring a variable and then try to declare it again in the root file
+
+```js
+// components.js
+export const Button = () => {
+    const buttonElement = document.createElement('button');
+    buttonElement.textContent = 'click me';
+    document.body.append(buttonElement);
+    return buttonElement;
+}
+
+let tryingScope = true;
+```
+
+
+
+````js
+import {Button} from './components.js';
+
+console.log(tryingScope);// 😦
+````
+
+every module has access to the window object.
+
+Modules run on strict mode, so `this` is `undefined`:
+
+````js
+// someFile.js
+console.log(this); // undefined
+````
+
+we could share variables between modules by appending things to the window object, but use it as a last resort (not available in Node) ❌
+
+````js
+// file1.js
+window.isAuth = true;
+````
+
+````js
+// file2.js
+console.log(window.isAuth);
+````
+
+The best option is to use `globalThis` variable, available in the browser and in Node ✅ (use this as a last resort, use exports and imports to share things accross the app).
+
+````js
+// file1.js
+globalThis.isAuth = true;
+
+// file2.js
+console.log(globalThis.isAuth);
+````
+
+globalThis points to the window object in modules:
+
+````js
+console.log(globalThis); // Window(with all the props and methods)
+````
+
+
+
+### Tooling
+
+at the moment, using modules, we have these limitations:
+
+1.  lot of http request to download each JS file (Webpack)
+2. Code not optimised (white spaces, long variable names, etc) (not minified) (Webpack Optimiser)
+3. Browser support (some browsers won't understand some of my modern code) (Babel)
+4. No hot reload (I need to refresh the page after changing things in my code)(I need automatic reloads!) (webpack-dev-server)
+5. Code quality not checked (usage of let when not needed, super nested ternary expressions, etc)(ESLint)
+6. 
+
+what tools have we used so far?
+
+1. Web server (serve): to avoid cors erros when importing modules
+
+### Workflow
+
+**Development**
+
+- I wanna trigger the tooling process upon Save
+- I wanna have 
+  - Linting 
+  - Bundling 
+  - reloading the page
+
+**Production**:
+
+- I wanna trigger the tooling process upon a command
+- I wanna have:
+  -  Linting 
+  - Bundling 
+  -  Compilation 
+  -  optimisation
+
+### Settiing up an npm project
+
+1. run `npm init`.
+
+ It creates a package.json file
+
+### Installing eslint package
+
+1. at the root of your project, run `npm i --save-dev eslint`
+
+I want it to be a dev dependancy, only used on my laptop during dev, and it's not gonna be imported when creating the production bundle
+
+it looks like this:
+````json
+// package.json
+{
+  "devDependencies": {
+    "eslint": "^8.33.0" // carret symbol means any higher version will work
+  },
+}
+````
+
+
+
+2. if `git init` was run before, but no `.gitignore` file wasn't created, please create one and add `node_modules` to it.
+
+### Let's set up ESLint
+
+1. go to VSCode
+2. install the ESLint plugin
+3. Close and open VSCode
+4. Enable it by going the the command pallet cmd + shif + p
+5. Choose `Enable ESLint` ❌ (couldn't find this option)
+6. Choose `ESLint: Create ESLint Configuration`. 
+7. I had to downgrade eslint `npm i --save-dev eslint@7.19.0`
+8. I'll get a .eslintrc.json (or other format) file added to the project
+
+Hot tip: how to enable seeing the ESLint output when going to the tab near Terminal called `Outputs`? just use the dropdown and select ESLint, that save my butt!
+
+9. Use double quotes:
+   ```
+   // app.js
+   const name = "esteban"
+   ```
+
+   close vscode and reopen it (we'll run a command later on, but needs to be defined in package.json first)
+
+10. The error should be highlighted in red!
+    ````text
+    Combine this with the previous 'const' statement.eslintone-var
+    Strings must use singlequote.eslintquotes
+    ````
+
+    
+
+11. We can disable rules per line basis, by clicking on `Quick Fix`, as a last resort.
+
+    ````
+    // eslint-disable-next-line quotes
+    const name = "esteban";
+    ````
+
+12. Autompletion trick: in the `.eslintrc.json` file, to see the options for the values, just type `ctrl + space`💡
+
+13. Fix all errors at once in a file: command pallete + `ESLint: Fix all autofixable errors`
+
+14. Loking for errors visually is a pain. Let's find errors with the ESLint CLI:
+    ````bash
+    // let's imagine we have /scripts/app.js and /scripts/components.js
+    
+    // run on all files inside a folder
+    // npx will runs the file "eslint" found on the /node_modules/eslint/eslint.js? (tbc)
+    $ npx eslint /scripts/**
+    
+    //run on a single file
+    $ npx eslint app.js
+    ````
+
+15. Let's add a lint script to package.json
+
+    ````json
+    "scripts": {
+    	"lint": "eslint src/**"
+    }
+    ````
+
+    we can then run that with:
+
+    ```bash
+    $ npm run lint
+    ```
+
+### Let's bundle the code!
+
+1. ````bash
+   $ npm i --save-dev webpack webpack-cli
+   ````
+
+2. create this file manually: `webpack.config.js`
+
+3. Webpack will import this file (running on Node) to bundle my code:
+
+4. ````js
+   // commonJS syntax for this backend file
+   module.exports = {}
+   ````
+
+5. Reorganise the procjet folder, so we have:
+
+   ````js
+   // the input files will be inside src, or whatever folder name you prefer
+   src
+   	app.js
+   	component.js
+   
+   // the output file here, nested inside some folders
+   assets
+   	scripts
+     	bundledFileHere!
+   ````
+
+6. Add the entry point (root file) and the output
+
+   ````js
+   module.exports = {
+       entry: './src/app.js',
+       output: {
+           // relative path to this file
+           filename: 'app.js',
+           // absolute path, as a new file needs to be created using the fs
+           path: path.resolve(__dirname, 'assets', 'scripts')
+       }
+   }
+   ````
+
+7. Add a script to package.json:
+
+   ````
+   ````
+
+8. Run the command:
+
+9. We might get an error when building it, for really new js code, like fields:
+
+   ```js
+   class {
+   	someField = 'tebi', // ❌ webpack build will fail, webpack doesn't understand this syntax
+       // this can be fixed ✅ using a LOADER (check out the section `Browser support` in the course)
+   	constructor(){}
+   }
+   ```
+
+10. Let's run the build script:
+
+    ````bash
+    $ npm run build
+    ````
+
+    I got an error because I was using node v.10.0.0. how to change that default version of node nvm uses on every project?
+
+    ````bash
+    $ node -v // v.10.0.0
+    $ nvm alias default //v.10.0.0
+    
+    $nvm ls // to print all version downloaded
+    $ nvm alias default v18.13.0
+    $ nvm use default
+    $ node -v // 18.13.0 ✅
+    ````
+
+11. We can get rid off the `.js` file extensions on every file, as webpack is smar enough!
+
+    ````js
+    import {Button} from './component.js'; ✅
+    import {Button} from './component'; ✅
+    ````
+
+12. Let's look at the output!
+
+    ````js
+    assets
+    	scripts
+    		app.js // static imports
+    		207.app.js // dynamic imports
+    ````
+
+    a quick recap of my /src/app.js
+
+    ```js
+    import {Button, Paragraph} from './components.js'; // static imports
+    
+    const buttonElement = Button();
+    
+    buttonElement.addEventListener('click', async () => {
+      const module = await import('./more-components.js'); // dynamic import
+      module.Card();
+    });
+    
+    Paragraph();
+    ```
+
+After I click the button, then the 207.app.js file will be requested to the server. Wow!!!😮🎉
+
+
+
+### Let's not optimise too much: setting up the development mode
+
+```js
+//webpack.config.js
+module.exports = {
+  mode: 'development'
+}
+```
+
+Then, the files generated are not optimised, but still hard to debug maybe.
+
+If the dynamic bundle wasn't found, check on which url it was requested to, e.g `localhost:3000/0.app.js` ❌, so you might need to add this to the webpack config:
+````js
+//webpack.config.js
+module.exports = {
+  publicPath: 'assets/scripts/'
+}
+````
+
+
+
+### let's get some hot reload
+
+```bash
+$ npm i --save-dev webpack-dev-server
+// OR
+$npm i webpack-dev-server -D
+```
+
+I had to add this to the config, telling webpack where is my html file (root of the project in this case):
+
+```js
+// webpack.config.js
+module.exports = {
+  devServer: {
+        static: {
+            directory: path.resolve(__dirname)
+        }
+    }
+}
+```
+
+we need to add a script:
+
+````json
+// package.json
+"scripts": {
+  "build:dev": "webpack-dev-server"
+}
+````
+
+
+
+then we run:
+
+````bash
+$ npm run build:dev
+````
+
+and that will spin up a dev server that will be restarted after changes on js files 
+
+Please fix the connecting and disconnecting issues in the console ❌
+
+The logs in the terminal saying `Compiled` after I make changes, doesn't mean that the build is happening!
+
+The new bundle is stored in memory (it's a JS file)
+
+We need to tell webpack-dev-server to serve that file in memory, by passing the path of where the original (built) files  live!
+
+````js
+ output: {
+        // relative path to this file
+        filename: 'app.js',
+        // absolute path, as a new file needs to be created using the fs
+        path: path.resolve(__dirname, 'assets', 'scripts'),
+        👉publicPath: '/assets/scripts/' // basically, same path as above in different format
+    },
+````
+
+### Let's debug by adding source maps!
+
+I wanna see the code as I wrote it, inside Sources tab in dev tools:
+
+I still have a webpack folder under Sources, `.` folderbut app.js is empty (now, in webpack 5, the files are inside a file named as the project, and the other files have been tweaked by webpack, so they'r not the originals.
+
+````js
+// webpack.config.js
+module.exports = {
+  devtool: 'eval-cheap-module-source-map'// suitable for development, not prod, too slow to be spit out
+}
+````
+
+
+
+That level of source maps detail is too slow to generate for production, so I'll have a different one for prod.
+
+### Let's set up a production workflow
+
+we need a new webpack.config file!
+
+````js
+// webpack.config.prod.js
+const path = require('path');
+
+module.exports = {
+    mode: 'production',
+    entry: './src/app.js',
+    output: {
+        // relative path to this file
+        filename: 'app.js',
+        // absolute path, as a new file needs to be created using the fs
+        path: path.resolve(__dirname, 'assets', 'scripts'),
+        publicPath: '/assets/scripts/'
+    },
+    devServer: {
+        static: {
+            directory: path.resolve(__dirname)
+        },
+    },
+    devtool: 'source-map'
+
+}
+````
+
+````json
+// package.json
+{
+  "scripts": {
+		"build:prod": "webpack --config webpack.config.prod.js"    
+  }
+}
+ 
+````
+
+I can see the prod source maps after running:
+
+```bash
+$ serve
+```
+
+(it's not the script server, neither a webpack-dev-server thing, it uses the npm package `serve` installed globally)
+
+
+
+### Optimisations
+
+the `/assets/script` folder is getting messy; let's delete the content and replace it every time a build process happens.
+
+````bash
+$ clean-webpack-plugin
+````
+
+````js
+// webpack.config.js
+// webpack.config.prod.js
+const CleanPlugin = require('clean-webpack-plugin');
+
+module.exports = {
+   plugins: [
+        new CleanPlugin.CleanWebpackPlugin()
+    ]
+}
+````
+
+
 
