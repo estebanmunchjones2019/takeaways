@@ -7921,7 +7921,7 @@ $ serve
 
 ### Optimisations
 
-the `/assets/script` folder is getting messy; let's delete the content and replace it every time a build process happens.
+1. the `/assets/script` folder is getting messy; let's delete the content and replace it every time a build process happens.
 
 ````bash
 $ clean-webpack-plugin
@@ -7939,5 +7939,134 @@ module.exports = {
 }
 ````
 
+💡Side note: If we run `npm run serve` before doing any build, the `assets/scripts/` folder will be empty, because the compiled JS is served from memory.
 
+Plugins can modify the output of webpack
 
+2. Force cache in the FE by renaming files after every build
+
+   This can also be fixed by sending the appropriate headers from the server (maybe the cache policy prop in the headers?)
+
+   Browsers usually store CSS and JS and re-use them on the next visits to the page
+
+   ````js
+   // webpack.config.prod.js
+   module.exports = {
+       mode: 'production',
+       entry: './src/app.js',
+       output: {
+           // relative path to this file
+           filename: '👉[contenthash].app.js',
+   ````
+
+   That will generate jfunarfiuanegreia.app.js file names, that need to be referenced in the HTML <script> tag, so that's not very handy! ❌
+
+### Using 3rd part libraries!
+
+let's use Loadash difference function https://www.npmjs.com/package/lodash.difference:
+
+````js 
+// if we only use one thing from loadash
+$ npm i  lodash.difference 
+const difference = require('lodash.difference');
+
+// if we're gonna use more than one method
+$ npm i loadash
+import { difference } from "lodash";
+````
+
+Here are the final files
+
+````json
+// package.json
+{
+  "name": "arrays-04-splice",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:dev": "webpack",
+    "build:prod": "webpack --config webpack.config.prod.js",
+    "serve": "webpack-dev-server",
+    "lint": "eslint src/**"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "clean-webpack-plugin": "^4.0.0",
+    "eslint": "^7.32.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "webpack": "^5.75.0",
+    "webpack-cli": "^5.0.1",
+    "webpack-dev-server": "^4.11.1"
+  },
+  "description": "",
+  "dependencies": {
+    "lodash": "^4.17.21",
+    "lodash.difference": "^4.5.0"
+  }
+}
+````
+
+````js
+// webpack.config.js
+const path = require('path');
+const CleanPlugin = require('clean-webpack-plugin');
+
+module.exports = {
+    mode: 'development',
+    entry: './src/app.js',
+    output: {
+        // relative path to this file
+        filename: 'app.js',
+        // absolute path, as a new file needs to be created using the fs
+        path: path.resolve(__dirname, 'assets', 'scripts'),
+        publicPath: '/assets/scripts/'
+    },
+    devServer: {
+        static: {
+            directory: path.resolve(__dirname)
+        },
+    },
+    devtool: 'eval-cheap-module-source-map',
+    plugins: [
+        new CleanPlugin.CleanWebpackPlugin()
+    ]
+
+}
+````
+
+````js
+// webpack.config.prod.js
+const path = require('path');
+const CleanPlugin = require('clean-webpack-plugin');
+
+module.exports = {
+    mode: 'production',
+    entry: './src/app.js',
+    output: {
+        // relative path to this file
+        filename: '[contenthash].app.js',
+        // absolute path, as a new file needs to be created using the fs
+        path: path.resolve(__dirname, 'assets', 'scripts'),
+        publicPath: '/assets/scripts/'
+    },
+    devtool: 'source-map',
+    plugins: [
+        new CleanPlugin.CleanWebpackPlugin()
+    ]
+}
+````
+
+### LocalStorage
+
+store things that can be converted to strings: strings, numbers, booleans
+
+````js
+// getting an item is synchronous, no need to wait for a promise to resolve, or pass a callback
+
+````
+
+Important: all the frontend code + data stored in the browser (localStorage, sessionStorage, IndexedDB, Cookies) can be deleted or modified by the user!
+
+Important: WebSQL has been deprecated
