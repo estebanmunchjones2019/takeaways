@@ -8070,3 +8070,59 @@ store things that can be converted to strings: strings, numbers, booleans
 Important: all the frontend code + data stored in the browser (localStorage, sessionStorage, IndexedDB, Cookies) can be deleted or modified by the user!
 
 Important: WebSQL has been deprecated
+
+
+
+### IndexDB
+
+Working with the API is a pain, so it's better to use this library: https://github.com/jakearchibald/idb
+
+`````js
+// open a connection
+const dbRequest = indexedDB.open('Demo', 1);
+
+dbRequest.onsuccess 👈 (wrong method! ❌) = event => {
+  const db = event.target.result
+
+  // let's create a Products store
+  const objectStore = db.createObjectStore('products', {keyPath: 'id'});
+
+  // let's react to the successful object store creation
+  objectStore.transaction.oncomplete = () => {
+
+    const productStore = db.transaction('products', 'readwrite').objectStore('products');
+
+    // let's add an object (it's an object store!) to the products store
+    // we could add any fields we want
+    // it should have that keyPath (id)
+    productStore.add({
+      id: 'p1',
+      title: 'burger',
+      ingredients: ['bread', 'meat']
+    });
+  }
+};
+
+dbRequest.onerror = event => {
+  console.log(event);
+};
+
+// we get this error! ❌
+
+// Uncaught DOMException: Failed to execute 'createObjectStore' on 'IDBDatabase': The database is not // running a version change transaction.
+//    at dbRequest.onsuccess (webpack-internal:///./src/app.js:66:26)
+`````
+
+let's make it work!
+
+````js
+// change this
+dbRequest.onsuccess = event ={ // ❌
+// for this
+dbRequest.onupgradeneeded = event => { // ✅
+````
+
+really clunky!🚨 I had to change the version number, so `onupgradeneeded` could be fired.
+
+And then I had the delete the DB, and refresh the page, what????
+
