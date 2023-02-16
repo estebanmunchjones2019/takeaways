@@ -8060,14 +8060,19 @@ module.exports = {
 
 ### LocalStorage
 
-store things that can be converted to strings: strings, numbers, booleans
+store things that can be converted to strings: strings, numbers, booleans, or anything converted into JSON (objects, arrays, etc)
 
 ````js
-// getting an item is synchronous, no need to wait for a promise to resolve, or pass a callback
+localStorage.setItem('token', 'jsnfianrgiaenrg');
 
+localStorage.getItem('token'); // 'jsnfianrgiaenrg' 
+
+// getting an item is synchronous 🏎, no need to wait for a promise to resolve, or pass a callback
 ````
 
 Important: all the frontend code + data stored in the browser (localStorage, sessionStorage, IndexedDB, Cookies) can be deleted or modified by the user!
+
+Important: browsers might delete that data if running out of space
 
 Important: WebSQL has been deprecated
 
@@ -8125,4 +8130,129 @@ dbRequest.onupgradeneeded = event => { // ✅
 really clunky!🚨 I had to change the version number, so `onupgradeneeded` could be fired.
 
 And then I had the delete the DB, and refresh the page, what????
+### Let's try storing an object
+
+````js
+const user = {
+  name: 'tebi',
+  age: 34
+}
+
+localStorage.setItem('user', user);
+
+// [Object Object] when we inspect localStorage 😮
+// localStorage calls .toString() on the things it stores
+````
+
+````js
+// JSON is our friend!
+// JSON is a string
+
+const user = {
+  name: 'tebi',
+  age: 34
+}
+
+localStorage.setItem('user', JSON.stringify(user));
+
+const userFromLS = JSON.parse(localStorage.getItem('user'));
+````
+
+Methods of objects get lost!
+
+standalone functions can not be saved either.
+
+### SessionStorage
+
+data survives only till the user closes the page or closes the browser
+
+localStorage survives those actions
+
+### Cookies
+
+they're added to requests, so they reach the server.
+
+Not all servers do things with cookies (maybe PHP ones).
+
+servers can set cookies through some headers
+
+```js
+// this JS needs to be served from a server, not the file protocol
+// otherwise, it won't take any effect!
+
+document.cookie; // 
+
+// adds to the cookies, because it triggers a setter
+document.cookie = 'userName=esteban'
+document.cookie = 'age=30'
+
+// we can't query a specific key value pair! ❌
+// only the whole string (containing all the key value pairs)
+document.cookie; // 'userName=esteban; age=30'
+ 
+```
+
+Some cookies can only be read programatically in the server, and they have the `Http` flag
+
+### Let's save an object in a cookie!
+
+````js
+const user = {
+  name: 'tebi',
+  age: 34
+}
+
+document.cookie = `user=${JSON.stringify(user)}`;
+````
+
+
+
+### Let's retrieve a key value pair
+
+````js
+const user = {
+  name: 'tebi',
+  age: 34
+}
+
+document.cookie = 'token=jsjsjss';
+
+// document.cookie = 'userName=esteban';
+document.cookie = `user=${JSON.stringify(user)}`;
+
+// document.cookie holds 'token=jsjsjss; user={"name": "tebi", "age": 30}'
+
+// it's a huge pain!❌
+
+// ['token=jsjsjss;', '  user={"name": "tebi", "age": 30}']
+let cookies = document.cookie.split(';');
+
+// ['token=jsjsjss;', 'user={"name": "tebi", "age": 30}']
+cookies = cookies.map(item => item.trim());
+
+// it's access via the index in the split array, such a pain❌
+console.log(JSON.parse(cookies[1].split('=')[1])); // {name: 'tebi', age: 30}
+
+// it's better to access it via .includes('youKeyHere'); ✅
+// search for the pattern online
+````
+
+An advantage of cookies is that they set them to expire
+
+````js
+// no expiration set => it expires after the session expired (tab closed or browser closed)
+
+// max age in seconds
+document.cookie = 'token=jsjsjss; max-age=5';
+document.cookie = `user=${JSON.stringify(user)}`;
+
+// after 5 seconds
+document.cookie; // user object, no token
+
+// ;expires=someFormatedDate is another option, look in MDN
+
+// after page refreshes in time, the first cookie will be the one that never expired (user), so the order is not guaranteed, that's why using indexes is a bad idea, as they might reflect the order of cookies in the code
+
+// trying to set a cookie that is already in there has no effect of duplication 💡
+````
 
