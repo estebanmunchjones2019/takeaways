@@ -8076,60 +8076,6 @@ Important: browsers might delete that data if running out of space
 
 Important: WebSQL has been deprecated
 
-
-
-### IndexDB
-
-Working with the API is a pain, so it's better to use this library: https://github.com/jakearchibald/idb
-
-`````js
-// open a connection
-const dbRequest = indexedDB.open('Demo', 1);
-
-dbRequest.onsuccess 👈 (wrong method! ❌) = event => {
-  const db = event.target.result
-
-  // let's create a Products store
-  const objectStore = db.createObjectStore('products', {keyPath: 'id'});
-
-  // let's react to the successful object store creation
-  objectStore.transaction.oncomplete = () => {
-
-    const productStore = db.transaction('products', 'readwrite').objectStore('products');
-
-    // let's add an object (it's an object store!) to the products store
-    // we could add any fields we want
-    // it should have that keyPath (id)
-    productStore.add({
-      id: 'p1',
-      title: 'burger',
-      ingredients: ['bread', 'meat']
-    });
-  }
-};
-
-dbRequest.onerror = event => {
-  console.log(event);
-};
-
-// we get this error! ❌
-
-// Uncaught DOMException: Failed to execute 'createObjectStore' on 'IDBDatabase': The database is not // running a version change transaction.
-//    at dbRequest.onsuccess (webpack-internal:///./src/app.js:66:26)
-`````
-
-let's make it work!
-
-````js
-// change this
-dbRequest.onsuccess = event ={ // ❌
-// for this
-dbRequest.onupgradeneeded = event => { // ✅
-````
-
-really clunky!🚨 I had to change the version number, so `onupgradeneeded` could be fired.
-
-And then I had the delete the DB, and refresh the page, what????
 ### Let's try storing an object
 
 ````js
@@ -8251,8 +8197,147 @@ document.cookie; // user object, no token
 
 // ;expires=someFormatedDate is another option, look in MDN
 
-// after page refreshes in time, the first cookie will be the one that never expired (user), so the order is not guaranteed, that's why using indexes is a bad idea, as they might reflect the order of cookies in the code
+// after page refreshes in time, the first cookie will be the one that never expired (user), 👉so the order is not guaranteed👈, that's why using indexes is a bad idea, as they might reflect the order of cookies in the code
 
 // trying to set a cookie that is already in there has no effect of duplication 💡
 ````
+
+### IndexDB
+
+Working with the API is a pain, so it's better to use this library: https://github.com/jakearchibald/idb
+
+`````js
+// open a connection
+const dbRequest = indexedDB.open('Demo', 1);
+
+dbRequest.onsuccess 👈 (wrong method! ❌) = event => {
+  const db = event.target.result
+
+  // let's create a Products store
+  const objectStore = db.createObjectStore('products', {keyPath: 'id'});
+
+  // let's react to the successful object store creation
+  objectStore.transaction.oncomplete = () => {
+
+    const productStore = db.transaction('products', 'readwrite').objectStore('products');
+
+    // let's add an object (it's an object store!) to the products store
+    // we could add any fields we want
+    // it should have that keyPath (id)
+    productStore.add({
+      id: 'p1',
+      title: 'burger',
+      ingredients: ['bread', 'meat']
+    });
+  }
+};
+
+dbRequest.onerror = event => {
+  console.log(event);
+};
+
+// we get this error! ❌
+
+// Uncaught DOMException: Failed to execute 'createObjectStore' on 'IDBDatabase': The database is not // running a version change transaction.
+//    at dbRequest.onsuccess (webpack-internal:///./src/app.js:66:26)
+`````
+
+let's make it work!
+
+````js
+// change this
+dbRequest.onsuccess = event ={ // ❌
+// for this
+dbRequest.onupgradeneeded = event => { // ✅
+````
+
+really clunky!🚨 I had to change the version number, so `onupgradeneeded` could be fired.
+
+And then I had the delete the DB, and refresh the page, what????
+
+### let's add items upon events!
+
+````js
+// let's have a top level variable
+let db;
+
+// if the connection request succedeed
+// this will everytime the db is has already been created, or when there's a change of version
+// so it runs almost most of the times
+dbRequest.onsuccess = event => {
+  db = event.target.result;
+}
+
+// this callback will run only on db creation (first time the file loads) or the version changes
+dbRequest.onupgradeneeded = event => {
+  db = event.target.result
+
+  // let's create a Products store
+  const objectStore = db.createObjectStore('products', { keyPath: 'id' });
+
+  // let's react to the successful object store creation
+  objectStore.transaction.oncomplete = () => {
+    debugger;
+
+    const productStore = db.transaction('products', 'readwrite').objectStore('products');
+
+    // let's add an object (it's an object store!) to the products store
+    // we could add any fields we want
+    // it should have that keyPath (id)
+    productStore.add({
+      id: 'p1',
+      title: 'burger',
+      ingredients: ['bread', 'meat']
+    });
+  }
+};
+
+dbRequest.onerror = event => {
+  console.log(event);
+};
+
+const addProduct = () => {
+  if (!db){
+    return;
+  }
+  const productStore = db.transaction('products', 'readwrite').objectStore('products');
+
+    // let's add an object (it's an object store!) to the products store
+    // we could add any fields we want
+    // it must have that keyPath (id)
+    productStore.add({
+      id: 'p2',
+      title: 'super burger',
+      ingredients: ['bread', 'meat', 'more meat']
+    });
+}
+
+saveButtonElement.addEventListener('click', addProduct);
+````
+
+the, if we click on the button, and refresh the indexDB `products` object store, we should see the item added🍔
+
+### Let's retrieve data now!
+
+````js
+const retrieveItems = () => {
+  const productStore = db.transaction('products', 'readwrite').objectStore('products');
+
+  const request = productStore.get('p1');
+
+  // clunky API, it should return a promise, that returns the product
+  // it is what it is, legacy code, use a wrapping library instead
+  request.onsuccess = () => {
+    console.log(request.result);
+  }
+
+  request.onerror = event => {
+    console.log(event);
+  }
+}
+````
+
+Remember: things stored in the browser are things that the user can delete, the browser can delete if running out of space, and the data can be modified in the backend, so checks in the backend need to done after sending data stored in the FE storage
+
+### Browser support
 
