@@ -8341,3 +8341,43 @@ Remember: things stored in the browser are things that the user can delete, the 
 
 ### Browser support
 
+#### Browser features vs JS syntax
+
+Browser features are window.fetch(), window.geolocation, etc, things exposed by the browser via the windows object. If a feature is not supported in a browser, there's nothing we can do ❌
+
+JS syntax are ways to do things in js, like using async/away, promises, let, etc, that are understood by the JS engine of the browser. An example is when JS engines let people write ES6 JS. If a JS engine doesn't support ES6, that can be fixed by transpiling the code with Babel! ✅
+
+Evergreen 🍀 browser updates the versions automatically. IE didn't use to!
+
+
+
+### Determining browser support
+
+just use MDN and canisue for browser features and JS syntax support. 
+
+Use https://kangax.github.io/compat-table/es6/ for syntax support. It's got compilers/polyfills compatibility as well!
+
+
+
+### Don't try to support all browsers on earth, and all it's versions!❌
+
+define your target, and make things work for them
+
+### Solution #1: Feature detection + fallback
+
+````js
+if (navigator.clipboard){
+	navigator.clipboard
+  .readText()
+  .then(
+    (clipText) => (document.querySelector(".editor").innerText += clipText)
+  );
+} else {
+	alert('Please install Chrome');
+}
+````
+
+
+
+
+
