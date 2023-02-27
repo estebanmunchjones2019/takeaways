@@ -7603,9 +7603,15 @@ it looks like this:
 3. Close and open VSCode
 4. Enable it by going the the command pallet cmd + shif + p
 5. Choose `Enable ESLint` ❌ (couldn't find this option)
-6. Choose `ESLint: Create ESLint Configuration`. 
+6. Choose `ESLint: Create ESLint Configuration`. Not the best way ❌(check out the easier way below 👇)
 7. I had to downgrade eslint `npm i --save-dev eslint@7.19.0`
 8. I'll get a .eslintrc.json (or other format) file added to the project
+
+Easier way:✅
+
+a.   `npx eslint init` and follow the steps
+
+b. You will have the eslint package installed (and some plugins) as dev dependencies
 
 Hot tip: how to enable seeing the ESLint output when going to the tab near Terminal called `Outputs`? just use the dropdown and select ESLint, that save my butt!
 
@@ -8365,17 +8371,46 @@ define your target, and make things work for them
 
 ### Solution #1: Feature detection + fallback
 
+when trying to use a browser feature, that is not supported in all browser, do something to prevent the app breaking when that feature is not available.
+
 ````js
 if (navigator.clipboard){
-	navigator.clipboard
-  .readText()
-  .then(
-    (clipText) => (document.querySelector(".editor").innerText += clipText)
-  );
-} else {
-	alert('Please install Chrome');
-}
+  const text = pElement.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    const copiedText = await navigator.clipboard.readText();
+    console.log(`the copied text is: ${copiedText}`);
+  } catch (error){
+    console.log('oops, the clipboard API failed')
+  }
+ } else {
+  alert('please install chrome to enjoy this feature');
+ }
 ````
+
+
+
+### Solution 2: Using Polyfills 
+
+let's polyfill the clipboard API: https://www.npmjs.com/package/clipboard-polyfill
+
+Other example: we could polyfill the `fetch `API, so it works on really old browsers.
+
+https://github.com/github/fetch
+
+It's just a script that will add a function fetch() to the window object.
+
+JS features can be polyfilled, but some browser features can't, as some bridges from the browser to the JS engine are not built
+
+### Solution 3: transpiling code
+
+some features can't be polyfilled or be detected: let, const, async/await, arrow functions, etc (ES6 syntax)
+
+Let's install Babel:
+
+`````
+npm i babel -D
+`````
 
 
 
