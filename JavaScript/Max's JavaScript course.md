@@ -8349,7 +8349,7 @@ Remember: things stored in the browser are things that the user can delete, the 
 
 #### Browser features vs JS syntax
 
-Browser features are window.fetch(), window.geolocation, etc, things exposed by the browser via the windows object. If a feature is not supported in a browser, there's nothing we can do ❌
+Browser features are window.fetch(), window.geolocation, etc, things exposed by the browser via the windows object. If a feature is not supported in a browser, it could be polyfilled.
 
 JS syntax are ways to do things in js, like using async/away, promises, let, etc, that are understood by the JS engine of the browser. An example is when JS engines let people write ES6 JS. If a JS engine doesn't support ES6, that can be fixed by transpiling the code with Babel! ✅
 
@@ -8365,16 +8365,16 @@ Use https://kangax.github.io/compat-table/es6/ for syntax support. It's got comp
 
 
 
-### Don't try to support all browsers on earth, and all it's versions!❌
+### Don't try to support all browsers on earth, and all their versions!❌
 
 define your target, and make things work for them
 
-### Solution #1: Feature detection + fallback
+### Solution #1 for a missing browser feature: Feature detection + fallback
 
 when trying to use a browser feature, that is not supported in all browser, do something to prevent the app breaking when that feature is not available.
 
 ````js
-if (navigator.clipboard){
+if (👉navigator.clipboard){
   const text = pElement.textContent;
   try {
     await navigator.clipboard.writeText(text);
@@ -8390,7 +8390,7 @@ if (navigator.clipboard){
 
 
 
-### Solution 2: Using Polyfills 
+### Solution 2 for a missing browser feature: Using Polyfills 
 
 let's polyfill the clipboard API: https://www.npmjs.com/package/clipboard-polyfill
 
@@ -8400,19 +8400,714 @@ https://github.com/github/fetch
 
 It's just a script that will add a function fetch() to the window object.
 
-JS features can be polyfilled, but some browser features can't, as some bridges from the browser to the JS engine are not built
+Some JS things, like promises, can be polyfilled, but some browser features can't, as some bridges from the browser to the JS engine are not built
 
-### Solution 3: transpiling code
+### Solution 3 for missing JS syntax support: transpiling code
 
-some features can't be polyfilled or be detected: let, const, async/await, arrow functions, etc (ES6 syntax)
+What if I wanna write modern JS ES6? I can't detect them, neither polyfill them.
 
-Let's install Babel:
+As said above, some features can't be polyfilled or be detected: let, const, async/await, arrow functions, etc (ES6 syntax)
 
+Those ES6 features are not functions we call (like fetch()); instead they'r keywords that tell the JS how to undertand our code.
+
+So, the code shipped to the browser needs to be transpiled.
+
+Let's install Babel loader (a tight integration with webpack)
+
+`````bash
+npm install -D babel-loader @babel/core @babel/preset-env
 `````
-npm i babel -D
-`````
+
+`@babel/preset-env` is the package containing the tranlation rules
+
+`@babel/core` is the code that actually transpiles
+
+`babel-loader` is the package that connects webpack and babel
+
+````js
+// webpack.config.prod.js
+module.exports = {
+   module: {
+        rules: [
+            {
+              test: /\.m?js$/,
+              exclude: /node_modules/,
+              use: {
+                loader: 'babel-loader',
+                options: {
+                  presets: [
+                    ['@babel/preset-env', { targets: 'defaults' }]
+                  ]
+                }
+              }
+            }
+        ]
+    }
+}
+````
+
+We can tell preset-env the targets ((I guess in older package versions)) by adding this to the package.json file:
+
+````json
+// package.json
+browsersist: "> 2%"; //browserslist is a package used by preset-env under the hood
+// transpiled code has some const keywords
+````
+
+````js
+// new api
+['@babel/preset-env', { targets: "ie 11" }]; // transpiled code has some var keywords
+````
+
+let's make sure the browser we'r targetting is also polyfilled with the features we need, like promises
+
+#### 🔥The best combo: feature detection + browser feature polyfills + transpiled code + ECMA standards polyfills 🔥
+
+we still need to polyfill some ECMA standards, appart from transpiling the code!👇
+
+### How not to do add polyfills for ECMA standards ❌
+
+Well, a non ideal way is to install corejs package and import it at the top of index.js file
+
+````bash
+npm i core-js
+````
+
+````js
+import 'core-js'; // bloats the bundle size ❌
+
+import 'core-js/some-feature' // really manual process, I need to check all files to see what features are used ❌
+````
 
 
 
+### Let's add polyfills for ECMA standards the smart-way! ✅
 
+hey babel: if you see the usage of features not supported by the target, like promises, please, add the polyfills for me. 
+
+#### ⚠️ E.g clipboard api won't be added by core-js or regenerator-runtime polyfills
+
+we need
+
+1 . core-js installed: polyfills the latest ECMAScript standard and proposals
+
+````bash
+npm i core-js
+````
+
+2. https://www.npmjs.com/package/regenerator-runtime installed
+
+````bash
+npm i regenerator-runtime
+````
+
+that suplements core-js
+
+```js
+// webpack.config.prod.js
+module.exports = {
+	module: {
+        rules: [
+            {
+              test: /\.m?js$/,
+              exclude: /node_modules/,
+              use: {
+                loader: 'babel-loader',
+                options: {
+                  presets: [
+                    ['@babel/preset-env', { 
+                        targets: '> 2%' ,
+                        useBuiltIns: 'usage', 👈
+                      	corejs: {👈
+                          version: '3'
+                        }
+                    }]
+                  ]
+                }
+              }
+            }
+        ]
+    }
+}
+```
+
+
+
+In Max's example, core-js wasn't added to the bundle because the navigator api was not supported in older browsers anyway. But he added `console.log(new Promise()), and that was enough to see core-js added to the bundle.
+
+If we'r using 3rd part packages, well, babel won't scan them, se let's add them all!
+
+```js
+// webpack.config.prod.js
+useBuiltIns: 'entry', 👈 // it will load all the polyfills required for the target, specified in the the same file doesn't scan the usage in the scripts. When using 2rd party packages, we don't know what's in there most of the times
+```
+
+```
+// app.js
+import 'core-js/core';
+import 'regenerator-runtime/runtime';
+```
+
+
+
+### NodeJS support
+
+is a controlled environment, so no need to polyfill things, as we know which version we'r running the JS on.
+
+Browsers are an uncontrolled environment, such a pain, but the tools we saw make it manageable.
+
+
+
+### Some fallbacks
+
+what if we would use modules (not using webpack to bundle scripts into a single one) and the browser doesn't understand them?
+
+````html
+<script src="somefile" type="module"></script>
+<script nomodule>
+  // some fallback code here
+</script>
+````
+
+
+
+what if users disable JS
+
+```html
+<noscript>
+	Hey, enable JS to use this website
+<noscript>
+```
+
+
+
+### Share my place app
+
+no need to use .js when importing files with Webpack:
+
+````js
+// with Webpack
+import {something} from 'SomeFile'; // no need of JS extension
+````
+
+Interesting: async functions return a promise. So we need to await them when calling them
+
+````js
+const async getCoordinatesFromAddress = () => {
+	// calling google API
+  // errors are thrown here when responses are not ok, etc
+	return coordinates;
+}
+
+// let's use the fn
+someMethod() {
+	const coordinates = await getCoordinatesFromAddress(address);
+}
+````
+
+```js
+// full code
+const GOOGLE_API_KEY = 'xxxx';
+
+export async function getCoordinatesFromAddress(address){
+    const addressUri = encodeURI(address);
+    const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${addressUri}&key=${GOOGLE_API_KEY}`);
+    if (!response.ok){
+        👉throw new Error('oops, something went wrong');
+    }
+
+    const data = await response.json();
+
+    if (data.error_message){
+        👉throw new Error(data.error_message);
+    }
+
+    return data.results[0].geometry.location;
+}
+```
+
+````js
+// improved version with catching errors when calling this function
+async findAddressHandler(event){
+        event.preventDefault();
+        const address = document.querySelector('#place-data input').value;
+        if (!address || address.trim() === 0){
+            alert('oops, please enter an address');
+        }
+
+        const modal = new Modal('modal-template', 'loading-modal-content', 'Loading position, click here to continue');
+        modal.show();
+
+        👉try {
+          	// happy path here
+            const coordinates = await getCoordinatesFromAddress(address.trim());
+            this.selectPlace(coordinates);
+        👉} catch(error){
+            alert(error.message);
+        }
+        
+        modal.hide();
+    }
+````
+
+
+
+### Intro to Node.js
+
+differences with the browser:
+
+- import and exports are different (module.exports and require)
+- utilities are not added by default, e.g (require fs), although some are included (setTimeout)
+- we could automate tasks, like printing banks statements, or bundling code (webpack)
+- we can access the file system
+- we can create a web server
+
+````js
+// example of fs usage
+    const fs = require('fs');
+
+    fs.writeFile('notes.txt', 'todo: buy milk', error => {
+        if(error){
+            console.log(error);
+        } else {
+            console.log('wrote the file!');
+        }
+    });
+
+    fs.readFile('notes.txt', (error, data) => {
+        if (error){
+            console.log('oops, could not read the file');
+            return;
+        }
+        console.log(data.toString());
+    })
+````
+
+
+
+### My first server!
+
+````js
+    const http = require('http');
+
+    const server = http.createServer((req, res) => {
+        res.write('hello world')
+        res.end();
+    });
+
+    server.listen(4000);
+
+
+// reponse headers (this is not good ❌, we must specify which content type (json, html, text) we're sending in the response body)
+
+HTTP/1.1 200 OK
+Date: Tue, 07 Mar 2023 20:23:57 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+````
+
+let's be more specific and tell which content type we're sending:
+
+````js
+const server = http.createServer((req, res) => {
+    res.setHeader('Content-type', 'text/plain'); 👈
+    res.write('hello world'); // if we send <h1>something</h1>, it won't be parsed as html, but rendered as <pre><h1>something</h1></pre>
+    res.end();
+});
+
+// Response headers
+Content-type: text/plain ✅
+````
+
+
+
+### Let's send some HTML
+
+````js
+const server = http.createServer((req, res) => {
+    res.setHeader('Content-type', 'text/html'); 👈
+    res.write('<h1>hello world</h1>'); // renders a proper h1 tag in the browser
+    res.end();
+});
+````
+
+
+
+Gotcha: when HTML is returned from the server, reloading the page submits the form again (POST request again!);
+
+How to prevent it? https://www.youtube.com/watch?v=JQFeEscCvTg&ab_channel=DaveHollingworth
+
+````js
+// everytime I reload the page, a POST request is submitted, with the already entered value in the form! ❌
+
+const http = require('http');
+
+    const server = http.createServer((req, res) => {
+        console.log(req.method, req.url);
+        let body = [];
+
+        //the body comes on chunks
+        req.on('data', (data) => {
+            body.push(data);
+        })
+
+        // when finishing reading the response
+
+        
+        req.on('end', () => {
+            let userName = 'unknow users';
+            if (body) {
+                userName = Buffer.concat(body).toString().split('=')[1];
+                console.log(userName);
+            }
+            res.setHeader('Content-type', 'text/html');
+            res.write(
+                `<h1>hello ${userName}</h1>
+                <form method="POST" action="/">
+                    <input name="username" type="text">
+                    </input>
+                    <button type="submit">Send</button>
+                </form>`
+            );
+            res.end();
+
+        })
+    });
+
+    server.listen(4000);
+````
+
+Let's fix it by redirecting the user!
+
+```js
+const http = require('http');
+
+    const server = http.createServer((req, res) => {
+        // let's serve the form
+        if (req.method === 'GET' && req.url === '/'){
+            res.setHeader('Content-type', 'text/html');
+            res.write(
+                `<form method="POST" action="/">
+                    <input name="username" type="text">
+                    </input>
+                    <button type="submit">Send</button>
+                </form>`
+            );
+            res.end();
+        }
+
+        if (req.method === 'GET' && req.url.includes('/success-message'👈)){
+            // let's get the query params
+            const paramsString = req.url.split('?')[1];
+
+            const searchParams = new URLSearchParams(paramsString);
+
+            const userName = searchParams.get('username');
+
+            console.log(userName);
+
+            res.setHeader('Content-type', 'text/html');
+          
+          	// let's show a greeting message to the user 👈
+            res.write(
+                `<h1>Welcome ${userName}</h1>`
+            );
+            res.end();
+        }
+
+        if (req.method === 'POST' && req.url === '/'){
+            // console.log(req.method, req.url);
+            let body = [];
+    
+            //the body comes on chunks
+            req.on('data', (data) => {
+                body.push(data);
+            })
+    
+            // when finishing reading the response
+            req.on('end', () => {
+                let userName = 'unknow users';
+                if (body) {
+                    userName = Buffer.concat(body).toString().split('=')[1];
+                }
+
+                // let's redirec the user 👈
+                res.writeHead(301, { Location: `/success-message?username=${userName}` });
+                res.end();
+            })
+
+        }
+    });
+
+    server.listen(4000);
+```
+
+The above code is hard to read, and not scalable ❌, let's use express instead
+
+### Express.js
+
+it's a middleware centric framework, that funnels the requests into different functions depending on the method, path, etc
+
+Res.send() is a function added by express, doesn't exist in Node (.end() is the way to do it in pure node);
+
+We can chain handlers, and the response and requests can be modified along the way on the chain of fn calls.
+
+Let's send some HTML in the response:
+````js
+const express = require('express');
+
+const app = express();
+
+app.use((req, res, next) => {
+    res.header('Content-type', 'text/html');
+    next();
+});
+
+app.use((req, res, next) => {
+    res.send('<h1>Hello world</h1>');
+})
+
+
+app.listen(4000);
+````
+
+Let's parse the body of POST request:
+
+````js
+// refreshing the front end page with the form will trigger a POST request
+
+const express = require('express');
+const bodyParser = require('body-parser');
+
+const app = express();
+
+// here we're parsing the Form Data type sent as payload on the request body
+app.use(bodyParser.urlencoded({extended: false})); 👈
+
+app.use((req, res, next) => {
+    res.header('Content-type', 'text/html');
+    next();
+});
+
+app.use((req, res, next) => {
+    const userName = req.body.username || 'Unknown user'; 👈
+
+    res.send(
+        `<h1>Hello ${userName}</h1>
+        <form method="POST" action="/">
+            <input name="username" type="text">
+            </input>
+            <button type="submit">Send</button>
+        </form>`
+    );
+});
+
+
+app.listen(4000);
+````
+
+Let's use templates instead of having the HTML inlined in JS
+
+### EJS templates
+
+res.render() is a method added by express, not available in vanilla Node
+
+````js
+const express = require('express');
+const bodyParser = require('body-parser');
+const ejs = require('ejs');
+
+const app = express();
+
+// view configuration
+// let's use ejs as view engine
+app.set('view engine', 'ejs'); 👈
+
+// the views are found in the `views` folder
+app.set('views') 👉
+
+// here we're parsing the Form Data type sent as payload on the request body
+app.use(bodyParser.urlencoded({extended: false}));
+
+app.use((req, res, next) => {
+    res.header('Content-type', 'text/html');
+    next();
+});
+
+app.use((req, res, next) => {
+    const userName = req.body.username || 'Unknown user';
+    res.render('index', { // 👈
+        userName
+    });
+});
+
+
+app.listen(4000);
+````
+
+````ejs
+// views/index.ejs
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h1>Hello <%= userName%></h1>👈
+    <form method="POST" action="/">
+        <input name="username" type="text">
+        </input>
+        <button type="submit">Send</button>
+    </form>
+</body>
+</html>
+````
+
+
+
+### Let's build a JSON REST API
+
+res.json() sends the resonse as JSON, all in one step, instead of manually converting the body to json and then doing res.send()
+
+````js
+res.json({name: 'tebi'}); // ✅
+
+// same as
+
+res.setHeader('Content-type', 'application/json');
+res.send(JSON.stringify({name: 'tebi'})); //❌
+````
+
+
+
+no need to add .js when requiring files, as Node will look for JS files with that name
+
+The share my place app will pass an address and a location, and then get an ID as response
+
+````js
+// share my place app
+ const res = await fetch('http://localhost:4000/add-location',{
+      method: 'POST',
+      headers: {'Content-type': 'application/json'}, // it tells bodyParser to parse it as JSON
+   		// 
+      // I need to send JSON. Axios does this out of the box
+      body: {
+          lat: JSON.stringify(coordinates.lat),
+          lng: JSON.stringify(coordinates.lng),
+          address: JSON.stringify(address)
+      }
+  });
+
+// REST API
+// we expect JSON data
+app.use(bodyParser.json()); 👈
+
+app.use(locationRoutes); // locationRoutes is the imported router from below
+
+router.post('/add-location', (req, res, next) => {
+    console.log(req.method, req.url);
+    res.json('an ID here');
+})
+
+// but I get this CORS error ❌
+Access to fetch at 'http://localhost:4000/add-location' from origin 'http://localhost:8080' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. If an opaque response serves your needs, set the request's mode to 'no-cors' to fetch the resource with CORS disabled.
+````
+
+
+
+### Understanding CORS issues
+
+Browsers block requests to other domains:
+
+```html
+// domain1.com
+<script src="http://domain2.com/app.js"></script>
+```
+
+````js
+// domain1.com
+fetch('http://domain2.com/posts');
+````
+
+The above throws the CORS error by default. Only requests to the same origin are allowed by default.
+
+### An unuseful fix
+
+Some service workers get opaque responses by adding {'mode': 'no-cors'}, and they can't be read in JS, but they'r cached:
+
+````js
+fetch("http://xyz", {'mode': 'no-cors'})
+````
+
+
+
+### Solving CORS issues
+
+let's add some headers to the response from the server side, so the browser is happy, by telling what's allowed on our server:
+
+```js
+// ✅
+app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Headers', 'Content-type');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+  
+    next();
+});
+
+```
+
+the browser then looks at the response headers and then decides if it let's the app access the response.
+
+Let's add them step by step:
+
+#### 1) let's enable requests from any origins and POST and GET requests:
+
+````js
+app.use((req, res, next) => {
+    // let's allow any domain to get a response from this server
+    👉 res.setHeader('Access-Control-Allow-Origin', '*');
+
+    //let's only allow POST and GET requests 
+    👉 res.setHeader('Access-Control-Allow-Methods', 'POST, GET');
+    next();
+});
+````
+
+But it's not enough for handling POST requests ❌, as the browser sends a **preflight request** before sending the actual POST request, to find out if a POST request is allowed for that endpoint
+
+```js
+// preflight request
+Request Method: OPTIONS 👈
+Status Code: 200 OK ✅
+```
+
+```js
+// actual POST request JS CORS error ❌:
+
+Access to fetch at 'http://localhost:4000/add-location' from origin 'http://localhost:8080' has been blocked by CORS policy: Request header field 👉 content-type is not allowed by Access-Control-Allow-Headers in preflight response.👈
+```
+
+
+
+#### 2) Let's allow the OPTIONS method and request with `Content-type` headers set
+
+```js
+// let's allow the broswser to pass JSON data in the request body
+👉 res.setHeader('Access-Control-Allow-Headers', 'Content-type');
+
+res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS 👈');
+
+// and add the OPTIONS to the allowd method (so th preflight)
+
+// it allows the frontend to POST JSON: 
+
+// from the FE: hey server, I'm sending you JSON from the Front End
+headers: {'Content-type': 'application/json'},
+```
 
