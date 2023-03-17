@@ -9111,3 +9111,194 @@ res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS 👈');
 headers: {'Content-type': 'application/json'},
 ```
 
+
+
+### Storing and returning data saved with an ID
+
+async/await learning: **I don't need the use await when I'm not interested in a returned value from an async function**
+
+````js
+const url = new URL(location.href);
+
+const queryParams = url.searchParams;
+
+const id = +queryParams.get('id');
+
+debugger;
+
+const getCoordinatesAndAddress = async (id) => {
+    debugger;
+    const res = await fetch(`http://localhost:4000/location?id=${id}`);
+    const data = await res.json();
+    return data;
+}
+
+const instantiateMyPlace = async (id) => {
+    const {address, lat, lng} = await getCoordinatesAndAddress(id);
+    
+    debugger;
+    
+    const coordinates = {
+        lat: +lat,
+        lng: +lng
+    }
+    
+    new MyPlace(coordinates, address);
+}
+
+// I don't need the use await when I'm not interested in a value from async code
+instantiateMyPlace(id);
+````
+
+Approach 1: retrieving queryparams in the backend:
+
+```js
+router.get('/location', (req, res, next) => {
+
+    const data = locationStorage.locations.find(item => item.id === +req.query👈.id)
+
+    if (!data){
+        res.json('Oops, data for the ID could not be found');
+    }
+
+    res.json({ 
+        address: data.address,
+        lat: data.lat,
+        lng: data.lng
+     })
+});
+```
+
+### Approach 2: using dynamic segments
+
+```js
+router.get('/location/:id👈', (req, res, next) => {
+
+    console.log(+req.params.id);
+
+    const data = locationStorage.locations.find(item => item.id === +req.params.👈id)
+
+    if (!data){
+        res.status(404).json({message: 'Oops, not data for the given ID'});
+    }
+
+    res.json({ 
+        address: data.address,
+        lat: data.lat,
+        lng: data.lng
+     })
+});
+```
+
+
+
+````js
+const getCoordinatesAndAddress = async (id) => {
+    debugger;
+    try {
+        const res = await fetch(`http://localhost:4000/location/${id}👈`);
+        
+        // Axios would do this for me 🚨
+        if(res.status === 404){
+            debugger;
+            throw new Error('Oops, could not found data for the given ID');👈
+        }
+        const data = await res.json();
+
+        return data;
+    } catch (error){
+        alert(error.message);👈
+    }
+}
+````
+
+### Mongo DB
+
+we can have a db hosted on AWS, and connect to it with NodeJS drivers: https://www.mongodb.com/docs/drivers/node/current/fundamentals/connection/connect/#std-label-node-connect-to-mongodb
+
+Error handling can be added when creating a special ID type with the a driver's method:
+
+```js
+router.get('/location/:lid', (req, res, next) => {
+  const locationId = req.params.lid;
+
+  client.connect(function(err, client) {
+    const db = client.db('locations');
+    
+    👉// THIS WAS ADDED
+    let locationId;
+    try {
+        locationId = new mongodb.ObjectId(locationId);
+    } catch (error) {
+        // return to make sure the other code does not execute
+        return res.status(500).json({message: 'Invalid id!'}); 
+    }
+    // END OF ADDED CODE👈
+
+    // Find a single document
+    db.collection('user-locations').findOne(
+      {
+        _id: locationId // will only be reached if the above code didn't throw an error
+      },
+      function(err, doc) {
+        // if (err) {}
+        if (!doc) {
+          return res.status(404).json({ message: 'Not found!' });
+        }
+        res.json({ address: doc.address, coordinates: doc.coords });
+      }
+    );
+  });
+});
+```
+
+the library uses a **callback approach**, not a promised based approach.
+
+this hipotetical promised based code is much more readable.
+
+```js
+// this could look like a promised based apprach
+try {
+	const client = await client.connect();
+	const db = client.db('locations');
+   let locationId;
+    try {
+        locationId = new mongodb.ObjectId(locationId);
+    } catch (error) {
+        // return to make sure the other code does not execute
+        return res.status(500).json({message: 'Invalid id!'}); 
+    }
+	const doc = await db.collection('user-locations').findOne({ _id: locationId});
+} catch(error){
+	// catch the error here
+	return res.status(404).json({ message: 'Not found!' });
+}
+```
+
+
+
+#### 👉Lesson: try and catch blocks need to be added on pieces of code that can throw an error when things go wrong.👈
+
+Other options of hosting a db is the self management route, when the db and the REST server are hosted on the same server.
+
+### Nested try blocks
+
+````js
+try {
+    console.log('about to break');
+    try {
+        throw new Error('Oooops');
+    } catch(error){
+        console.log('logging from inner block', error.message); // 👈 this catch block catches the error
+    }
+
+} catch(error){
+    console.log('logging from outer block', error.message);
+}
+
+// the result of running the above
+
+// about to break
+// MyPlace.js?5f3b:58 logging from inner block Oooops
+````
+
