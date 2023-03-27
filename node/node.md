@@ -510,3 +510,90 @@ addPost: ({post}, req) => {
 }
 ```
 
+### what the response look like?
+
+````json
+// res body:
+{
+  "errors": [
+    {
+      "message": "title too short || body too long",
+      "locations": [
+        {
+          "line": 33,
+          "column": 12
+        }
+      ],
+      "path": [
+        "addPost"
+      ]
+    }
+  ],
+  "data": {
+    "addPost": null
+  }
+}
+````
+
+The status code is 200, and this is always the case for a graphql response.
+
+````js
+// resolvers.js
+addPost: ({post}, req) => {
+    const errors = [];
+    if (!validator.isLength(post.title, {min: 4})){
+        errors.push('title too short')
+    }
+    if (!validator.isLength(post.body, {max: 10})){
+        errors.push('body too long');
+    }
+    if (errors.length > 0){
+        const error = new Error('Oops, invalid input'); // just pass a string when creating the error
+        error.code = 422; // then add all the fields you want to the error object
+        error.data = errors; // let's add the array of error messages!
+        throw error;
+
+    }
+    post.id = (Math.random()*10000).toFixed(0);
+    posts.push(post);
+    return post;
+}
+````
+
+````js
+// index.js
+app.all('/graphql', graphqlHTTP({
+  schema,
+  rootValue: root,
+  graphiql: true,
+  👉customFormatErrorFn(error){
+    // e.g if error was syntacx in code
+    if (!error.originalError) error;
+
+    // if it was my own thrown error
+    return { message: error.message, status: error.originalError.code, data: error.originalError.data}
+  }
+}));
+````
+
+
+
+```json
+// response, WOW!
+{
+  "errors": [
+    {
+      "message": "Oops, invalid input",
+      "status": 422,
+      "data": [
+        "title too short",
+        "body too long"
+      ]
+    }
+  ],
+  "data": {
+    "addPost": null
+  }
+}
+```
+
