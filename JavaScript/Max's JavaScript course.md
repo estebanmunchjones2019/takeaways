@@ -9212,7 +9212,7 @@ const getCoordinatesAndAddress = async (id) => {
 }
 ````
 
-### Mongo DB
+##### Mongo DB
 
 we can have a db hosted on AWS, and connect to it with NodeJS drivers: https://www.mongodb.com/docs/drivers/node/current/fundamentals/connection/connect/#std-label-node-connect-to-mongodb
 
@@ -9302,3 +9302,30 @@ try {
 // MyPlace.js?5f3b:58 logging from inner block Oooops
 ````
 
+
+
+
+
+### Security
+
+1. Don't expose important data in the FE, like db passwords. The FE JS is PUBLIC! even if it's optimised by webpack.
+
+2. Are API keys a security hole? no, as long as the BE is restricted to some urls, IPs, etc
+
+3. XSS happens when we use some user input (url, input value, etc) to render some content in page using innerHTML.
+
+   ````
+   
+   ````
+
+4. that malicious code can react to events, read the localstorage, and send data to a server. Kind of credit card data harvesting.
+
+5. Browsers prevent the loading of dangerous html via innerHTML prop
+
+6. But user generated data can contain something like this: `<img src=x onerror=alert('img') />`, which can skip the browser defence system.
+
+7. Sanitization package: https://www.npmjs.com/package/sanitize-html
+
+8. Always choose to sanitize in the server side, before storing things in a db.
+
+9. If there's no interaction with a BE, we can sanitize in the FE.
