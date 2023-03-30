@@ -7285,9 +7285,9 @@ But I get this error! 🚨
 Access to script at 'file:///Users/estebanmunchjones/Documents/Coding/javascript-the-complete-guide-code/arrays-04-splice/app.js' from origin 'null' has been blocked by CORS policy: Cross origin requests are only supported for protocol schemes: http, data, isolated-app, chrome-extension, chrome, https, chrome-untrusted.
 ````
 
-As scripts can import scripts (maybe from other domains!), the browser needs to be careful
+💡As scripts can import scripts (maybe from other domains!), the browser needs to be careful
 
-#### 👉The problem is that we'r serving the html file with the `File protocol`, different that how to browser receives an html page from a web server👈
+#### 👉The problem is that we'r serving the html file with the `File protocol`, different that how to browser receives an html page from a web server (http protocol)👈
 
 ### We need a development server!
 

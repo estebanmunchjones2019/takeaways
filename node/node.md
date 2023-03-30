@@ -467,6 +467,8 @@ npm i validator
 
 ​	
 
+💡 I can safely throw Errors as there's a try and catch block provided by graphqlHTTP middleware 
+
 ````js
 addPost: ({post}, req) => {
     const errors = [];
