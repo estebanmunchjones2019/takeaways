@@ -7285,9 +7285,9 @@ But I get this error! 🚨
 Access to script at 'file:///Users/estebanmunchjones/Documents/Coding/javascript-the-complete-guide-code/arrays-04-splice/app.js' from origin 'null' has been blocked by CORS policy: Cross origin requests are only supported for protocol schemes: http, data, isolated-app, chrome-extension, chrome, https, chrome-untrusted.
 ````
 
-💡As scripts can import scripts (maybe from other domains!), the browser needs to be careful
+As scripts can import scripts (maybe from other domains!), the browser needs to be careful
 
-#### 👉The problem is that we'r serving the html file with the `File protocol`, different that how to browser receives an html page from a web server (http protocol)👈
+#### 👉The problem is that we'r serving the html file with the `File protocol`, different that how to browser receives an html page from a web server👈
 
 ### We need a development server!
 
@@ -9304,8 +9304,6 @@ try {
 
 
 
-
-
 ### Security
 
 1. Don't expose important data in the FE, like db passwords. The FE JS is PUBLIC! even if it's optimised by webpack.
@@ -9315,7 +9313,13 @@ try {
 3. XSS happens when we use some user input (url, input value, etc) to render some content in page using innerHTML.
 
    ````
+   someElement.innerHtml(userGeneraterContent🚨) ❌
    
+   someElement.textContent(userGeneraterContent) ✅
+   
+   // if you really need to use innerHTML
+   
+   someElement.textContent(sanitizeHtml(userGeneraterContent)) ✅
    ````
 
 4. that malicious code can react to events, read the localstorage, and send data to a server. Kind of credit card data harvesting.
@@ -9329,3 +9333,5 @@ try {
 8. Always choose to sanitize in the server side, before storing things in a db.
 
 9. If there's no interaction with a BE, we can sanitize in the FE.
+
+### Deploying JS code
