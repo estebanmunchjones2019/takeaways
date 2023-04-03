@@ -560,6 +560,28 @@ addPost: ({post}, req) => {
     posts.push(post);
     return post;
 }
+
+// version using errors as objects
+    addPost: ({post}, req) => {
+        const errors = [];
+        if (!validator.isLength(post.title, {min: 4})){
+            errors.push(👉{message: 'title too short'})
+        }
+        if (!validator.isLength(post.body, {max: 10})){
+            errors.push(👉{message: 'body too long'});
+        }
+        if (errors.length > 0){
+            const error = new Error('Oops, invalid input');
+            error.code = 422;
+            // error.data = errors.join(', ');
+            error.data = errors;
+            throw error;
+
+        }
+        post.id = (Math.random()*10000).toFixed(0);
+        posts.push(post);
+        return post;
+    }
 ````
 
 ````js
@@ -569,11 +591,15 @@ app.all('/graphql', graphqlHTTP({
   rootValue: root,
   graphiql: true,
   👉customFormatErrorFn(error){
-    // e.g if error was syntacx in code
+    // e.g if error was syntax in code
     if (!error.originalError) error;
 
     // if it was my own thrown error
-    return { message: error.message, status: error.originalError.code, data: error.originalError.data}
+    return { 
+      message: error.message || 'Oops, something went wrong', 
+      status: error.originalError.code, 
+      data: error.originalError.data
+    }
   }
 }));
 ````
@@ -597,5 +623,102 @@ app.all('/graphql', graphqlHTTP({
     "addPost": null
   }
 }
+
+// response using the errors as objects version
+{
+  "errors": [
+    {
+      "message": "Oops, invalid input",
+      "status": 422,
+      "data": [
+        {
+          "message": "title too short"
+        },
+        {
+          "message": "body too long"
+        }
+      ]
+    }
+  ],
+  "data": {
+    "addPost": null
+  }
+}
 ```
+
+
+
+### Connecting the FE to BE
+
+we can use fetch to make queries to the backend, no need for a special library so far.
+
+Response codes from a graphql server are 200 or 500
+
+````js
+// FE
+(async()=> {
+    try {
+        const res = await fetch('http://localhost:4000/graphql', {
+            method: 'POST',
+            headers: {
+                'Content-type': 'application/json'
+            },
+          	// 💡 body is just and object { query: `some query here`}
+            body: JSON.stringify({
+                query: `
+                    mutation { addPost(post: 
+                        {
+                        title: "title here",
+                        body: "body here "
+                        }
+                    )
+                    {
+                        title
+                    }
+                    }
+                `
+            })
+        });
+        const data = await res.json();
+      	// responses are always 200, so we need to throw our errors
+      	// fetch doesn't even throw error on its own when codes are not 200
+      	// that's why axios is handier
+        if (data.errors && data.errors[0].status === 422){
+            throw new Error(data.errors[0].data[0].message);
+        }
+        if (data.errors){
+            throw new Error('Post creation failed');
+        }
+        console.log(data);
+    } catch(error){
+        console.log(error.message);
+    }
+})()
+````
+
+
+
+
+
+
+
+This didn't happen on my project:
+
+Error: method not allowed. How to fix it?
+
+`graphqlHTTP` middleware rejects other methods than GET and POST.
+
+let's make OPTIONS request to bypass the `graphqlHTTP` middlaware
+
+````js
+// Max's fix
+app.use('*', (req, res, next) => {
+	// sends the response with a 200 status code to the FE
+	if (req.method === 'OPTIONS') res.status(200);
+});
+
+// graphqlHTTP code here
+````
+
+
 

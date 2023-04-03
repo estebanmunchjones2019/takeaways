@@ -7965,7 +7965,11 @@ Plugins can modify the output of webpack
            filename: '👉[contenthash].app.js',
    ````
 
-   That will generate jfunarfiuanegreia.app.js file names, that need to be referenced in the HTML <script> tag, so that's not very handy! ❌
+   That will generate 01adfar4r00101.app.js file names (hash in the filename) that need to be referenced in the HTML <script> tag, so that's not very handy! ❌
+   
+   Here's the solution: https://webpack.js.org/plugins/html-webpack-plugin/
+   
+   https://github.com/jantimon/html-webpack-plugin
 
 ### Using 3rd part libraries!
 
@@ -9335,3 +9339,8 @@ try {
 9. If there's no interaction with a BE, we can sanitize in the FE.
 
 ### Deploying JS code
+
+static host: we dump HTML, CSS and JS in a server. No server side code runs there.
+
+dynamic host: we dump our server side code, we install Node, and it servers HTML pages or JSON
+
