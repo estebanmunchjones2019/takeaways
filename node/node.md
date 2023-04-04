@@ -698,10 +698,6 @@ Response codes from a graphql server are 200 or 500
 
 
 
-
-
-
-
 This didn't happen on my project:
 
 Error: method not allowed. How to fix it?
@@ -721,4 +717,55 @@ app.use('*', (req, res, next) => {
 ````
 
 
+
+### Login using graphql
+
+I'm not persisting, deleting or changing data on databases, so I need to use a query with args (not a mutation):
+
+````js
+//schema.js
+var { buildSchema } = require('graphql');
+
+// Construct a schema, using GraphQL schema language
+module.exports = buildSchema(`
+	input LoginData {
+    email: String!,
+    password: String!
+  }
+
+  type Query {
+    hello: String,
+    news: News,
+    login(loginData: LoginData): AuthData
+  }
+`)
+````
+
+````js
+// resolvers.js
+   login: async({loginData}) => {
+        const data = await getTokenAndID(loginData.email, loginData.password);
+        return data;
+    }
+````
+
+````json
+// query in the FE
+{ login ( loginData: { email: "a@a.com", password: "123456"}) 
+  {
+    token,
+    id
+  } 
+}
+
+// res
+{
+  "data": {
+    "login": {
+      "token": "ragergergiuahegiuaehg",
+      "id": "345239857"
+    }
+  }
+}
+````
 
