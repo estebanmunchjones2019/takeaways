@@ -769,3 +769,96 @@ module.exports = buildSchema(`
 }
 ````
 
+
+
+### Let's add a post when the user is authenticated
+
+````js
+// auth.js
+const jwtVerify = (token)=>{
+    if (token === 'asdfghjkl'){
+        return {
+            userId: '54789'
+        }
+    } else {
+        throw new Error('invalid token');
+    }
+}
+
+module.exports = (req, res, next) => {
+    // keep working on this
+    if (!req.headers.authorization){
+        req.isAuth = false;
+        👉 return next(); // make sure to return, so the next blocks don't run
+    }
+    const token = req.headers.authorization.split(' ')[1];
+    let decodedToken;
+    try {
+        decodedToken = jwtVerify(token);
+    } catch(error){
+        req.isAuth = false;
+        return next();
+    }
+    if (!decodedToken){
+        req.isAuth = false;
+        return next();
+    }
+
+    req.isAuth = true;
+    req.userId = decodedToken.userId;
+    next();
+
+    // req has token in the headers
+    // get the token from req
+    // if the token matches a hardcoded string, req.isAuth = true
+    // else req.isAuth = false
+}
+````
+
+```js
+// index.js
+app.use(auth);
+
+app.all('/graphql', graphqlHTTP({...
+```
+
+```js
+//resolvers.js
+addPost: ({post}, req) => {
+        // all logged in users can add posts to the array in memory
+        if (!req.isAuth){
+            const error = new Error('Oops, you are not authenticated');
+            error.code = 401;
+            throw error;
+        }
+        const errors = [];
+  			...
+```
+
+```js
+// call from postman
+// Autorization headers with 'Bearer asdfghjkl'
+
+body -> graphql (not raw JSON)
+mutation {
+  addPost(post: {
+    title: "hello",
+    body: "wow"
+  })
+  {
+    id,
+    title
+  }
+}
+
+//res
+{
+    "data": {
+        "addPost": {
+            "id": "4084",
+            "title": "hello"
+        }
+    }
+}
+```
+

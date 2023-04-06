@@ -9344,3 +9344,20 @@ static host: we dump HTML, CSS and JS in a server. No server side code runs ther
 
 dynamic host: we dump our server side code, we install Node, and it servers HTML pages or JSON
 
+### Measuring performance
+
+1. https://developer.mozilla.org/en-US/docs/Web/API/Performance/now
+2. Dev tools
+3. some websites like jsperf.app, etc
+
+### Dev tools
+
+open pages in incognito, because extensions might add some JS
+
+1. Look at the Elements tab for flashing on the elements when JS touches them
+2. Network tab: size, amount of requests
+3. Tick disable cache inside Network tab
+4. Performance tab -> record -> see the Main (thread)-> Zoom in to see the chain of fns called and how log it took each one
+5. Memory tab -> Heap snapshot -> take snapshot
+6. Perform a task on the app, then take the snapshot again, and the click on comparison, to see things that, e.g should have been removed from memory (some html elements not in the DOM anymore). Delta should be -1 for those elements. If the elements are not removed, that might mean a memory leak!
+7. Lighthouse tab
