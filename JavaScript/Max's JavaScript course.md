@@ -9354,10 +9354,295 @@ dynamic host: we dump our server side code, we install Node, and it servers HTML
 
 open pages in incognito, because extensions might add some JS
 
-1. Look at the Elements tab for flashing on the elements when JS touches them
+1. Look at the Elements tab for flashing on the elements when JS touches them (make sure you press Esc key, then the 3 dots, then `Rendering`, then enable `Paint flashing`
 2. Network tab: size, amount of requests
-3. Tick disable cache inside Network tab
-4. Performance tab -> record -> see the Main (thread)-> Zoom in to see the chain of fns called and how log it took each one
-5. Memory tab -> Heap snapshot -> take snapshot
-6. Perform a task on the app, then take the snapshot again, and the click on comparison, to see things that, e.g should have been removed from memory (some html elements not in the DOM anymore). Delta should be -1 for those elements. If the elements are not removed, that might mean a memory leak!
-7. Lighthouse tab
+3. Tick disable cache inside Network tab (that will only apply when the dev tools are open)
+4. Performance tab -> record ->Gives a a profile 
+5. I can enable/disable `Memory` and `screenshots` options.
+6. See the Main (thread)-> Zoom in to see the chain of fns called and how log it took each one
+7. Yellow `Event: click` bar has red staple on a corner, that's a a bad sign! The handler took 68ms to execute, too long
+8. Below the `Function call` yellow bar, there's the callstack, with different colours.
+9. Memory tab -> Heap snapshot -> take snapshot
+10. Perform a task on the app, then take the snapshot again, and the click on comparison, to see things that, e.g should have been removed from memory (some html elements not in the DOM anymore). Delta should be -1 for those elements. If the elements are not removed, that might mean a memory leak!
+11. Lighthouse tab
+
+Useful links:
+
+- https://developer.chrome.com/docs/devtools/
+- https://web.dev/explore/ ->Performance
+
+### Preparing the testing setup
+
+run `npm run build:prod` and then `cd dist` `serve`. The JS file is 1.5KB zipped, and 3.5KB unzziped
+
+- The source maps chosen in the webpack config affect the bundle size. `cheap-source-maps` is cheap for prod. `source-maps` can be used in development.
+
+### Optimising start up time
+
+#### How much of the code is used?
+
+- Network tab -> Escape key -> Coverage tab
+- It says 31% of JS unused!
+- 👉Functions like `addProduct` are marked in red inside the webpack folder in source maps.
+- the fix: lazy load that function!
+
+````js
+// product-management.js
+
+import { renderProducts } from './rendering';
+
+👇// this list can be moved to a different file (module)
+let products = [
+  {
+    id: new Date('1/1/1970').toString(),
+    title: 'A Book',
+    price: 12.99
+  },
+  {
+    id: new Date('1/2/1970').toString(),
+    title: 'A Carpet',
+    price: 129.99
+  },
+];
+
+export function initProducts() {
+  renderProducts(products, deleteProduct);
+}
+
+export function deleteProduct(prodId) {
+  const updatedProducts = [];
+  for (const prod of products) {
+    if (prod.id !== prodId) {
+      updatedProducts.push(prod);
+    }
+  }
+  products = updatedProducts;
+  renderProducts(products, deleteProduct);
+}
+
+export function addProduct(event) {
+  event.preventDefault();
+  const titleEl = document.querySelector('#new-product #title');
+  const priceEl = document.querySelector('#new-product #price');
+
+  const title = titleEl.value;
+  const price = priceEl.value;
+
+  if (title.trim().length === 0 || price.trim().length === 0 || +price < 0) {
+    alert('Please enter some valid input values for title and price.');
+    return;
+  }
+
+  const newProduct = {
+    id: new Date().toString(),
+    title: title,
+    price: price
+  };
+
+  products.unshift(newProduct);
+  renderProducts(products, deleteProduct);
+}
+
+````
+
+````js
+// rendering.js
+
+export function renderProducts(products, deleteProductFn) {
+  const productListEl = document.getElementById('product-list');
+  productListEl.innerHTML = '';
+  products.forEach(product => {
+    const newListEl = document.createElement('li');
+    const prodTitleEl = document.createElement('h2');
+    const prodPriceEl = document.createElement('p');
+    const prodDeleteButtonEl = document.createElement('button');
+
+    prodTitleEl.innerHTML = product.title;
+    prodPriceEl.innerHTML = product.price;
+    prodDeleteButtonEl.innerHTML = 'DELETE';
+
+    prodDeleteButtonEl.addEventListener(
+      'click',
+      deleteProductFn.bind(null, product.id)
+    );
+
+    newListEl.appendChild(prodTitleEl);
+    newListEl.appendChild(prodPriceEl);
+    newListEl.appendChild(prodDeleteButtonEl);
+
+    productListEl.appendChild(newListEl);
+  });
+}
+
+````
+
+````js
+// shop.js
+
+👉// even importing one thing from the file, will make the module to be loaded!
+import { initProducts, addProduct } from './product-management';
+
+const addProductForm = document.getElementById('new-product');
+
+initProducts();
+
+addProductForm.addEventListener('submit', addProduct);
+
+````
+
+
+
+Optimized version
+
+```js
+// product-management.js
+
+import { updateProducts } from './rendering';
+import { products } from './products';
+
+const titleEl = document.getElementById('title');
+const priceEl = document.getElementById('price');
+
+👉// I left these 2 fns that I'll lazy load
+export function deleteProduct(prodId) {
+  const deletedProductIndex = products.findIndex(prod => prod.id === prodId);
+  const deletedProduct = products[deletedProductIndex];
+  products.splice(deletedProductIndex, 1);
+  updateProducts(deletedProduct, prodId, deleteProduct, false);
+}
+
+export function addProduct(event) {
+  const title = titleEl.value;
+  const price = priceEl.value;
+
+  if (title.trim().length === 0 || price.trim().length === 0 || +price < 0) {
+    alert('Please enter some valid input values for title and price.');
+    return;
+  }
+
+  const newProduct = {
+    id: new Date().toString(),
+    title: title,
+    price: price
+  };
+
+  products.unshift(newProduct);
+  updateProducts(newProduct, newProduct.id, deleteProduct, true);
+}
+
+```
+
+````js
+// products.js
+
+export const products = [
+  {
+    id: new Date('1/1/1970').toString(),
+    title: 'A Book',
+    price: 12.99
+  },
+  {
+    id: new Date('1/2/1970').toString(),
+    title: 'A Carpet',
+    price: 129.99
+  },
+];
+````
+
+```js
+// rendering.js
+
+const productListEl = document.getElementById('product-list');
+
+// ✅creating a li element is needed in first rendering and adding an item
+function createElement(product, prodId, deleteProductFn) {
+  const newListEl = document.createElement('li');
+  newListEl.innerHTML = `
+    <h2>${product.title}</h2>
+    <p>${product.price}</p>
+  `;
+  const prodDeleteButtonEl = document.createElement('button');
+  prodDeleteButtonEl.textContent = 'DELETE';
+
+  newListEl.id = prodId;
+
+  prodDeleteButtonEl.addEventListener(
+    'click',
+    deleteProductFn.bind(null, prodId)
+  );
+
+  newListEl.appendChild(prodDeleteButtonEl);
+
+  return newListEl;
+}
+
+export function renderProducts(products, deleteProductFn) {
+  productListEl.innerHTML = '';
+  products.forEach(product => {
+    const newListEl = createElement(product, product.id, deleteProductFn);
+    productListEl.appendChild(newListEl);
+  });
+  // const startTime = performance.now();
+  // for (let i = 0; i < products.length; i++) {
+  //   const newListEl = createElement(
+  //     products[i],
+  //     products[i].id,
+  //     deleteProductFn
+  //   );
+  //   productListEl.appendChild(newListEl);
+  // }
+  // const endTime = performance.now();
+}
+
+// ✅avoids re-painting all the li elements when adding/removing elements
+export function updateProducts(product, prodId, deleteProductFn, isAdding) {
+  if (isAdding) {
+    const newProductEl = createElement(product, prodId, deleteProductFn);
+    productListEl.insertAdjacentElement('afterbegin', newProductEl);
+  } else {
+    const productEl = document.getElementById(prodId);
+    productEl.remove();
+    // productEl.parentElement.removeChild(productEl);
+  }
+}
+```
+
+```js
+// shop.js
+
+import { products } from './products';
+import { renderProducts } from './rendering';
+
+// 👉lazy load this functions that are executed upon user interaction
+function addProduct(event) {
+  // 👉prevent the form submission (POST request), because the module that does that is not ready yet  
+  event.preventDefault();
+  import('./product-management.js').then(mod => {
+    mod.addProduct(event);
+  })
+}
+
+// async await version here!👇
+async function deleteProduct(productId) {
+  const module = await import('./product-management.js');
+  module.deleteProduct(productId);
+}
+
+function initProducts() {
+  renderProducts(products, deleteProduct);
+}
+
+const addProductForm = document.getElementById('new-product');
+
+initProducts();
+
+addProductForm.addEventListener('submit', addProduct);
+
+```
+
+
+
+Maybe the numbers were worse in terms of `Coverage` after doing the optimisations, but could have been bigger if the functions would have been more complex.
+
+I could have also have `deleteProduct` and `addProduct` in separate files if they were big enough, and lazy load them separately
+
