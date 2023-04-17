@@ -862,3 +862,69 @@ mutation {
 }
 ```
 
+
+
+### Getting posts with pagination
+
+```js
+//resolvers.js
+
+posts: ({page, perPage}, req) => {
+     // all logged in users can add posts to the array in memory
+     if (!req.isAuth){
+        const error = new Error('Oops, you are not authenticated');
+        error.code = 401;
+        throw error;
+    }
+    const totalPosts = posts.length;
+    const paginatedPosts = posts.slice(((page - 1) * perPage), ((page - 1) * perPage) + perPage);
+    return {posts: paginatedPosts, totalPosts};
+},
+```
+
+````js
+// schemas.js
+`type PostData {
+    posts: [Post]!,
+    totalPosts: Int!
+  }
+
+  type Query {
+    hello: String,
+    news: News,
+    login(loginData: LoginData): AuthData,
+    👉 posts(page: Int!, perPage: Int!): PostData
+  }
+`
+````
+
+````js
+// Postman
+body -> graphql option selected
+
+{
+    posts(page: 2, perPage: 2) {
+        posts {
+            title
+        }
+        totalPosts
+    }
+}
+
+// response
+{
+    "data": {
+        "posts": {
+            "posts": [
+                {
+                    "title": "tuesday"
+                },
+                {
+                    "title": "wednesday"
+                }
+            ],
+            "totalPosts": 4
+        }
+    }
+````
+
