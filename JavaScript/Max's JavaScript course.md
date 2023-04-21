@@ -9386,7 +9386,7 @@ run `npm run build:prod` and then `cd dist` `serve`. The JS file is 1.5KB zipped
 - 👉Functions like `addProduct` are marked in red inside the webpack folder in source maps.
 - the fix: lazy load that function!
 
-### How efficient is the code?
+### runtime performance: how efficient is the code when running?
 
 - re-rendering all the list items upon adding or deleting elements hits performance!
 - creating node elements that can be added using innerHtml could be expensive (beware of sanitizing). Those elements don't need to be tweak much, like events listeners added or so on, otherwise I'd need to create the node in order to that anyway
@@ -9711,3 +9711,229 @@ inside `summary`, `Distance` refers to how often the things are used
 Solution: don't store node elements in arrays, or take them out  manually when removed from the DOM
 
 Sometimes taking snapshots and comparing them show a delta of 0 when we should be expecting a delta of -1, when removing an element, but that's not a memory leak but how the browser works.
+
+
+
+### Server side performance optimisation
+
+Specifically, there are three main areas of improvement which you might want to look into:
+
+- Compression of served assets
+- Caching (client-side and server-side)
+- HTTP/2
+
+#### Compression
+
+Compression is about zipping static assets (CSS, JS, images) before serving them. Modern browsers know how to unzip such files and will automatically do so. Since zipped assets are transferred, less data is sent from server to client => Faster load time.
+
+How you set up compression depends on which server/ service you're using. For example on Firebase, static assets are automatically compressed.
+
+When having your own NodeJS server-side code, you would have to manually ensure that static assets are compressed (https://github.com/expressjs/compression).
+
+#### Caching
+
+Caching is a complex topic - it's about saving data or files for re-use and it can be done on different levels.
+
+For example, browser automatically cache files (e.g. JS files) for you - based on the caching headers set by the serving host (https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control). So controlling these headers on the server-side config, allows you to control how browsers will cache such files. This can help you avoid unnecessary data transfer but of course you also have to make sure that visitors of your site don't miss out on important updates.
+
+Server-side caching is all about storing data you work with on the server (e.g. fetched from a database) such that multiple requests requesting the same data can get that cached data.
+
+You can learn more about caching here: https://developers.google.com/web/fundamentals/performance/optimizing-content-efficiency/http-caching
+
+And here: https://wp-rocket.me/blog/different-types-of-caching/
+
+#### HTTP/2
+
+HTTP/2 is the latest "form" of the Http protocol and unlike HTTP 1, it allows for "server push". That means that servers can push required assets/ files actively to a client (instead of waiting for the client to request them).
+
+You can learn more about it here: https://developers.google.com/web/fundamentals/performance/http2
+
+
+
+## Testing
+
+we need 3 things:
+
+Test runner: execute tests, summarize results. e.g Mocha, Jest.
+
+Assertion library: define testing logic, conditions. Eg. Chai, Jest
+
+Headless browser, for e2e tests. Simulate user interaction. eg. Puppeteer
+
+Max has some util functions to be tested using commonJS exports, because that'd need some extra set up otherwise
+
+### Unit tests: functions with no dependencies
+
+Dependencies are interacting with db, calling other fns, etc
+
+Unit testing: pure functions testing
+
+we can name the test file `.spec.js` or `.test.js`, Jest will look for both
+
+Jest uses common JS imports
+
+Jest will make test() fn globally available
+
+`````js
+// package.json
+{
+  "name": "js-testing-introduction",
+  "version": "1.0.0",
+  "description": "An introduction to JS testing",
+  "main": "app.js",
+  "scripts": {
+    "start": "webpack app.js --mode development --watch",
+      // jest will look for .spec or .test files and execute them
+    👉"test": "jest --watch"
+  }
+}
+`````
+
+````js
+// util.js
+// exported with commonJS, because Jest natively uses commonJS
+exports.generateText = (name, age) => {
+  // Returns output text
+  return `${name} (${age} years old)`;
+};
+````
+
+```js
+// util.test.js
+const { generateText } = require('./util');
+
+const { generateText } = require('./util');
+
+// test fn is provided by the test runner
+test('should output name and age', () => {
+    const text1 = generateText('Max', 29);
+    // expect fn is provided by the assertion libray
+    expect(text1).toBe('Max (29 years old)');
+
+    const text2 = generateText('Anna', 28);
+    expect(text2).toBe('Anna (28 years old)');
+});
+
+test('should output dataless text', () => {
+    const text1 = generateText('', null);
+    expect(text1).toBe(' (null years old)');
+
+    const text2 = generateText();
+    expect(text2).toBe('undefined (undefined years old)');
+})
+```
+
+````bash
+npm run test
+````
+
+
+
+### Integration tests
+
+#### 👉testing a function that uses one or more function/s that have already been unit tested👈
+
+````js
+exports.generateText = (name, age) => {
+  // Returns output text
+  return `${name} (${age} years old)`;
+};
+
+exports.createElement = (type, text, className) => {
+  // Creates a new HTML element and returns it
+  const newElement = document.createElement(type);
+  newElement.classList.add(className);
+  newElement.textContent = text;
+  return newElement;
+};
+
+exports.validateInput = (text, notEmpty, isNumber) => {
+  // Validate user input with two pre-defined rules
+  if (!text) {
+    return false;
+  }
+  if (notEmpty && text.trim().length === 0) {
+    return false;
+  }
+  if (isNumber && +text === NaN) {
+    return false;
+  }
+  return true;
+};
+
+// 💡 👇instead of using this.validateInput, I could have used
+// const validateInput = ...
+// referenced validateInput inside checkAndGenerate
+// exports.validateInput; // so I can use in other files
+
+👉exports.checkAndGenerate = (name, age) => {
+  // let's check
+  if (!this.validateInput(name, true, false) || !this.validateInput(age, false, true)) return
+  return this.generateText(name, age);
+}
+````
+
+````js
+const { generateText, validateInput, checkAndGenerate } = require('./util');
+
+// 1️⃣unit tests
+// test fn is provided by the test runner
+test('should output name and age', () => {
+    const text1 = generateText('Max', 29);
+    // expect fn is provided by the assertion libray
+    expect(text1).toBe('Max (29 years old)');
+
+    const text2 = generateText('Anna', 28);
+    expect(text2).toBe('Anna (28 years old)');
+});
+
+test('should output dataless text', () => {
+    const text1 = generateText('', null);
+    expect(text1).toBe(' (null years old)');
+
+    const text2 = generateText();
+    expect(text2).toBe('undefined (undefined years old)');
+})
+
+test('should validate name and age', ()=> {
+    const result1 = validateInput('Max', true, false)
+    expect(result1).toBe(true);
+
+    const result2 = validateInput('Max', false, false)
+    expect(result2).toBe(true);
+    
+    const result3 = validateInput('', false, false)
+    expect(result3).toBe(false);
+
+    const result4 = validateInput(28, false, true)
+    expect(result4).toBe(true);
+
+    const result5 = validateInput(28, false, false)
+    expect(result5).toBe(true);
+    
+    const result6 = validateInput(null, false, false)
+    expect(result6).toBe(false);
+
+    const result7 = validateInput(undefined, false, false)
+    expect(result7).toBe(false);
+
+    const result8 = validateInput(null, true, false)
+    expect(result8).toBe(false);
+
+    const result9 = validateInput(undefined, false, false)
+    expect(result9).toBe(false);
+})
+
+
+// 2️⃣integration test now!
+// I've already unit tested generateText and validateInput fns in unit tests
+// so I test how they work when used together inside another fn
+👉 test('should output validated name and age', () => {
+    const result1 = checkAndGenerate('Max', 29);
+    expect(result1).toBe('Max (29 years old)')
+
+    const result2 = checkAndGenerate('', 29);
+    expect(result2).toBe(undefined)
+})
+````
+
