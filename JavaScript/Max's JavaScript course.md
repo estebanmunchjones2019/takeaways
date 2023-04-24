@@ -9937,3 +9937,93 @@ test('should validate name and age', ()=> {
 })
 ````
 
+​	
+
+### e2e tests
+
+we can set up timeouts, like this:
+
+````js
+test('should print name an age', ()=>{}, 👉10000)
+````
+
+`````js
+// util.test.js
+// e2e test here!
+test('should print name an age', async ()=>{
+    const browser = await puppeteer.launch({
+        headless: true, // could be set to false. Couldn't get it to launch on my Mac
+        // slowMo: 80,
+        // args: ['--window-size=1920,1080']
+    })
+
+    const page = await browser.newPage();
+
+    await page.goto('file:///Users/estebanmunchjones/Documents/Coding/javascript-the-complete-guide-code/testing-02-unit-tests/index.html')
+
+    await page.click('input#name')
+    await page.type('input#name', 'Anna');
+
+    await page.click('input#age')
+    await page.type('input#age', '28');
+
+    await page.click('#btnAddUser')
+
+    const text = await page.$eval('.user-item', el => el.textContent);
+
+    expect(text).toBe('Anna (28 years old)')
+}, 10000)
+`````
+
+issues I faced: 
+
+- I had some pupetter error at the beginning: https://stackoverflow.com/questions/74078944/cannot-find-module-puppeteer-core-internal-common-device-js
+- then I had a localStorage one: localStorage is not available for opaque origins
+- In the end I just installed Max's versions of jest and puppeteer
+
+### Reaching out to the DOM breaks unit and integration tests!
+
+````
+const { fetchData } = require('./http');
+
+❌const button = document.querySelector('button');
+
+const loadTitle = () => {
+  return fetchData().then(extractedData => {
+    const title = extractedData.title;
+    const transformedTitle = title.toUpperCase();
+    return transformedTitle;
+  });
+};
+
+const printTitle = () => {
+  loadTitle().then(title => {
+    console.log(title);
+  });
+};
+
+❌button.addEventListener('click', printTitle);
+
+exports.printTitle = printTitle;
+````
+
+````js
+// testing printTitle will fail ❌
+
+const { printTitle } = require('./app');
+
+test('should print title', ()=>{
+    const title = printTitle(); 
+})
+````
+
+````bash
+npm run test
+  TypeError: Cannot read properties of null (reading 'addEventListener'); // document is null
+
+      17 | };
+      18 |
+    > 19 | button.addEventListener('click', printTitle);
+````
+
+Keep working on trying to test printTitle not returning a promise, then then test loadtitle
