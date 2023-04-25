@@ -10027,3 +10027,121 @@ npm run test
 ````
 
 Keep working on trying to test printTitle not returning a promise, then then test loadtitle
+
+Let's now try to test this fn:
+
+````js
+const printTitle = () => {
+  // ❌it doesn't return, how can I use this fn when calling expect()??
+  loadTitle().then(title => {
+    // return title; // ❌ even a return here doesn't work, it needs to be at the root level of the fn body
+    console.log(title);
+  });
+};
+````
+
+the solution is to test this fn instead:
+
+````js
+// util.js
+const loadTitle = () => {
+  // it return the promise at the root level of the fn body ✅
+  return fetchData().then(extractedData => {
+    const title = extractedData.title;
+    const transformedTitle = title.toUpperCase();
+    return transformedTitle;
+  });
+};
+````
+
+```js
+//util.test.js
+const { loadTitle } = require('./util');
+
+test('should load title', async ()=>{
+    const title = await loadTitle();
+    expect(title).toBe('DELECTUS AUT AUTEM')
+})
+```
+
+### Let's not hit the API every time we run the test!
+
+it's nice to mock http requests, reaching out to the filesystem, intereacting with databases, etc
+
+let's replace `fetchData` fn with a mock
+
+jest does a file swapping
+
+Steps:
+
+1. create a `__mocks__` folder at the root level of the project, then add some files inside, that matches the name of the js files we want to replace. eg. http.js
+2. then add `jest.mock('./http'); at the beginning of the test file
+
+````js
+// http.js
+const axios = require('axios');
+
+const fetchData = () => {
+  return axios
+    .get('https://jsonplaceholder.typicode.com/todos/1')
+    .then(response => {
+      return response.data;
+    });
+};
+
+exports.fetchData = fetchData;
+````
+
+````js
+// __mocks__/http.js
+
+const fetchData = () => {
+  return Promise.resolve({title: 'delectus aut autem'})
+};
+
+exports.fetchData = fetchData;
+````
+
+```js
+// util.test.js
+👉jest.mock('./http');
+
+const { loadTitle } = require('./util');
+
+test('should load title', async ()=>{
+    const title = await loadTitle();
+    expect(title).toBe('DELECTUS AUT AUTEM')
+})
+```
+
+### Mock some node modules, like axios
+
+No need to add `jest.mock('axios')` inside the test file, jest will do it automatically! 🎉
+
+````js
+// util.test.js
+// jest.mock('./http'); 🎉
+
+const { loadTitle } = require('./util');
+
+test('should load title', async ()=>{
+    const title = await loadTitle();
+    expect(title).toBe('DELECTUS AUT AUTEM')
+})
+````
+
+````js
+// __mocks__/axios.js
+exports.get = (url) => {
+    console.log('using mocked axios')
+    switch(url){
+        case 'https://jsonplaceholder.typicode.com/todos/1':
+            return Promise.resolve({data: {title: 'delectus aut autem'}})
+    }
+}
+````
+
+
+
+
+
