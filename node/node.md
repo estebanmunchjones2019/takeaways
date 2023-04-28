@@ -1,5 +1,97 @@
 # Max's NodeJS course
 
+## Getting started
+
+REPL mode, not very useful
+
+```bash
+node
+Welcome to Node.js v18.13.0.
+Type ".help" for more information.
+> 
+```
+
+Read, and Evaluate the input, Print the output, and Loop to wait for new inputs
+
+
+
+### Basics
+
+The event loop keeps the process (loop) running until there are no event listeners registered
+
+JS runs on a single thread, althoug it can use multiple threads on the OS to perform tasks.
+
+```js
+const http = require('http');
+
+cont server = http.createServer((req,res)=>{
+	console.log(req);
+	process.exit(); // this will stop the loop
+})
+
+server.listen(3000);
+```
+
+
+
+Remember to redirect the user to a different route after they submitted a POST request, otherwise there's an infinite loop of POST requests, as when the same url loads, and there had been a POST request, a new POST request is triggered automatically!
+
+the `data` coming on a request comes in chunks, so we can start doing things with them as they come, and not wait till completion to, e.g save data to a file
+
+Buffer construct helps us gather the chunk/s and get something usable
+
+```js
+const http = require('http');
+const fs = require('fs');
+
+const server = http.createServer((req, res) => {
+  const url = req.url;
+  const method = req.method;
+  if (url === '/') {
+    res.write('<html>');
+    res.write('<head><title>Enter Message</title><head>');
+    res.write('<body><form action="/message" method="POST"><input type="text" name="message"><button type="submit">Send</button></form></body>');
+    res.write('</html>');
+    // let's return to stop the fn execution
+    return res.end();
+  }
+  // it gets messy with vanilla NODE and if checks, express is cleaner ❌
+  if (url === '/message' && method === 'POST') {
+    const body = [];
+    // data event callback
+    req.on('data', (chunk) => {
+      console.log(chunk);
+      body.push(chunk);
+    });
+    // end event callback
+    req.on('end', () => {
+      // I used .toString() because I know the body is text
+      // I'd use other method for images, etc
+      const parsedBody = Buffer.concat(body).toString();
+      const message = parsedBody.split('=')[1];
+      // this is a synchronous (blocking) fn
+      fs.writeFileSync('message.txt', message);
+    });
+    // res.setHeader(302, 'Location', '/'); // also works
+    res.statusCode = 302;
+    // let's redirect to avoid an infinite POST requests loop
+    res.setHeader('Location', '/');
+    // let's return to stop the fn execution
+    return res.end();
+  }
+  res.setHeader('Content-Type', 'text/html');
+  res.write('<html>');
+  res.write('<head><title>My First Page</title><head>');
+  res.write('<body><h1>Hello from my Node.js Server!</h1></body>');
+  res.write('</html>');
+  res.end();
+});
+
+server.listen(3000); // start the process (Node will start to listen to http requests from now on)
+```
+
+
+
 ### Improved dev workflow and debuging
 
 ````json
