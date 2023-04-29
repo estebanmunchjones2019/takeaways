@@ -64,21 +64,23 @@ const server = http.createServer((req, res) => {
       body.push(chunk);
     });
     // end event callback
-    req.on('end', () => {
+    // ⚠️ let's return so we don't try to set the headers first down there 1️⃣
+    return req.on('end', () => {
       // I used .toString() because I know the body is text
       // I'd use other method for images, etc
       const parsedBody = Buffer.concat(body).toString();
       const message = parsedBody.split('=')[1];
       // this is a synchronous (blocking) fn
       fs.writeFileSync('message.txt', message);
+      // res.setHeader(302, 'Location', '/'); // also works
+    	res.statusCode = 302;
+    	// let's redirect to avoid an infinite POST requests loop
+    	res.setHeader('Location', '/');
+    	// let's return to stop the fn execution
+    	return res.end();
     });
-    // res.setHeader(302, 'Location', '/'); // also works
-    res.statusCode = 302;
-    // let's redirect to avoid an infinite POST requests loop
-    res.setHeader('Location', '/');
-    // let's return to stop the fn execution
-    return res.end();
   }
+  // try to set the headers here1️⃣! 
   res.setHeader('Content-Type', 'text/html');
   res.write('<html>');
   res.write('<head><title>My First Page</title><head>');
@@ -89,6 +91,85 @@ const server = http.createServer((req, res) => {
 
 server.listen(3000); // start the process (Node will start to listen to http requests from now on)
 ```
+
+
+
+![](./images/event-loop.png)
+
+![](./images/single-thread.png)
+
+The event loop is where Node goes through a cycle of checking if timers have expired, events have been fired, new callbacks need to be registered, and of course, run the callbacks!
+
+Node.js is the world of callbacks. Callbacks don't block the single thread, they'r in memory waiting for the loop to execute them. Callbacks are easy jobs, they'r done really quickly
+
+On the other hand, heavy duty tasks are performerd on the OS threads, and they emit an event when they'r done, so the loop runs the callbacks.
+
+the loop stops when there are no more references to callbacks or process.exit() is called manually from withing the code.
+
+setImmediate() fn executes the fn faster than using setTimeOut(1000).
+
+let's not block the thread witn synchronous tasks! code writen below won't run for the user that requested that, until that task is finished. An other users making requests to the server won't manage to get their callbacks run till that sync task is finished!! 😮
+
+sync tasks are like stopping for drinking mate tea in the middle of the motorway. Let's do it in the car park instead!
+
+````js
+req.on('end', () => {
+      const parsedBody = Buffer.concat(body).toString();
+      const message = parsedBody.split('=')[1];
+      
+      // this is a synchronous (blocking) fn ❌
+      // this could block other users from getting their files written an getting the responses in the end 😦
+      fs.writeFileSync('message.txt', message);
+    	res.statusCode = 302;
+    	res.setHeader('Location', '/');
+    	return res.end();
+});
+````
+
+```js
+// let's fix it!
+req.on('end', () => {
+      const parsedBody = Buffer.concat(body).toString();
+      const message = parsedBody.split('=')[1];
+      fs.writeFile('message.txt', message, (error) =>{
+        if (error){
+          // handler error
+        }
+        res.statusCode = 302;
+    	  res.setHeader('Location', '/');
+    	  return res.end();
+      });	
+});
+```
+
+So, we'r registering a callback for the 'end' event coming from the request, and when we run the callback, that callback registers another callback that will run when the file has been written. Kind of nested callbacks.
+
+
+
+### Let's export things
+
+````js
+// routes.js
+
+const routes = (req, res) => {
+	if (req.url === '/'){ 
+	}
+	// etc
+}
+
+module.exports = routes;
+````
+
+`module` is a global node object, that has an exports prop and can be set to anything (string, object, function reference, etc)
+
+when we import things, node will check what's the key of that object and return it
+
+```js
+// app.js
+const routes = require('./routes');
+```
+
+
 
 
 
