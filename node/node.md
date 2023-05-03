@@ -171,6 +171,25 @@ const routes = require('./routes');
 
 
 
+Another way to export things:
+
+```js
+// routes.js
+
+const routes = (req, res) => {
+	if (req.url === '/'){ 
+	}
+	// etc
+}
+
+export.routes = routes;
+```
+
+```js
+// app.js
+const { routes } = require('./routes');
+```
+
 
 
 ### Improved dev workflow and debuging
@@ -1100,4 +1119,198 @@ body -> graphql option selected
         }
     }
 ````
+
+
+
+### Uploading images
+
+graphql only accepts JSON, so uploading an image needs to be done via a REST endpoint, and the path of the stored file then needs to passed the graphql, so it's stored somewhere, etc
+
+```js
+// FE
+// 1️⃣reach out to REST endpoint
+const imageRes = await fetch('localhost:3000/post-image', {
+  method: 'PUT',
+  body: someFormDataHere
+});
+const imageResData = await imageRes.json();
+
+// this constant is where the image has been stored
+const imageUrl = imageResData.imageUrl;
+
+// 2️⃣reach out to graphql endpoint
+const savePostRes = await fetch('localhost:3000/graphql', {
+  method: 'POST',
+  body: {
+    query: JSON.Stringify(`
+		mutation { 
+			savePost(postData: {
+        title: 'hello',
+        body: 'world',
+        👉imageUrl,
+      	}) {
+        	_id
+      	}
+		}
+	`)},
+	headers: {
+		'Content-type': 'application/json'
+	}
+})
+```
+
+````js
+// BE
+
+// I use multer upstream, to save the file to get the file from the req and save it to the fs
+
+app.put('/post-image', (req, res, next) => {
+	// happy path
+	res.status(200).json({message: 'image saved!', imageUrl: req.file.path})
+})
+
+app.all('/graphql', ()...)
+````
+
+we can mix rest and graphql endpoints in our express server, as graphql is just one of the routes.
+
+#### Pro tip: Returning and object with modified keys, e.g converting id object in mongoldb to a string
+
+```js
+return {
+	...post
+	_id: post._id.toISOString()
+}
+```
+
+
+
+### Let's not interpolate variables inside the query string in the FE
+
+````js
+// FE
+body: JSON.Stringify({
+  query: `
+  	mutation {
+    addPost(post: {
+      title: "${state.title}", // 👈❌
+      body: "${state.body}"
+    })
+    {
+      id,
+      title
+    }
+  `,
+})
+
+````
+
+````js
+
+body: JSON.Stringify({
+  query: `
+  	mutation AddPost($title: String!, $body: String) {
+    addPost(post: {
+      title: $title, // 👈✅
+      body: $body
+    })
+    {
+      id,
+      title
+    }
+  `,
+  variables: {
+  	title: "hello world",
+  	body: "body here!"
+  }
+})
+````
+
+
+
+````js
+body: JSON.Stringify({
+  query: `
+  	// AddPost could be name whatever
+  	mutation AddPost($title: String!, $body: String) { // e.g String! types need to match the shema definition
+    addPost(post: {
+      title: $title, // 👈✅
+      body: $body
+    })
+    {
+      id,
+      title
+    }
+  `,
+   variables: {
+  	title: "hello world",
+  	body: "body here!"
+  }
+})
+````
+
+I tried Postman, and it worked as expected:
+```JSON
+// body raw JSON
+{
+        "query": "query FetchPosts($page: Int!, $perPage: Int!){ posts(page: $page, perPage: $perPage) { posts {title} } }",
+        "variables": {
+            "page": 1,
+            "perPage": 2
+      }
+}
+```
+
+````JSON
+// res
+{
+    "data": {
+        "posts": {
+            "posts": [
+                {
+                    "title": "heyy"
+                },
+                {
+                    "title": "monday"
+                }
+            ]
+        }
+    }
+}
+````
+
+#### How to send the variables using the `graphql` instead of  `raw JSON`??
+
+Easy, there's a separate input for that https://learning.postman.com/docs/sending-requests/graphql/graphql/#:~:text=Sending%20GraphQL%20queries%20in%20the%20request%20body,-Open%20a%20new&text=Select%20POST%20from%20the%20request,both%20queries%20and%20variables%20separately.
+
+````javascript
+// query box
+query Posts($page: Int!, $perPage: Int!) {
+    posts(page: $page, perPage: $perPage) {
+        posts {
+            title
+        }
+        totalPosts
+    }
+}
+````
+
+```js
+// graphql variables box
+  {
+      "page": 1,
+      "perPage": 2
+  }
+```
+
+
+
+How to send the variables using graphiql?
+
+````js
+// localhost:4000/graphql -> shows the the graphiql interface
+same as Postman!
+````
+
+There's a `Query variables` box!
 
