@@ -148,47 +148,65 @@ So, we'r registering a callback for the 'end' event coming from the request, and
 
 ### Let's export things
 
-````js
-// routes.js
+1. let's export single things
 
-const routes = (req, res) => {
-	if (req.url === '/'){ 
-	}
-	// etc
-}
+   ````js
+   // routes.js
+   
+   const routes = (req, res) => {
+   	if (req.url === '/'){ 
+   	}
+   	// etc
+   }
+   
+   👉 module.exports = routes;
+   ````
 
-module.exports = routes;
-````
+   `module` is a global node object, that has an exports prop and can be set to anything (string, object, function reference, etc)
 
-`module` is a global node object, that has an exports prop and can be set to anything (string, object, function reference, etc)
+   when we import things, node will check what's the key of that object and return it
 
-when we import things, node will check what's the key of that object and return it
+   ````js
+   // app.js
+   const routes = require('./routes');
+   ````
 
-```js
-// app.js
-const routes = require('./routes');
-```
+2. Let's export things in an object:
+
+   ````js
+   // routes.js
+   👉 module.exports = {
+   	routes,
+   	message: 'hello world'
+   }
+   ````
+
+   ```js
+   // app.js
+   const { routes, message} = require('./routes');
+   ```
+
+3. Let's export things in an object, second way:
+
+   ````js
+   // routes.js
+   👉 module.exports.routes = routes;
+   👉 module.exports.message = 'hello world'
+   ````
+
+4. Let's export things in an object, third way:
+
+   we'r just omitting the `module` word.
+
+   ````js
+   // routes.js
+   👉 export.routes = routes;
+   👉 export.message = 'hello world'
+   ````
+
+   
 
 
-
-Another way to export things:
-
-```js
-// routes.js
-
-const routes = (req, res) => {
-	if (req.url === '/'){ 
-	}
-	// etc
-}
-
-export.routes = routes;
-```
-
-```js
-// app.js
-const { routes } = require('./routes');
-```
 
 
 
