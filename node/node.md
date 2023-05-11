@@ -204,9 +204,77 @@ So, we'r registering a callback for the 'end' event coming from the request, and
    👉 export.message = 'hello world'
    ````
 
-   
+### Assignment - Basics
 
+````js
+res.write('welcome!'); // rendered as <body><pre>welcome<pre></body>
+res.end();
+````
 
+````js
+res.writeHead(200, {'Content-type': 'text/html'}); 
+res.write('welcome!'); // rendered as <body>welcome</body>
+res.end();
+````
+
+#### If statements
+
+we catch exact matches (express catches all routes that start with `/` if we do app.use('/') )
+
+```js
+const routes = (req, res) => {
+    const url = req.url;
+    const method = req.method;
+  
+  // e.g I enter `/users` second block runs
+  // e.g I enter '/' first block runs, even removing first return. So it's an exact match👇
+
+    if (url ===👉 '/' && method === 'GET'){ // 👈exact match here
+        res.writeHead(200, {'Content-type': 'text/html'});
+      // no need for a button in the form, we just press enter after filling the input
+        res.write(`
+            <h1>welcome!</h1>
+            <form method="POST" action="/create-user">
+                <input name="userName"/>
+            </form>
+        `);
+        return res.end(); // even if I don't have a return, the next if block doesn't match the '/' route and doesn't run
+    }
+    if (url === '/users' && method === 'GET'){
+        res.writeHead(200, {'Content-type': 'text/html'});
+      	// better way, as 200 is the default already
+      	// 💡 res.setHeader('Content-type', 'text/html')
+        res.write('<ul><li>John</li></ul>');
+        return res.end();
+    }
+    if (url === '/create-user' && method === 'POST'){
+        const chunks = [];
+
+        req.on('data', (chunk) => {
+          	// each chunk is a buffer
+            chunks.push(chunk);
+        })
+
+        req.on('end', ()=> {
+            // I do .toString because I know the input value is a string
+            const parsedBody = Buffer.concat(chunks).toString();
+            console.log(parsedBody.split('=')[1]);
+        })
+        res.writeHead(302, {'Location': '/'}); // redirect to avoid infinite POST req loop
+    		// OR more verbose way
+      	// res.statusCode = 200;
+      	// res.setHeader('Location', '/');
+    
+        return res.end();
+    }
+    res.writeHead(404, {'Content-type': 'text/html'});
+    res.write('<h1>page not found');
+    return res.end();
+    
+}
+
+module.exports = routes;
+```
 
 
 
@@ -304,6 +372,12 @@ How to restart the debugger? VSCode -> Debug icon -> Create a launch.json file:
 💡use the Debug console to access variables and test some methods on them. To change the value of variables, just use the Variables section of the debugger and double click and edit the values
 
 
+
+### Express.js
+
+framework for funeling requests into middlewares, with clean and elegant code.
+
+TODO: Listen to voice memos and take notes
 
 
 
