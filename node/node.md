@@ -377,7 +377,543 @@ How to restart the debugger? VSCode -> Debug icon -> Create a launch.json file:
 
 framework for funeling requests into middlewares, with clean and elegant code.
 
-TODO: Listen to voice memos and take notes
+`````js
+// basic setup
+
+const express = require('express');
+
+const app = express()
+
+const server = http.createServer(app); // we can pass app as a middleware
+
+server.listen(3000);
+`````
+
+````js
+// improved setup
+const express = require('express');
+
+const app = express();
+
+// much cleaner
+// here we don't pass the app as a middleware, but we can create and start the server instead
+app.listen(3000)
+
+// the browser gets an error cannot GET, as there are no middlewares registered at all
+````
+
+
+
+#### Express under the hood
+
+from node_modules:
+
+```js
+/**
+ * Creates an Express application. The express() function is a top-level function exported by the express module.
+ */
+declare function e(): core.Express;
+```
+
+
+
+````js
+export interface Application<
+    LocalsObj extends Record<string, any> = Record<string, any>
+> extends EventEmitter, IRouter, Express.Application {
+    /**
+     * Express instance itself is a request handler, which could be invoked without
+     * third argument.
+     */
+    (req: Request | http.IncomingMessage, res: Response | http.ServerResponse): any;
+
+       /**
+     * Listen for connections.
+     *
+     * A node `http.Server` is returned, with this
+     * application (which is a `Function`) as its
+     * callback. If you wish to create both an HTTP
+     * and HTTPS server you may do so with the "http"
+     * and "https" modules as shown here:
+     *
+     *    var http = require('http')
+     *      , https = require('https')
+     *      , express = require('express')
+     *      , app = express();
+     *
+     *    http.createServer(app).listen(80);
+     *    https.createServer({ ... }, app).listen(443);
+     */
+    listen(port: number, hostname: string, backlog: number, callback?: () => void): http.Server;
+````
+
+from GitHub:
+
+````js
+// https://github.com/expressjs/express/blob/master/lib/application.js
+app.listen = function listen() {
+  var server = http.createServer(this);
+  return server.listen.apply(server, arguments);
+};
+
+````
+
+````js
+// how send() will set the `Content-type` header automatically for us! 💡
+res.send = function send(body) {
+	...
+	switch (typeof chunk) {
+    // string defaulting to html
+    case 'string':
+      if (!this.get('Content-Type')) {
+        👉this.type('html');
+      }
+
+````
+
+
+
+#### Let's start logging things on node
+
+```js
+const http = require('http');
+
+const express = require('express');
+
+const app = express()
+
+app.use((req, res) => { // registering the first middleware
+    const url = req.url;
+    const method = req.method;
+    console.log(url, method); // / GET
+  	// the browser keeps loading, never gets a response
+})
+
+app.listen(3000)
+```
+
+
+
+#### Sending our first response!
+
+````js
+app.use((req, res) => {
+    const url = req.url;
+    const method = req.method;
+    console.log(url, method);
+    res.send('hello from middleware #1')
+})
+````
+
+
+
+#### Adding one more middleware
+
+`````js
+app.use((req, res, next) => {
+    const url = req.url;
+    const method = req.method;
+    console.log(url, method);
+    res.send('hello from middleware #1')
+  // no next() here ❌
+})
+
+// this middleware will never run ❌ (in this case they both target the same path)
+// middlewares run from top to bottom in the file
+// in other words, the order of registration matters
+app.use((req, res) => {
+    const url = req.url;
+    const method = req.method;
+    console.log(url, method);
+    res.send('hello from middleware #2')
+})
+`````
+
+
+
+```js
+app.use((req, res, next) => {
+    const url = req.url;
+    const method = req.method;
+    console.log(url, method);
+    console.log('hello from middleware #1')
+    next(); // ✅
+})
+
+app.use((req, res) => {
+    const url = req.url;
+    const method = req.method;
+    console.log(url, method);
+    console.log('hello from middleware #2')
+    res.send('request handled')
+})
+
+// node logs
+// there are 2 requests one for the page and another one for the favicon
+/ GET
+hello from middleware #1
+/ GET
+hello from middleware #2
+
+/favicon.ico GET
+hello from middleware #1
+/favicon.ico GET
+hello from middleware #2
+```
+
+
+
+### Don't send the response and execute next()
+
+````js
+app.use((req, res, next) => {
+    const url = req.url;
+    const method = req.method;
+    console.log(url, method);
+    console.log('hello from middleware #1')
+    res.send('request handled')
+    next(); // ❌
+})
+
+app.use((req, res) => {
+    const url = req.url;
+    const method = req.method;
+    console.log(url, method);
+    console.log('hello from middleware #2')
+    res.send('request handled')
+})
+
+// node error
+// Error [ERR_HTTP_HEADERS_SENT]: Cannot set headers after they are sent to the client
+// the error doesn't crash the app though
+````
+
+
+
+```js
+// let's set some headers, so the content type is not set by express automatically
+
+    👉res.header('Content-type', 'application/json');
+    res.send('request handled')
+
+// the browser gets pitch black and prints that JSON, and the response headers confirm that (application/json)
+```
+
+
+
+#### Overload ??
+
+hovering over `app.use()` , VSCode says (+8 overloads) , which means that there are 8 +1 ways to use this fn passing optional params and combinations
+
+
+
+#### Handling different routes
+
+````js
+app.use((req, res) => {})
+// same as
+app.use('/', (req, res) => {})
+
+// requests to `/` or `/posts` will trigger it. Mnemotechnique: all paths that start with `/`, in other words, all paths
+````
+
+
+
+```js
+// more narrowed down paths first
+app.use('/posts',(req, res) => { // runs just for paths starting with`/posts`. eg:
+  // `/posts` , `/posts/1`, etc
+    res.send('list of posts here');
+})
+
+// fallbacks or less restrictive paths at the botton
+// app.use((req, res) => {}) or the code below is the same
+app.use('/',(req, res) => { // runs for all routes `/`, `/banana`, but not `/posts`,
+  	// as a I didn't call `next()`` on the first middleware (it would have thrown an error anyway)
+    res.send('Welcome to my site!')
+})
+
+app.listen(3000)
+```
+
+
+
+#### Assigment: Express.js
+
+⚠️Make sure you install `nodemon` locally (as a dependency), as when the app is deployed, we don't manually need to install nodemon globally manually separately in the deployment server. All that the express app needs has to be listed in package.json (e.g test libraries and so on, which are dev dependencies etc, so things not necessarily used when the app is handling requests in prod)
+
+⚠️ when publishing a new npm package, don't name it the same as an internal node module (e.g 'fs')! users won't be able to use the package at all when they require it! 😅
+
+
+
+#### Redirection made easy
+
+````js
+res.status(302);
+res.header('Location', '/success')
+res.send();
+
+// or
+res.redirect('/success'); ✅
+````
+
+
+
+#### Req.body is undefined!!
+
+what a problem!
+
+we need to register a parser as a middleware, so it populates that field 😉
+
+Body-parser was included to express and then removed, then re-included.
+
+So it's better to install it as a dependency, to future proof our code
+
+```bash
+npm i body-parser
+```
+
+````js
+const bodyParser = require('body-parser');
+
+// enough to parse input fields passed to the BE
+app.use(bodyParser.urlencoded({extended: false}));
+
+// let's just react to POST requests
+app.post('/product', (req, res) => {
+    console.log(req.body?.productName); // 'jumper'
+    res.redirect('/success');
+})
+````
+
+
+
+#### App router
+
+let's not clutter app.js file with all the middlewares
+
+let's move the middlewares to different folders:
+
+````js
+// routes/admin.js
+const express = require('express')
+
+const router = express.Router()
+
+router.get('/add-product',(req, res) => {
+    res.send('<form action="/product" method="POST"><input name="productName"/></form>');
+})
+
+router.post('/product', (req, res) => {
+    console.log(req.body?.productName);
+    res.redirect('/');
+})
+
+
+module.exports = router;
+````
+
+```js
+// routes/shop.js
+
+const express = require('express')
+
+const router = express.Router()
+
+router.get('/', (req, res) => { 💡// having exact matches is so convenient, no accidental handling of routes starting with (as app.use does)
+    res.send('Welcome to my site!')
+})
+
+module.exports = router;
+```
+
+```js
+const bodyParser = require('body-parser');
+
+const adminRouter = require('./routes/admin')
+const shopRouter = require('./routes/shop')
+
+const app = express()
+
+app.use(bodyParser.urlencoded({extended: false}));
+
+// the order of the routers matter
+👉app.use(adminRouter, shopRouter);
+
+// as I'm not using app.use in the routes, I can change the order of the routers as they handle different routes and are specific
+// this would also work
+// 👉app.use(shopRouter, adminRouter);
+
+app.listen(3000)
+```
+
+The usage of router is cleaner than creating the app with all the middlewares inside a `routes.js` file. We can now separate the routes into blocks that makes sense semantically as well.
+
+👉Important!! app.get('/something'), app.post(), app.patch(), app.delete() paths are EXACT MATCH e.g (only runs for `/something`, and NOT `/something/2`)
+
+App.use('/something') are START WITH (runs for `/something`, and  `/something/2` , etc)👈
+
+
+
+#### 404 page
+
+````js
+app.use(shopRouter, adminRouter);
+
+app.use((req, res) => {
+    👉res.status(404).send('<h1>Page not found</h1>')
+})
+
+app.listen(3000)
+````
+
+
+
+#### Filtering paths
+
+```js
+// app.js
+
+// let's funnel `/admin` routes here
+app.use('/admin', adminRouter);
+```
+
+```js
+// routes/admin.js
+
+// /admin/add-product
+router.get('/add-product',(req, res) => {
+    res.send('<form action="/admin/add-product" method="POST"><input name="productName"/></form>');
+})
+
+// /admin/add-product
+router.post('/add-product', (req, res) => {
+    console.log(req.body?.productName);
+    res.redirect('/');
+})
+
+```
+
+
+
+#### Returning html from files
+
+this won't work:
+
+```
+// routes/shop.js
+res.sendFile('/views/shop.html'); ❌// absolute path (there's no such views folder at the roor of the OS)
+
+res.sendFile('./views/shop.html'); ❌// relative path (paths must be absolute)
+// 💡also, a relative path would be relative to the file requiring and calling this code, e.g (app.js)
+```
+
+we need an apit that tells express were the project is in respect of the OS root folder
+
+__dirname_ is global node variable
+
+Path.join() creates paths that work on any OS (/users/esteban, \users\esteban, etc)
+
+```js
+// routes/admin.js
+// /admin/add-product
+router.get('/add-product',(req, res) => {
+    // __dirname has the path to this admin.js file
+    // I need to go up with ..
+    // no useage of `/`, .join() takes care of it for each OS
+    res.sendFile(path.join(__dirname, '..', 'views', 'admin.html'))
+})
+```
+
+
+
+#### A better way to return a path to files
+
+the above example uses `path.join(__dirname, 👉'..', 'views', 'admin.html')`, because I had to see the way to get from the file that has this line of code, to where the file I want to send is located. Such a pain. And I need to keep it up to date if I move the `consumer` file (e.g routes/admin.js) around later in time.
+
+Let's find the root directory, so I don't need to find the way from the `consumer` file to the asset.
+
+```js
+// utils/path.js
+const path = require('path')
+
+module.exports = path.dirname(require.main.filename);
+```
+
+```js
+const rootDir = require('../utils/path')
+
+router.get('/add-product',(req, res) => {
+    res.sendFile(path.join(👉rootDir, 'views', 'admin.html')); // no more need of `..`
+})
+```
+
+#### Serving CSS and other static assets
+
+I'm not gonna have a route like this:
+
+```
+app.use('/public'); // ❌
+```
+
+
+
+I want to serve assets like CSS, that are not handled by the current middlewares, e.g (<link href="/css/shop.css")
+
+Convention: add static assets that are served to any user (unauthenticated, authenticated, doesn't matter) into a `public` folder (could be name whatever)
+
+I'd like express to say: OK, this assets are gonna be served by the fileSystem, off you go.
+
+we can give `Read` access to that public folder when the browser requests some of the static assets there
+
+````html
+// views/shop.html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link href="👉/css/shop.css" rel="stylesheet"> //🚨 don't add /public in front!
+</head>
+<body>
+    <h1>Welcome to my shop</h1>
+</body>
+</html>
+````
+
+
+
+````js
+// routes/shop.js
+const rootDir = require('../utils/path')
+
+router.get('/', (req, res) => {
+    👉res.sendFile(path.join(rootDir, 'views', 'shop.html'));
+})
+````
+
+```js
+// app.js
+const app = express()
+
+// Ok express, all static assets requested in the browser should be looked inside the `public` folder. Please browser, don't add the `/public` in front of the asset path, I take care of that.
+app.use(express.static('public'));
+```
+
+```css
+// public/css/shop.css
+
+* {
+    color: red;
+}
+```
+
+
+
+
 
 
 
