@@ -850,19 +850,21 @@ router.get('/add-product',(req, res) => {
 
 #### Serving CSS and other static assets
 
+this could be css, js, images, etc
+
 I'm not gonna have a route like this:
 
 ```
 app.use('/public'); // ❌
 ```
 
-
-
 I want to serve assets like CSS, that are not handled by the current middlewares, e.g (<link href="/css/shop.css")
 
 Convention: add static assets that are served to any user (unauthenticated, authenticated, doesn't matter) into a `public` folder (could be name whatever)
 
-I'd like express to say: OK, this assets are gonna be served by the fileSystem, off you go.
+by default, node doesn't let users the read files from the system.
+
+I'd like express to say: OK, for public assets, I'll allow the users to get static assets, and I'll looke them up inside the public folder. Users don't need to have html with `<script src="/public/main.js"` ❌ as express already goes into the public folder when requested any static assets. <script src="/main.js" ✅
 
 we can give `Read` access to that public folder when the browser requests some of the static assets there
 
@@ -913,7 +915,67 @@ app.use(express.static('public'));
 
 
 
+### Understanding validation
 
+```js
+const { check, validationResult } = require('express-validator')
+
+// /admin/add-product
+router.post('/add-product', check('productName').notEmpty().withMessage('Hey, this field can\'t be empty'),(req, res) => {
+    const {errors} = validationResult(req);
+    if (errors.length > 0){
+        console.log(errors[0]);
+    }   
+    console.log(req.body?.productName);
+    res.redirect('/');
+})
+
+module.exports = router;
+```
+
+Custom messages can be added with `withMessage`
+
+`Check()` looks for email values in the headers, cookies and body
+
+#### Custom validators
+
+````js
+// /admin/add-product
+router.post('/add-product', check('productName').notEmpty().withMessage('Hey, this field can\'t be empty').👉custom(( value, {req}) => {
+    if (value === 'bananas'){
+        👉throw new Error('bananas are not allowed to be added, sorry')
+    }
+    👉return true;
+}),(req, res) => {
+    const {errors} = validationResult(req);
+    if (errors.length > 0){
+        console.log(errors[0]);
+    }   
+    console.log(req.body?.productName);
+    res.redirect('/');
+})
+````
+
+We an use `body()` to tell the library to just check inside the body
+
+```
+	body('password') // default message for validator1 and 2
+	.validator1().withMessage('Password is invalid') // ❌
+	.validator2().withMessage('Password is invalid') // Dont repeat yourself!❌
+```
+
+use this second argument of body() or check() or etc
+
+````
+[ // I can use an array for all the fields checked, neater
+	body('password', 👉'Password is invalid') // default message for validator1 and 2
+	.validator1()
+	.validator2(),
+	
+	body('user')
+	.validator3()
+]
+````
 
 
 
