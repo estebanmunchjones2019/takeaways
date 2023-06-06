@@ -935,7 +935,7 @@ module.exports = router;
 
 Custom messages can be added with `withMessage`
 
-`Check()` looks for email values in the headers, cookies and body
+💡`Check()` looks for email values in the headers, cookies and body
 
 #### Custom validators
 
@@ -956,7 +956,7 @@ router.post('/add-product', check('productName').notEmpty().withMessage('Hey, th
 })
 ````
 
-We an use `body()` to tell the library to just check inside the body
+💡We an use `body()` to tell the library to just check inside the body
 
 ```
 	body('password') // default message for validator1 and 2
@@ -964,10 +964,10 @@ We an use `body()` to tell the library to just check inside the body
 	.validator2().withMessage('Password is invalid') // Dont repeat yourself!❌
 ```
 
-use this second argument of body() or check() or etc
+use this second argument of body() or check() or etc to set up a global message for all validators used inside body or check
 
 ````
-[ // I can use an array for all the fields checked, neater
+[ // 💡I can use an array for all the fields checked, neater
 	body('password', 👉'Password is invalid') // default message for validator1 and 2
 	.validator1()
 	.validator2(),
@@ -978,6 +978,296 @@ use this second argument of body() or check() or etc
 ````
 
 
+
+TODO:
+
+show example of matching password (e.g matching product etc)
+
+````js
+// matching password example
+[ 
+	body('password', 👉'Password is invalid') // default message for validator1 and 2
+	.validator1()
+	.validator2(),
+	
+	body('confirmPassword')
+	.custom((value, { req}) => {
+    if(value !== req.body.password) {
+      throw new Error('Passwords need to match!')
+    }
+    return true;
+  })
+]
+````
+
+
+
+### Keeping user input
+
+Max keeps the form state by retrieving the body inside the POST request, and then populating the EJS templates with those values in the form.
+
+````js
+// controller
+res.render('auth/signup', {
+	errorMessage: errors.array()[0].msg
+	oldInput: {
+		email,
+		password
+	}
+})
+````
+
+```js
+// signup.ejs
+<input value="<%= oldInput.email %>"
+```
+
+
+
+### adding conditional classes (red border for failed fields)
+
+```js
+// controller
+res.render('auth/signup', {
+	errorMessage: errors.array()[0].msg
+	oldInput: {
+		email,
+		password
+	},
+	validationErrors: errors.array()
+})
+```
+
+```js
+// signup.ejs
+<input class👉="<% validationErrors.find(e => e.param === 'email') ? 'invalid' : '' %>" value="<%= oldInput.email %>"
+```
+
+### Async validation
+
+is the email already taken?
+
+```js
+[
+	check('email')
+	.custom((value, {req}) => {
+		// I'm returning a promise here
+		// every then block return a promise implicitly
+		👉return User.findOne({ email: value}).then(userDoc => {
+			if(userDoc){
+				return Promise.reject('email already taken')
+			}
+			// no need to return true or resolve, express-validator will treat it as valid
+		})
+	})
+]
+```
+
+
+
+#### another example, now using async/await
+
+```js
+const productFindOne = async (productName) => {
+    // I could use productName in a call to a db using await
+  // const userDoc = await callToDB(productName);
+  // return userDoc
+  return {
+    id: '123456'
+  }
+}
+
+// /admin/add-product
+router.post('/add-product', [
+    check('productName')
+    .notEmpty()
+    .withMessage('Hey, this field can\'t be empty').custom(( value, {req}) => {
+        if (value === 'bananas'){
+            throw new Error('bananas are not allowed to be added, sorry')
+        }
+        return true;
+    })
+    👉.custom(async (value, {req}) => {
+  			// I don't return a promise, I just await and throw the error or true myself
+        const userDoc = await productFindOne(value);
+  			if(userDoc){
+					throw new Error('this product already exists, please add a brand new one')
+				}
+  			return true;
+    })
+],(req, res) => {
+    const {errors} = validationResult(req);
+    if (errors.length > 0){
+        console.log(errors[0]);
+    }   
+    console.log(req.body?.productName);
+    res.redirect('/');
+})
+```
+
+
+
+That way, if the form had errors, the user has the error message and the form keeps the state
+
+Important: check for all instances of the form served, as it will need empty strings as initial state when served for the first time.
+
+### Sanitizing inputs server side
+
+https://github.com/validatorjs/validator.js (look for sanitize)
+
+we can remove empty spaces, to uppercase, in other words, normalize data by changing the req.body fields values!
+
+`trim` and `normalizeEmail` validators
+
+💡We'r actualing modifying req.body.email and so on!
+
+````js
+body('productName')
+.trim(); // changes req.body.producName by removing white spacing!
+````
+
+
+
+### error handling
+
+Express-validate catches thrown errors (like inside the custom validator)
+
+we'll set in place an outer error catching at the express level (?)
+
+````js
+
+// /admin/add-product //validation middleware
+router.post('/add-product', check('productName').notEmpty().withMessage('Hey, this field can\'t be empty').👉custom(( value, {req}) => {
+    if (value === 'bananas'){
+        👉throw new Error('bananas are not allowed to be added, sorry')
+        
+ // resolver       
+// this is the right hand side of the slide (directly handle error)
+const {errors} = validationResult(req);
+    if (errors.length > 0){
+        res.json('some error here');
+    }   
+````
+
+**errors bubble up** and should be catch by the express handler. 
+
+👉In the case of express-validator, errors thrown by that library were caught by their own try and catch blocks.👈
+
+For sync code: **there are try and catch blocks inside the express-validator library**, that populates the req object when catching them, adding them to an array or something like that
+
+for async code (reading files, sending requests):
+
+```js
+asyncFn.then().catch(error => // catch error here)
+
+try {
+	await asyncFn
+} catch(error){
+	// catch the error here
+  console.log(error); // ❌ not very useful
+}
+```
+
+console.loging things is not that useful when things go wrong (e.g technical issue: connection to a db)
+
+#### Throw error instead of console.log on catch blocks!
+
+it's better to throw errors and let the express error handling middlaware do its magic!
+
+````js
+connectToDB.then().catch(error){console.log(error)} // ❌
+connectToDB.then().catch(error){next(new Error(error))} // ✅ at the top level of a middleware
+connectToDB.then().catch(error){throw new Error(error)} // ✅ if we have a catch block somewhere up e.g express-validator custom validator
+connectToDB.then().catch(error){res.redirect('/500')}// ✅ redirect the user
+````
+
+when setting up props inside `req` or `res`, make sure to check the added value is not `undefined`!!
+
+#### 👉Make sure to not set req.something to `undefined`, please do the proper checks before doing that👈
+
+````js
+if (!user){
+	return next();
+}
+req.user = user;
+next();
+````
+
+
+
+### handling errors option #1
+
+````js
+// controller
+.catch(error => {
+  // a technical error was caught here, e.g lost internet connection
+	res.redirect('/500');
+})
+
+// top level app
+app.use('/500', render500pageFn);
+
+// render500pageFn
+(req, res) => res.render('500', {//some variables for the template if needed})
+````
+
+
+
+### handling errors option #2 error middleware
+
+having a lot of `res.redirect('/500')` is repeating ourselves!
+
+````js
+// controller
+.catch(err => {
+  // a technical error was caught here, e.g lost internet connection
+	const error = new Error(err);
+	error.httpStatusCode = 500;
+	next(error);
+})
+
+// 🚨 express will skip all middlewares in the chain till it reaches an error handling middleware
+````
+
+````js
+app.use((error, req, res, next) => {
+	// we can have more complex logic here
+  // like adding a client facing message depending on the status code, etc
+	res.status(error.httpStatusCode).send(error.message)
+})
+````
+
+
+
+concrete example:
+
+````js
+// middleware
+(req, res, next) => {
+    const {errors} = validationResult(req);
+    if (errors.length > 0){
+        const error = Error('Validation error here!')
+        error.httpStatusCode = 400;
+        error.validationErrors = errors;
+        // throw error; ❌
+        return 👉 next(error); // ✅
+    }   
+    console.log(req.body?.productName);
+    res.redirect('/');
+````
+
+```js
+app.use((req, res) => {
+    res.status(404).sendFile(path.join(__dirname, 'views', '404.html'))
+})
+
+// 🎩 express error handling middleware
+👉app.use((👉error, req, res, next) => {
+    res.status(error.httpStatusCode).json(error);
+})
+```
+
+#### To recap, inside express-validator validators, we want to throw a new error inside custom validators, but then, in the middleware (controller), we want to call next(error); not throw it!
 
 ### GraphQL
 
