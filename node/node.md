@@ -1219,6 +1219,7 @@ having a lot of `res.redirect('/500')` is repeating ourselves!
 
 ````js
 // controller
+// async code
 .catch(err => {
   // a technical error was caught here, e.g lost internet connection
 	const error = new Error(err);
@@ -1239,6 +1240,21 @@ app.use((error, req, res, next) => {
 
 
 
+````js
+// 👉in these 2 cases the express error handler middleware is executed!
+
+// async code
+.catch(error){
+ // I need to use next()
+ next(error); // ✅ 
+}
+
+// sync code
+throw new Error(error) // ✅
+````
+
+
+
 concrete example:
 
 ````js
@@ -1249,8 +1265,8 @@ concrete example:
         const error = Error('Validation error here!')
         error.httpStatusCode = 400;
         error.validationErrors = errors;
-        // throw error; ❌
-        return 👉 next(error); // ✅
+        // throw error;  ✅ // this is sync code, this will also trigger the error handling middleware!
+        return 👉 next(error); // ✅ // this works i
     }   
     console.log(req.body?.productName);
     res.redirect('/');
