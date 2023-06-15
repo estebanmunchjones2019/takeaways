@@ -1269,6 +1269,73 @@ app.use((req, res) => {
 
 #### To recap, inside express-validator validators, we want to throw a new error inside custom validators, but then, in the middleware (controller), we want to call next(error); not throw it!
 
+
+
+### Dynamic content and templates
+
+example of products array in memory for all users!
+
+```js
+// some JS file
+const products = [];
+
+module.exports = products
+```
+
+that array is shared across all users and requests! really dangerous
+
+It's rarely used. I'd use it to hit a paid api and keep the reponse in memory with the weather for Glasgow, for instance.
+
+Let's explore these 3 templating engines
+
+![](./images/template-engines.png)
+
+When adding npm packages: do ctrl + c process before instaling more npm packages
+
+```bash
+npm i ejs pug express-handlebars
+```
+
+Configuring the rendering engine:
+
+````js
+app.set('view engine', 'ejs')
+````
+
+configuring the location of the views
+
+````js
+app.set('views', 'views') // this is the default, the second param is the folder name containing the views
+````
+
+editing the template files doesn't make nodemon to restart the app, they template files get picked up on the flight on each new request
+
+we can also set custom variables available app wide and pick them up
+
+we could read values with app.get('someKey')
+
+Rendering a view
+
+```
+res.render('viewFileName', {
+	param1: 'someValue' // this can be referenced inside the template
+})
+```
+
+#### PUG:
+
+really nasty syntax, don't recommend.
+
+Interesting:
+
+pug layouts (contains non active links)
+
+making a link active depending on the page
+
+
+
+
+
 ### GraphQL
 
 ### REST API limitations
