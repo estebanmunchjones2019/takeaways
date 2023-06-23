@@ -1344,9 +1344,325 @@ really nasty syntax, don't recommend.
 
 Interesting:
 
-pug layouts (contains non active links)
+pug layouts 
 
-making a link active depending on the page
+```js
+// magic keywords
+
+block // keyword to define placeholders in the layout, and for passing data in the consumer template
+
+extends // to use the layout
+```
+
+
+
+Making a link active depending on the page. The anchor is inside a layout, re-used in many pages. 
+
+Solution: easy, we pass a path to the view:
+
+```js
+res.render('shop', { path: '/'})
+```
+
+````js
+// html
+a(href="/", class=(path==='/' ? 'active' : ''))
+````
+
+
+
+### Handlebars
+
+pug was a built in engine in express, but handlebars is not, so we need:
+```js
+const handleBars = require('express-handlebars')
+
+app.engine('handlebars👈', handlebars()); // first arg could be any name, be sure not to clash with built it engines names
+
+app.set('view engine', 'handlebars'👈)
+```
+
+````
+// someView.handlebars👈
+
+// the extension of the file matches our chosen name for the engine!
+````
+
+
+
+
+
+I had to do:
+
+```js
+{{ #if product.length > 0}} //❌ doesn't work, booooo
+
+// solution
+app.render('shop', { hasProducts: product.length > 0})
+
+
+// template, only accepts true/false values inside the if block
+{{ #if hasProducts }} // ✅ advantage: keeps the template lean, logic moved to the node js files
+```
+
+Layouts:
+
+it needs some extra config, re-view the videos again if needed
+
+
+
+### EJS
+
+the best option. Doesn't support layouts but there's a work around, called `partials`
+
+````js
+<%= someVariable %>
+<%  some JS logic here %>
+
+<%  if(a >b ) {%>
+// some html
+<% } %>
+
+// like PHP alternative syntax
+````
+
+
+
+Partials workaround:
+
+this feature is also supported by Pug and Handlebars
+
+we put repeated HTML into separate handlebars files and then we include them in the templates
+
+identical to PHP
+
+
+
+### MVC
+
+Model (data): class to create a single Product, and some methods to save it, remove it, update it, etc, same as the PHP course with the Post class
+
+View (templates)
+
+Controller(middlewares that interact with data (DB) and render views with some data)
+
+Examples:
+
+````js
+// controllers/product.js // all middlewares related to the product model
+const Product = require('../models/product')
+
+exports.getAddProduct = (req, res, next) => {
+	res.render('add-product', { //some data})
+}
+
+exports.postAddProduct = (req, res, next) => {
+	const product = new Product(req.body.title)
+	product.save();
+	res.redirect('/')
+}
+
+exports.getProducts = (req, res, next) => {
+	const products = Product.fetchAll();
+	res.render('shop', { products, etc})
+}
+````
+
+
+
+````
+// views/xxx.ejs
+<h1>Some Html in ejs format in this file<h1>
+````
+
+```js
+// model
+const products = [];
+
+class Product {
+	constructor(title){
+		this.title = title
+	}
+	
+	save(){
+		products.push(this)
+	}
+	
+	fetchAll(){
+		return products;
+	}
+}
+```
+
+```js
+// routes/shop.js
+const { getProducts } = require('./controllers/product')
+
+router.get('/', getProducts)
+
+```
+
+
+
+### Using a JSON file as storage!
+
+````js
+fs.writeFile
+fs.readFile
+
+are not promised based, they just register a callback to be executed when done
+callback hell alert!
+the code looks ugly 🤢
+````
+
+```js
+// /models/product.js
+
+const fs = require('fs');
+const path = require('path');
+
+const p = path.join(
+  path.dirname(process.mainModule.filename),
+  'data',
+  'products.json'
+);
+
+const getProductsFromFile = cb => {
+  fs.readFile(p, (err, fileContent) => { // callback based API 🚨
+    if (err) {
+      cb([]);
+    } else {
+      cb(JSON.parse(fileContent));
+    }
+  });
+};
+
+module.exports = class Product {
+  constructor(t) {
+    this.title = t;
+  }
+
+  save() {
+    getProductsFromFile(products => {
+      products.push(this);
+      fs.writeFile(p, JSON.stringify(products), err => {
+        console.log(err);
+      });
+    });
+  }
+
+  static fetchAll(cb) {
+    getProductsFromFile(cb);
+  }
+};
+```
+
+```js
+// controllers/product.js
+exports.getProducts = (req, res, next) => {
+  Product.fetchAll(products => { // I pass a callback when calling the fetchAll method
+    res.render('shop', {
+      prods: products,
+      pageTitle: 'Shop',
+      path: '/',
+      hasProducts: products.length > 0,
+      activeShop: true,
+      productCSS: true
+    });
+  });
+};
+```
+
+````js
+// // /models/product.js async/await with fsPromises 🤙
+const path = require('path');
+const fsPromises = require('fs').promises;
+
+const p = path.join(
+  path.dirname(process.mainModule.filename),
+  'data',
+  'products.json'
+);
+
+const getProductsFromFile = async () => {
+  const result = await fsPromises.readFile(p);
+  if (result){
+    return JSON.parse(result);
+  }
+  return [];
+};
+
+module.exports = class Product {
+  constructor(t) {
+    this.title = t;
+  }
+
+  async save () {
+    const products = await getProductsFromFile();
+    products.push(this);
+    await fsPromises.writeFile(p, JSON.stringify(products));
+  };
+
+
+  static async fetchAll(cb) {
+    const products = await getProductsFromFile();
+    return products;
+  }
+};
+````
+
+`````js
+// controllers/product.js
+exports.getProducts = async (req, res, next) => {
+  const products = await Product.fetchAll()
+  res.render('shop', {
+    prods: products,
+    pageTitle: 'Shop',
+    path: '/',
+    hasProducts: products.length > 0,
+    activeShop: true,
+    productCSS: true
+  });
+};
+`````
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
