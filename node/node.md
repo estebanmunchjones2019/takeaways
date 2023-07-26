@@ -1628,15 +1628,179 @@ exports.getProducts = async (req, res, next) => {
 
 
 
+### Dynamic routes and advanced models
+
+Takeaway: routes and controllers where separate by who's is using them: clients and admin (`shop` and `admin`)
+
+// paste code of Cart model 
+
+````
+const fs = require('fs');
+const path = require('path');
+
+const p = path.join(
+  path.dirname(process.mainModule.filename),
+  'data',
+  'cart.json'
+);
+
+module.exports = class Cart {
+	// 💡(no need to instantiate it, as we'r not pushing carts to somewhere, we have only one cart at the moment, living in a json file)
+	
+  👉static addProduct(id, productPrice) {
+    // Fetch the previous cart
+    fs.readFile(p, (err, fileContent) => {
+      let cart = { products: [], totalPrice: 0 };
+      if (!err) {
+        cart = JSON.parse(fileContent);
+      }
+      // Analyze the cart => Find existing product
+      const existingProductIndex = cart.products.findIndex(
+        prod => prod.id === id
+      );
+      const existingProduct = cart.products[existingProductIndex];
+      let updatedProduct;
+      // Add new product/ increase quantity
+      if (existingProduct) {
+        updatedProduct = { ...existingProduct };
+        updatedProduct.qty = updatedProduct.qty + 1;
+        cart.products = [...cart.products];
+        cart.products[existingProductIndex] = updatedProduct;
+      } else {
+        updatedProduct = { id: id, qty: 1 };
+        cart.products = [...cart.products, updatedProduct];
+      }
+      cart.totalPrice = cart.totalPrice + +productPrice;
+      fs.writeFile(p, JSON.stringify(cart), err => {
+        console.log(err);
+      });
+    });
+  }
+};
+````
+
+#### 💡look at the pattern of `let` + `if` blocks 👆
+
+// paste code of edit product route and controller
+
+`````
+// controllers/shop.js
+exports.postCart = (req, res, next) => {
+  const prodId = req.body.productId;
+  Product.findById(prodId, product => {
+    Cart.addProduct(prodId, product.price);
+  });
+  res.redirect('/cart');
+};
+`````
+
+````
+// routes/shop.js
+router.post('/cart', shopController.postCart);
+````
+
+Caveat: variables inside loops EJS are not passed to template parts, they need to be passed in the include part as an object:
+````
+<% if (prods.length > 0) { %>
+  <div class="card__actions">
+    <a href="/products/<%= product.id %>" class="btn">Details</a>
+    <%- include('../includes/add-to-cart.ejs', 👉{product: product}) %>
+  </div>
+````
+
+Picking up dynamic segments:
+
+````
+// routes/shop.js
+// we define the name of the param here:
+router.get('/products/👉:productId', shopController.getProduct);
 
 
+// we just access it in the controller
+exports.getProduct = (req, res, next) => {
+  const prodId = req.params.👉productId;
+  Product.findById(prodId, product => {
+    res.render('shop/product-detail', {
+      product: product,
+      pageTitle: product.title,
+      path: '/products'
+    });
+  });
+};
+````
 
+// paste how to pick up query params (after ?), called optional data, useful for tracking users and filter state
 
+```
+// routes/admin.js
+router.get('/edit-product/:productId', adminController.getEditProduct);
+```
 
+````
+// controllers/admin.js
 
+// I'm expecting to have 👉 `?editMode=true` in the url
 
+exports.getEditProduct = (req, res, next) => {
+  const editMode = req.👉query.edit;
+  if (!editMode) {
+    return res.redirect('/');
+  }
+  const prodId = req.params.productId;
+  Product.findById(prodId, product => {
+    if (!product) {
+      return res.redirect('/');
+    }
+    res.render('admin/edit-product', {
+      pageTitle: 'Edit Product',
+      path: '/admin/edit-product',
+      editing: editMode,
+      product: product
+    });
+  });
+};
+````
 
+👆this is a dummy example, as the route already looks at /edit-product, so there's no need for a query param check to verify I want to render the edit product form in editing mode (the form is reused for adding a new product)
 
+⚠️ callbacks approach is not good. Use async await instead an another node API that use promises
+
+🛠 to improve: redirect to /cart after removing a product in the cart should be after an await statement 
+
+````js
+exports.postDeleteProduct = (req, res, next) => {
+  const prodId = req.body.productId;
+  Product.deleteById(prodId);
+  res.redirect('/admin/products'); // ❌ this should happen after an await
+};
+````
+
+💡 interesting approach of passing null as the id for new product and checking that on the save mode to actually save the new product or update an existing one (with an this.id value set already)
+
+````js
+Class Product {
+	  save() {
+    getProductsFromFile(products => {
+      if (this.id) { // update product in the DB
+        const existingProductIndex = products.findIndex(
+          prod => prod.id === this.id
+        );
+        const updatedProducts = [...products];
+        updatedProducts[existingProductIndex] = this;
+        fs.writeFile(p, JSON.stringify(updatedProducts), err => {
+          console.log(err);
+        });
+      } else { // add new product to the DB
+        this.id = Math.random().toString();
+        products.push(this);
+        fs.writeFile(p, JSON.stringify(products), err => {
+          console.log(err);
+        });
+      }
+    });
+  }
+}
+````
 
 
 
