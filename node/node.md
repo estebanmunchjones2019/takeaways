@@ -1804,6 +1804,197 @@ Class Product {
 
 
 
+### SQL vs NoSQL
+
+Disadvantages:
+SQL:
+
+-  handling a lot of reads at the same time.
+- horizontal scaling is more difficult
+
+NoSQL:
+
+- only a few relationships preferred, to keep query perfomance
+- Data is copied (nested) in many places, so we might want to keep that all in sync (if it's important for the app)
+
+Advantages:
+
+SQL: 
+
+- Schema (all records have the same shape)
+- no data repetition
+- we can add a lot of relationships
+
+NoSQL:
+
+- Schemaless (we have the freedom to not have some fields in each document (of a collection))
+- performant under heavy load
+- scales horizontally much more easier
+
+We can have an app with both DBs, to make use of their strong points
+
+
+
+### Installing mysql
+
+we need the `Community server` and the `Workbench` installed on the laptop 
+
+Installing the server:
+
+1. choose legacy auth when installing the server
+2. Choose a password for the root user
+
+Go to `Systems preferences` -> `MySql` and then check that the server is running
+
+Installing the workbench
+
+1. After installing and opening it, there should be `localhost instance 3306` message; that means that the sql db server is running
+2. Add a schema
+3. add a table
+4. add records to the table
+5.  Steps 2 to 4 can be done in JS, when the app boots or when we want to seed the db
+
+When creating the products table:
+
+1. UN (Unsigned) means a field that doesn't hold negative values
+2. Double is used for 19.99 (price)
+
+So, we need **software in the laptop** that receives SQL queries and then interacts with the DB, which is a `MySql` **databaser server.**
+
+We also need an **npm package to connect to the the server** as well, so we can pass the queries from JS land:
+
+````
+npm i mysql2
+````
+
+There are two ways to connect to the server:
+
+1. We have one connection open at a time and we close it when done. INEFICIENT ❌
+2. Create a connection Pool (pool of connections). BEST ✅
+
+
+
+Each query needs its own connection, that is one from the pool, so we can run multiple queries at the same time (e.g 2 users signing up at the same time).
+
+The pool finished when the app shuts down (a rest server never shuts down, unless there's an uncaught JS error or maintenaince)
+
+Inside the workbench, the schemas represent databases
+
+````js
+// util/database.js
+
+const mysql = require('mysql2')
+
+const pool = mysql.createPool({
+	host: 'localhost',
+	user: 'root',
+	database: 'node-complete' // this is a `schema` in the workbench
+	password: 'nodecomplete'
+})
+
+module.exports = pool.promise(); // I export the pool with promise based apis
+````
+
+
+
+👉Promises are JS objects that can resolve or reject, or have a pending state. We can await the the resolved value and catch the rejected value
+
+```js
+try {
+	const result = await someFnReturningAPromise();
+	// we can react to the resolve value
+} catch(error){
+	// we can react to the reject value
+}
+
+// OR
+someFnReturningAPromise().then(data => {}).catch(error => {})
+```
+
+
+
+📣I gave up working with MySqlWorkbench 😞 as the course is outdated and don't want to spend time reading the docs 🤓
+
+```js
+// /models/product.js
+class Product {
+  static async fetchAll(){ // talks to a real DB, not the FS anymore ✅
+    try {
+      // array destructuring of the first array item below
+      const [rows] = await db.execute('SELECT * FROM products')
+      return rows;
+    } catch(error){
+      // let's log the error so we can see things in the server logs
+      console.log(error)
+      // return empty array if we couldn't connect to the DB
+      // this might not be the best approach ⚠️, re-asess this in the future🔎
+      return [];
+    }
+  }
+}
+
+
+```
+
+```js
+// /controllers/shop.js
+export.getIndex = async (req, res) => {
+	const products = await Product.fetchAll()
+	res.render('shop/index', {
+		products,
+		pageTitle: 'Shop',
+		path: '/'
+	})
+}
+```
+
+#### How to safely save records to the DB
+
+use the ? Marks, so the mysql2 package escapes any hidden SQL commands hidden in the input fields
+
+Nice UI thing: redirect after awaiting saving to the DB
+
+````js
+// /models/product.js
+
+class Product {
+   async save() {
+    try {
+			const result = await db.execute(
+			'INSERT INTO products (title, price, description, imageUrl) VALUES (?, ?, ?, ?)', 
+			[this.title, this.price, this.description, this.imageUrl])
+			return result;
+    } catch(error){
+      // let's log the error so we can see things in the server logs
+      console.log(error)
+      // let's not return anything, and the fn will return undefined by default
+      // this might not be the best approach ⚠️, re-asess this in the future🔎
+    }
+  }
+}
+````
+
+```js
+// controllers/admin.js
+
+exports.postAddProduct = async(req, res, next) => {
+  const title = req.body.title;
+  const imageUrl = req.body.imageUrl;
+  const price = req.body.price;
+  const description = req.body.description;
+  const product = new Product(null, title, imageUrl, description, price);
+  const result = await product.save();
+  if(result){
+    res.redirect('/');
+  } else {
+    // maybe serve an error page, sending html quick and dirty here for demo purposes
+    res.status(500).send('<h1>The item was not saved!!</h1>')
+  }
+};
+```
+
+
+
 
 
 
