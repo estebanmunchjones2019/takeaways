@@ -1995,9 +1995,209 @@ exports.postAddProduct = async(req, res, next) => {
 
 
 
+### Sequelize
+
+let's use an abstraction on top of the SQL queries, to make life easier! 🌴
+
+So, we keep using the same db and the db server, but the JS code is far easier
+
+It's an **ORM** (Object Relational Mapping) library
+
+we still need `mysql2` installed in the project
+
+``` bash
+npm i sequelize
+```
+
+````js
+// utils/database.js
+
+const { Sequelize } = require('sequelize');
+
+const sequelize = new Sequelize('node-complete', 'root', 'nodecomplete', {
+    //`dialect: 'mysql'` that is a specific type of SQL database, like MariaDB and so on.
+    // They differ slightly and the ORM needs to know which type of DB flavour is talking to.
+    dialect: 'mysql' 
+    
+    // No need to set host to `localhost`, that's done by default
+})
+
+// the exported object contains the connection pool and a configured sequelized env (much more niceties inside!, like field types, etc)
+module.exports = sequelize;
+````
 
 
 
+Creating a model (database)
+
+```javascript
+// models/product.js
+
+const { Sequelize, DataTypes } = require('sequelize')
+
+const sequelize = require('../util/database')
+
+const Product = sequelize.define('product', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true,
+    allowNull: false,
+  },
+  title: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  price: {
+    type: DataTypes.DOUBLE,
+    allowNull: false
+  },
+  imageUrl: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  description: {
+    type: DataTypes.STRING,
+    allowNull: false
+  }
+});
+
+module.exports = Product;
+```
+
+
+
+Syncing JS Definitions to the DB
+
+when the apps starts, it needs to make sure that there are tables in the DBs that can be mapped to the JS objects we have (Product, etc), and that the relations we defined in JS are present in the mysql world in the DB
+
+````js
+const path = require('path');
+
+const express = require('express');
+
+👉const mysql = require('mysql2/promise');
+
+const bodyParser = require('body-parser');
+
+const errorController = require('./controllers/error');
+
+👉const sequelize = require('./util/database')
+
+const app = express();
+
+app.set('view engine', 'ejs');
+app.set('views', 'views');
+
+const adminRoutes = require('./routes/admin');
+const shopRoutes = require('./routes/shop');
+
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.use('/admin', adminRoutes);
+app.use(shopRoutes);
+
+app.use(errorController.get404);
+
+(async () => {
+    try {
+        const connection = await mysql.createConnection({ 
+            host: 'localhost',
+            user: 'root',
+            port: 3306, 
+            password: '11qq22WW'
+        });
+        // this line creates a DB if doesn't exists, so we never need to go to WorkbenchMySql
+        👉await connection.query(`CREATE DATABASE IF NOT EXISTS \👉`node-complete\`;`);
+
+        // this line syncs the Models with tables in the DB
+        👉const result = await sequelize.sync();
+        console.log(result)
+        app.listen(3000);
+    } catch (error){
+        console.log(error)
+    }
+})()
+````
+
+
+
+How to see the created Database and tables?
+
+Go to WorkbenchMySql ->localhost:3306 sign (enter 11qq22WW as the password)
+
+and then, there should be a  `node-complete` db + `products` table with all the fields!! 🎉
+
+
+
+### Adding a product to the table
+
+We can use Product.create to write directly to the DB,  or Product.build (which just returns the product object) and we then manually save it
+
+````js
+// controllers/admin.js
+
+const Product = require('../models/product');
+
+exports.postAddProduct = async(req, res, next) => {
+  const title = req.body.title;
+  const imageUrl = req.body.imageUrl;
+  const price = req.body.price;
+  const description = req.body.description;
+
+  try {
+    const result = await Product.👉create({
+      title,
+      imageUrl,
+      price,
+      description
+    })
+    console.log(result);
+    console.log('Product added!')
+    res.redirect('/');
+  } catch(error){
+    console.log(error);
+       // maybe serve an error page, sending html quick and dirty here for demo purposes
+       res.status(500).send('<h1>The item was not saved!!</h1>')
+  }
+};
+````
+
+this is a breeze! 😌
+
+
+
+### Let's fetch all the products
+
+````js
+// controllers/shop.js
+
+const Product = require('../models/product');
+
+exports.getProducts = async (req, res, next) => {
+  console.log('about')
+  try {
+    const products = await Product.👉findAll();
+    res.render('shop/product-list', {
+      prods: products,
+      pageTitle: 'All Products',
+      path: '/products'
+    });
+  } catch(error){
+    console.log(error);
+    // maybe send the user an error message`Oops,someting went wrong`
+  }
+};
+````
+
+
+
+
+
+
+
+ 
 
 
 
