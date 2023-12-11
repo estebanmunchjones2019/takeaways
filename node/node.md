@@ -1287,6 +1287,938 @@ app.use((req, res) => {
 
 
 
+### Dynamic content and templates
+
+example of products array in memory for all users!
+
+```js
+// some JS file
+const products = [];
+
+module.exports = products
+```
+
+that array is shared across all users and requests! really dangerous
+
+It's rarely used. I'd use it to hit a paid api and keep the reponse in memory with the weather for Glasgow, for instance.
+
+Let's explore these 3 templating engines
+
+![](./images/template-engines.png)
+
+When adding npm packages: do ctrl + c process before instaling more npm packages
+
+```bash
+npm i ejs pug express-handlebars
+```
+
+Configuring the rendering engine:
+
+````js
+app.set('view engine', 'ejs')
+````
+
+configuring the location of the views
+
+````js
+app.set('views', 'views') // this is the default, the second param is the folder name containing the views
+````
+
+editing the template files doesn't make nodemon to restart the app, they template files get picked up on the flight on each new request
+
+we can also set custom variables available app wide and pick them up
+
+we could read values with app.get('someKey')
+
+Rendering a view
+
+```
+res.render('viewFileName', {
+	param1: 'someValue' // this can be referenced inside the template
+})
+```
+
+#### PUG:
+
+really nasty syntax, don't recommend.
+
+Interesting:
+
+pug layouts 
+
+```js
+// magic keywords
+
+block // keyword to define placeholders in the layout, and for passing data in the consumer template
+
+extends // to use the layout
+```
+
+
+
+Making a link active depending on the page. The anchor is inside a layout, re-used in many pages. 
+
+Solution: easy, we pass a path to the view:
+
+```js
+res.render('shop', { path: '/'})
+```
+
+````js
+// html
+a(href="/", class=(path==='/' ? 'active' : ''))
+````
+
+
+
+### Handlebars
+
+pug was a built in engine in express, but handlebars is not, so we need:
+```js
+const handleBars = require('express-handlebars')
+
+app.engine('handlebars👈', handlebars()); // first arg could be any name, be sure not to clash with built it engines names
+
+app.set('view engine', 'handlebars'👈)
+```
+
+````
+// someView.handlebars👈
+
+// the extension of the file matches our chosen name for the engine!
+````
+
+
+
+
+
+I had to do:
+
+```js
+{{ #if product.length > 0}} //❌ doesn't work, booooo
+
+// solution
+app.render('shop', { hasProducts: product.length > 0})
+
+
+// template, only accepts true/false values inside the if block
+{{ #if hasProducts }} // ✅ advantage: keeps the template lean, logic moved to the node js files
+```
+
+Layouts:
+
+it needs some extra config, re-view the videos again if needed
+
+
+
+### EJS
+
+the best option. Doesn't support layouts but there's a work around, called `partials`
+
+````js
+<%= someVariable %>
+<%  some JS logic here %>
+
+<%  if(a >b ) {%>
+// some html
+<% } %>
+
+// like PHP alternative syntax
+````
+
+
+
+Partials workaround:
+
+this feature is also supported by Pug and Handlebars
+
+we put repeated HTML into separate handlebars files and then we include them in the templates
+
+identical to PHP
+
+
+
+### MVC
+
+Model (data): class to create a single Product, and some methods to save it, remove it, update it, etc, same as the PHP course with the Post class
+
+View (templates)
+
+Controller(middlewares that interact with data (DB) and render views with some data)
+
+Examples:
+
+````js
+// controllers/product.js // all middlewares related to the product model
+const Product = require('../models/product')
+
+exports.getAddProduct = (req, res, next) => {
+	res.render('add-product', { //some data})
+}
+
+exports.postAddProduct = (req, res, next) => {
+	const product = new Product(req.body.title)
+	product.save();
+	res.redirect('/')
+}
+
+exports.getProducts = (req, res, next) => {
+	const products = Product.fetchAll();
+	res.render('shop', { products, etc})
+}
+````
+
+
+
+````
+// views/xxx.ejs
+<h1>Some Html in ejs format in this file<h1>
+````
+
+```js
+// model
+const products = [];
+
+class Product {
+	constructor(title){
+		this.title = title
+	}
+	
+	save(){
+		products.push(this)
+	}
+	
+	fetchAll(){
+		return products;
+	}
+}
+```
+
+```js
+// routes/shop.js
+const { getProducts } = require('./controllers/product')
+
+router.get('/', getProducts)
+
+```
+
+
+
+### Using a JSON file as storage!
+
+````js
+fs.writeFile
+fs.readFile
+
+are not promised based, they just register a callback to be executed when done
+callback hell alert!
+the code looks ugly 🤢
+````
+
+```js
+// /models/product.js
+
+const fs = require('fs');
+const path = require('path');
+
+const p = path.join(
+  path.dirname(process.mainModule.filename),
+  'data',
+  'products.json'
+);
+
+const getProductsFromFile = cb => {
+  fs.readFile(p, (err, fileContent) => { // callback based API 🚨
+    if (err) {
+      cb([]);
+    } else {
+      cb(JSON.parse(fileContent));
+    }
+  });
+};
+
+module.exports = class Product {
+  constructor(t) {
+    this.title = t;
+  }
+
+  save() {
+    getProductsFromFile(products => {
+      products.push(this);
+      fs.writeFile(p, JSON.stringify(products), err => {
+        console.log(err);
+      });
+    });
+  }
+
+  static fetchAll(cb) {
+    getProductsFromFile(cb);
+  }
+};
+```
+
+```js
+// controllers/product.js
+exports.getProducts = (req, res, next) => {
+  Product.fetchAll(products => { // I pass a callback when calling the fetchAll method
+    res.render('shop', {
+      prods: products,
+      pageTitle: 'Shop',
+      path: '/',
+      hasProducts: products.length > 0,
+      activeShop: true,
+      productCSS: true
+    });
+  });
+};
+```
+
+````js
+// // /models/product.js async/await with fsPromises 🤙
+const path = require('path');
+const fsPromises = require('fs').promises;
+
+const p = path.join(
+  path.dirname(process.mainModule.filename),
+  'data',
+  'products.json'
+);
+
+const getProductsFromFile = async () => {
+  const result = await fsPromises.readFile(p);
+  if (result){
+    return JSON.parse(result);
+  }
+  return [];
+};
+
+module.exports = class Product {
+  constructor(t) {
+    this.title = t;
+  }
+
+  async save () {
+    const products = await getProductsFromFile();
+    products.push(this);
+    await fsPromises.writeFile(p, JSON.stringify(products));
+  };
+
+
+  static async fetchAll(cb) {
+    const products = await getProductsFromFile();
+    return products;
+  }
+};
+````
+
+`````js
+// controllers/product.js
+exports.getProducts = async (req, res, next) => {
+  const products = await Product.fetchAll()
+  res.render('shop', {
+    prods: products,
+    pageTitle: 'Shop',
+    path: '/',
+    hasProducts: products.length > 0,
+    activeShop: true,
+    productCSS: true
+  });
+};
+`````
+
+
+
+### Dynamic routes and advanced models
+
+Takeaway: routes and controllers where separate by who's is using them: clients and admin (`shop` and `admin`)
+
+// paste code of Cart model 
+
+````
+const fs = require('fs');
+const path = require('path');
+
+const p = path.join(
+  path.dirname(process.mainModule.filename),
+  'data',
+  'cart.json'
+);
+
+module.exports = class Cart {
+	// 💡(no need to instantiate it, as we'r not pushing carts to somewhere, we have only one cart at the moment, living in a json file)
+	
+  👉static addProduct(id, productPrice) {
+    // Fetch the previous cart
+    fs.readFile(p, (err, fileContent) => {
+      let cart = { products: [], totalPrice: 0 };
+      if (!err) {
+        cart = JSON.parse(fileContent);
+      }
+      // Analyze the cart => Find existing product
+      const existingProductIndex = cart.products.findIndex(
+        prod => prod.id === id
+      );
+      const existingProduct = cart.products[existingProductIndex];
+      let updatedProduct;
+      // Add new product/ increase quantity
+      if (existingProduct) {
+        updatedProduct = { ...existingProduct };
+        updatedProduct.qty = updatedProduct.qty + 1;
+        cart.products = [...cart.products];
+        cart.products[existingProductIndex] = updatedProduct;
+      } else {
+        updatedProduct = { id: id, qty: 1 };
+        cart.products = [...cart.products, updatedProduct];
+      }
+      cart.totalPrice = cart.totalPrice + +productPrice;
+      fs.writeFile(p, JSON.stringify(cart), err => {
+        console.log(err);
+      });
+    });
+  }
+};
+````
+
+#### 💡look at the pattern of `let` + `if` blocks 👆
+
+// paste code of edit product route and controller
+
+`````
+// controllers/shop.js
+exports.postCart = (req, res, next) => {
+  const prodId = req.body.productId;
+  Product.findById(prodId, product => {
+    Cart.addProduct(prodId, product.price);
+  });
+  res.redirect('/cart');
+};
+`````
+
+````
+// routes/shop.js
+router.post('/cart', shopController.postCart);
+````
+
+Caveat: variables inside loops EJS are not passed to template parts, they need to be passed in the include part as an object:
+````
+<% if (prods.length > 0) { %>
+  <div class="card__actions">
+    <a href="/products/<%= product.id %>" class="btn">Details</a>
+    <%- include('../includes/add-to-cart.ejs', 👉{product: product}) %>
+  </div>
+````
+
+Picking up dynamic segments:
+
+````
+// routes/shop.js
+// we define the name of the param here:
+router.get('/products/👉:productId', shopController.getProduct);
+
+
+// we just access it in the controller
+exports.getProduct = (req, res, next) => {
+  const prodId = req.params.👉productId;
+  Product.findById(prodId, product => {
+    res.render('shop/product-detail', {
+      product: product,
+      pageTitle: product.title,
+      path: '/products'
+    });
+  });
+};
+````
+
+// paste how to pick up query params (after ?), called optional data, useful for tracking users and filter state
+
+```
+// routes/admin.js
+router.get('/edit-product/:productId', adminController.getEditProduct);
+```
+
+````
+// controllers/admin.js
+
+// I'm expecting to have 👉 `?editMode=true` in the url
+
+exports.getEditProduct = (req, res, next) => {
+  const editMode = req.👉query.edit;
+  if (!editMode) {
+    return res.redirect('/');
+  }
+  const prodId = req.params.productId;
+  Product.findById(prodId, product => {
+    if (!product) {
+      return res.redirect('/');
+    }
+    res.render('admin/edit-product', {
+      pageTitle: 'Edit Product',
+      path: '/admin/edit-product',
+      editing: editMode,
+      product: product
+    });
+  });
+};
+````
+
+👆this is a dummy example, as the route already looks at /edit-product, so there's no need for a query param check to verify I want to render the edit product form in editing mode (the form is reused for adding a new product)
+
+⚠️ callbacks approach is not good. Use async await instead an another node API that use promises
+
+🛠 to improve: redirect to /cart after removing a product in the cart should be after an await statement 
+
+````js
+exports.postDeleteProduct = (req, res, next) => {
+  const prodId = req.body.productId;
+  Product.deleteById(prodId);
+  res.redirect('/admin/products'); // ❌ this should happen after an await
+};
+````
+
+💡 interesting approach of passing null as the id for new product and checking that on the save mode to actually save the new product or update an existing one (with an this.id value set already)
+
+````js
+Class Product {
+	  save() {
+    getProductsFromFile(products => {
+      if (this.id) { // update product in the DB
+        const existingProductIndex = products.findIndex(
+          prod => prod.id === this.id
+        );
+        const updatedProducts = [...products];
+        updatedProducts[existingProductIndex] = this;
+        fs.writeFile(p, JSON.stringify(updatedProducts), err => {
+          console.log(err);
+        });
+      } else { // add new product to the DB
+        this.id = Math.random().toString();
+        products.push(this);
+        fs.writeFile(p, JSON.stringify(products), err => {
+          console.log(err);
+        });
+      }
+    });
+  }
+}
+````
+
+
+
+### SQL vs NoSQL
+
+Disadvantages:
+SQL:
+
+-  handling a lot of reads at the same time.
+- horizontal scaling is more difficult
+
+NoSQL:
+
+- only a few relationships preferred, to keep query perfomance
+- Data is copied (nested) in many places, so we might want to keep that all in sync (if it's important for the app)
+
+Advantages:
+
+SQL: 
+
+- Schema (all records have the same shape)
+- no data repetition
+- we can add a lot of relationships
+
+NoSQL:
+
+- Schemaless (we have the freedom to not have some fields in each document (of a collection))
+- performant under heavy load
+- scales horizontally much more easier
+
+We can have an app with both DBs, to make use of their strong points
+
+
+
+### Installing mysql
+
+we need the `Community server` and the `Workbench` installed on the laptop 
+
+Installing the server:
+
+1. choose legacy auth when installing the server
+2. Choose a password for the root user
+
+Go to `Systems preferences` -> `MySql` and then check that the server is running
+
+Installing the workbench
+
+1. After installing and opening it, there should be `localhost instance 3306` message; that means that the sql db server is running
+2. Add a schema
+3. add a table
+4. add records to the table
+5.  Steps 2 to 4 can be done in JS, when the app boots or when we want to seed the db
+
+When creating the products table:
+
+1. UN (Unsigned) means a field that doesn't hold negative values
+2. Double is used for 19.99 (price)
+
+So, we need **software in the laptop** that receives SQL queries and then interacts with the DB, which is a `MySql` **databaser server.**
+
+We also need an **npm package to connect to the the server** as well, so we can pass the queries from JS land:
+
+````
+npm i mysql2
+````
+
+There are two ways to connect to the server:
+
+1. We have one connection open at a time and we close it when done. INEFICIENT ❌
+2. Create a connection Pool (pool of connections). BEST ✅
+
+
+
+Each query needs its own connection, that is one from the pool, so we can run multiple queries at the same time (e.g 2 users signing up at the same time).
+
+The pool finished when the app shuts down (a rest server never shuts down, unless there's an uncaught JS error or maintenaince)
+
+Inside the workbench, the schemas represent databases
+
+````js
+// util/database.js
+
+const mysql = require('mysql2')
+
+const pool = mysql.createPool({
+	host: 'localhost',
+	user: 'root',
+	database: 'node-complete' // this is a `schema` in the workbench
+	password: 'nodecomplete'
+})
+
+module.exports = pool.promise(); // I export the pool with promise based apis
+````
+
+
+
+👉Promises are JS objects that can resolve or reject, or have a pending state. We can await the the resolved value and catch the rejected value
+
+```js
+try {
+	const result = await someFnReturningAPromise();
+	// we can react to the resolve value
+} catch(error){
+	// we can react to the reject value
+}
+
+// OR
+someFnReturningAPromise().then(data => {}).catch(error => {})
+```
+
+
+
+📣I gave up working with MySqlWorkbench 😞 as the course is outdated and don't want to spend time reading the docs 🤓
+
+```js
+// /models/product.js
+class Product {
+  static async fetchAll(){ // talks to a real DB, not the FS anymore ✅
+    try {
+      // array destructuring of the first array item below
+      const [rows] = await db.execute('SELECT * FROM products')
+      return rows;
+    } catch(error){
+      // let's log the error so we can see things in the server logs
+      console.log(error)
+      // return empty array if we couldn't connect to the DB
+      // this might not be the best approach ⚠️, re-asess this in the future🔎
+      return [];
+    }
+  }
+}
+
+
+```
+
+```js
+// /controllers/shop.js
+export.getIndex = async (req, res) => {
+	const products = await Product.fetchAll()
+	res.render('shop/index', {
+		products,
+		pageTitle: 'Shop',
+		path: '/'
+	})
+}
+```
+
+#### How to safely save records to the DB
+
+use the ? Marks, so the mysql2 package escapes any hidden SQL commands hidden in the input fields
+
+Nice UI thing: redirect after awaiting saving to the DB
+
+````js
+// /models/product.js
+
+class Product {
+   async save() {
+    try {
+			const result = await db.execute(
+			'INSERT INTO products (title, price, description, imageUrl) VALUES (?, ?, ?, ?)', 
+			[this.title, this.price, this.description, this.imageUrl])
+			return result;
+    } catch(error){
+      // let's log the error so we can see things in the server logs
+      console.log(error)
+      // let's not return anything, and the fn will return undefined by default
+      // this might not be the best approach ⚠️, re-asess this in the future🔎
+    }
+  }
+}
+````
+
+```js
+// controllers/admin.js
+
+exports.postAddProduct = async(req, res, next) => {
+  const title = req.body.title;
+  const imageUrl = req.body.imageUrl;
+  const price = req.body.price;
+  const description = req.body.description;
+  const product = new Product(null, title, imageUrl, description, price);
+  const result = await product.save();
+  if(result){
+    res.redirect('/');
+  } else {
+    // maybe serve an error page, sending html quick and dirty here for demo purposes
+    res.status(500).send('<h1>The item was not saved!!</h1>')
+  }
+};
+```
+
+
+
+### Sequelize
+
+let's use an abstraction on top of the SQL queries, to make life easier! 🌴
+
+So, we keep using the same db and the db server, but the JS code is far easier
+
+It's an **ORM** (Object Relational Mapping) library
+
+we still need `mysql2` installed in the project
+
+``` bash
+npm i sequelize
+```
+
+````js
+// utils/database.js
+
+const { Sequelize } = require('sequelize');
+
+const sequelize = new Sequelize('node-complete', 'root', 'nodecomplete', {
+    //`dialect: 'mysql'` that is a specific type of SQL database, like MariaDB and so on.
+    // They differ slightly and the ORM needs to know which type of DB flavour is talking to.
+    dialect: 'mysql' 
+    
+    // No need to set host to `localhost`, that's done by default
+})
+
+// the exported object contains the connection pool and a configured sequelized env (much more niceties inside!, like field types, etc)
+module.exports = sequelize;
+````
+
+
+
+Creating a model (database)
+
+```javascript
+// models/product.js
+
+const { Sequelize, DataTypes } = require('sequelize')
+
+const sequelize = require('../util/database')
+
+const Product = sequelize.define('product', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true,
+    allowNull: false,
+  },
+  title: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  price: {
+    type: DataTypes.DOUBLE,
+    allowNull: false
+  },
+  imageUrl: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  description: {
+    type: DataTypes.STRING,
+    allowNull: false
+  }
+});
+
+module.exports = Product;
+```
+
+
+
+Syncing JS Definitions to the DB
+
+when the apps starts, it needs to make sure that there are tables in the DBs that can be mapped to the JS objects we have (Product, etc), and that the relations we defined in JS are present in the mysql world in the DB
+
+````js
+const path = require('path');
+
+const express = require('express');
+
+👉const mysql = require('mysql2/promise');
+
+const bodyParser = require('body-parser');
+
+const errorController = require('./controllers/error');
+
+👉const sequelize = require('./util/database')
+
+const app = express();
+
+app.set('view engine', 'ejs');
+app.set('views', 'views');
+
+const adminRoutes = require('./routes/admin');
+const shopRoutes = require('./routes/shop');
+
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.use('/admin', adminRoutes);
+app.use(shopRoutes);
+
+app.use(errorController.get404);
+
+(async () => {
+    try {
+        const connection = await mysql.createConnection({ 
+            host: 'localhost',
+            user: 'root',
+            port: 3306, 
+            password: '11qq22WW'
+        });
+        // this line creates a DB if doesn't exists, so we never need to go to WorkbenchMySql
+        👉await connection.query(`CREATE DATABASE IF NOT EXISTS \👉`node-complete\`;`);
+
+        // this line syncs the Models with tables in the DB
+        👉const result = await sequelize.sync();
+        console.log(result)
+        app.listen(3000);
+    } catch (error){
+        console.log(error)
+    }
+})()
+````
+
+
+
+How to see the created Database and tables?
+
+Go to WorkbenchMySql ->localhost:3306 sign (enter 11qq22WW as the password)
+
+and then, there should be a  `node-complete` db + `products` table with all the fields!! 🎉
+
+
+
+### Adding a product to the table
+
+We can use Product.create to write directly to the DB,  or Product.build (which just returns the product object) and we then manually save it
+
+````js
+// controllers/admin.js
+
+const Product = require('../models/product');
+
+exports.postAddProduct = async(req, res, next) => {
+  const title = req.body.title;
+  const imageUrl = req.body.imageUrl;
+  const price = req.body.price;
+  const description = req.body.description;
+
+  try {
+    const result = await Product.👉create({
+      title,
+      imageUrl,
+      price,
+      description
+    })
+    console.log(result);
+    console.log('Product added!')
+    res.redirect('/');
+  } catch(error){
+    console.log(error);
+       // maybe serve an error page, sending html quick and dirty here for demo purposes
+       res.status(500).send('<h1>The item was not saved!!</h1>')
+  }
+};
+````
+
+this is a breeze! 😌
+
+
+
+### Let's fetch all the products
+
+````js
+// controllers/shop.js
+
+const Product = require('../models/product');
+
+exports.getProducts = async (req, res, next) => {
+  console.log('about')
+  try {
+    const products = await Product.👉findAll();
+    res.render('shop/product-list', {
+      prods: products,
+      pageTitle: 'All Products',
+      path: '/products'
+    });
+  } catch(error){
+    console.log(error);
+    // maybe send the user an error message`Oops,someting went wrong`
+  }
+};
+````
+
+
+
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
