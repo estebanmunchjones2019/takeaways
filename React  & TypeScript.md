@@ -137,3 +137,129 @@ const add = (a: number, b:number): 👉number=> {  // ❌ unnecessary code
 }
 ````
 
+### Defining function types
+
+````
+const add = (a: number, b:number)=> {
+  const number = a + b; // infered as number by TS, really smart
+  console.log(number)
+  return number
+}
+
+// we need to define the fn type like this (a:number, b: number) => number
+const calculate = (a:number, b: number, fn: (a:number, b: number) => number) => {
+  // fn is a value here (a pointer to a function)
+  // so, this value needs a type ( a function type )
+  fn(a,b)
+}
+
+calculate(1,2, add) // ✅
+calculate(1,2, () => console.log('hello world')) // ❌Type 'void' is not assignable to type 'number
+````
+
+Problem: function types can become long when defined inline
+
+It can be outsource as any type:
+````ts
+// we define types at the right hand side of the equal sign
+👉type Addfn = (a:number, b: number) => number
+
+const add = (a: number, b:number)=> {
+  const number = a + b; // infered as number by TS, really smart
+  console.log(number)
+  return number
+}
+
+// we need to define the fn type like this (a:number, b: number) => number
+const calculate = (a:number, b: number, fn: 👉Addfn) => {
+  fn(a,b)
+}
+
+calculate(1,2, add) // ✅
+calculate(1,2, () => console.log('hello world')) // ❌Type 'void' is not assignable to type 'number
+````
+
+
+
+### Interfaces
+
+They have advantages when:
+
+1. Using clases
+2. Writing a library, so users can use the declaration merging to fit the library to their types
+
+````ts
+// this is an object type
+type CredentialsAsTtpe = {
+  username: string;
+  password: string;
+}
+
+// is the same as this
+interface 👉Credentials {
+  username: string;
+  password: string;
+}
+
+// interface allows declaration merging ✅	
+interface 👉Credentials {
+	email: string
+}
+
+// I can force my class to have those fields, I can't implement a type but I can do it with an interface ✅
+class AuthCredentials 👉implements Credentials {
+  username: string;
+  password: string;
+  age: number
+  // constructor missing here, just demo purposes
+}
+
+const login = (credentials: Credentials) => {
+  console.log(credentials)
+}
+
+// TS knows that the AuthCredentials class has the Credentials fields already.
+login(new AuthCredentials())
+
+````
+
+### Merging types
+
+````ts
+type Admin = {
+  permissions: string[]
+}
+
+type User = {
+  userName: string
+}
+
+// I want a type that is a merge of both (e.g have permissions AND a userName as required fields)
+// type AdminUser = Admin | User; // ❌ doesnt work because if any of the fields is present, it makes TS happy
+type AdminUser = Admin 👉& User
+
+````
+
+Merging interfaces
+
+````ts
+interface Admin {
+  permissions: string[]
+}
+
+interface User {
+  userName: string
+}
+
+// I want a type that is a merge of both (e.g have permissions AND a userName as required fields)
+// type AdminUser = Admin | User; // ❌ doesnt work because if any of the fields is present, it makes TS happy
+interface AdminUser 👉extends Admin, User {} // I can add more fields inside {}
+
+let adminUser: AdminUser;
+
+adminUser = {
+  permissions: [],
+  userName: 'batman'
+}
+````
+
