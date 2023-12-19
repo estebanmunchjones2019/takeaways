@@ -263,3 +263,94 @@ adminUser = {
 }
 ````
 
+
+
+### Literal types
+
+````js
+type Role = 'user' | 'admin' // onyl these values are allowed (I could also have added a number to the union type)
+
+let role: Role
+
+role = 'customer' // ❌
+````
+
+
+
+### Type guards
+
+````ts
+// they are if checks that checks for types
+
+const performAction = (action: string | number, role: Role) => {
+  if(typeof action === 'string' && role === 'admin' ){ // ✅we get autocompletion for 'admin'
+      // inside here, TS did alreay a 👉`type narrowing`, to it knows that the action and the role will have already satisfied the if check
+  } 
+}
+````
+
+### Generic types
+
+````ts
+type Role = 'user' | 'admin'
+
+// Array is a built in generic type. Generic types need a type to be passed inside <>
+type Roles = Array<Role> // or Role[]
+````
+
+We can also build our own generic types, like when building libraries, to fit the needs of the dev
+
+````ts
+// we have a variable T (could be named anything) which is a type
+type DataStorage<T> = {
+  // we can reference that T type inside the object
+  storage: T[],
+  add: (data: T) => void
+}
+
+// `let` example
+// when uysing the type, we pass the type inside the angle brakets
+let dataStorage: DataStorage<string>
+
+dataStorage = {
+  storage: ['banana'],
+  add(data) {
+    this.storage.push(data)
+  }
+}
+
+// or using the `const` example
+const dataStorage1: DataStorage<string> = {
+  storage: ['banana'],
+  add(data) {
+    this.storage.push(data)
+  }
+}
+````
+
+
+
+### Generic functions
+
+They are functions that can be passed arguments of any type, but the the returned value can be worked out from the types of the arguments.
+
+````ts
+function merge<T, U>(a: T, b: U){ // T and U can be objects of any shape
+  return { // TS can infer the returned value! T & U 👌
+    ...a,
+    ...b
+  }
+}
+
+const newUser = merge<{ name: string}, {age: number}>( // when hovering: const newUser: {name: string;} & {age: number;}
+  { name: 'bob'},  
+  {age: 30}
+)
+
+const newUser1 = merge( // 👉<> not needed, TS can infer T and U from the order of the args passed
+  { name: 'bob'},
+  {age: 30}
+)
+
+````
+
