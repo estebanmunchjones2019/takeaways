@@ -332,7 +332,7 @@ const dataStorage1: DataStorage<string> = {
 
 ### Generic functions
 
-They are functions that can be passed arguments of any type, but the the returned value can be worked out from the types of the arguments.
+They are functions that can be **passed arguments of any type**, but the the **returned type can be worked out** from the types of the arguments.
 
 ````ts
 function merge<T, U>(a: T, b: U){ // T and U can be objects of any shape
@@ -352,5 +352,261 @@ const newUser1 = merge( // 👉<> not needed, TS can infer T and U from the orde
   {age: 30}
 )
 
+newUser1.age // ✅ I get autocompletion 😎
+
+````
+
+How NOT to define a generic function:
+````ts
+// when hovering: function merge(a: any, b: any): any ⚠
+function merge(a, b){  // ⚠ there's a yellow underline on a and b saying: parameter a implicitly has an `any`type
+  return { 
+    ...a,
+    ...b
+  }
+}
+
+
+const newUser1 = merge( // newUser: any , booo ❌
+  { name: 'bob'},
+  {age: 30}
+)
+````
+
+
+
+## Using TS with React: Essentials
+
+### Create a vite TS React project
+
+````bash
+npm create vite@latest react-ts-essentials
+````
+
+the `tsconfig.josn`file configures the ts compiler (tsc):
+````json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */ // vite reads this
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": true, // VSCode reads this to display errors visually
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src"],
+  "references": [{ "path": "./tsconfig.node.json" }]
+}
+
+````
+
+The ts compiler is a dev dependency:
+
+````json
+{
+  "name": "react-ts-essentials",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite", // compiles ts, bundles and serves the app to the browser
+    "build": "tsc && vite build", // just compiles ts and bundles the app
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.43", // RectNode type lives here
+    "@types/react-dom": "^18.2.17",
+    "@typescript-eslint/eslint-plugin": "^6.14.0",
+    "@typescript-eslint/parser": "^6.14.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "eslint": "^8.55.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.5",
+    👉"typescript": "^5.2.2",
+    "vite": "^5.0.8"
+  }
+}
+
+````
+
+### Props
+
+````ts
+
+type CourseGoalProps = {
+  title: string;
+  description: string;
+}
+
+const CourseGoal = ({title, description}: CourseGoalProps) => { // or (props: CourseGoalProps) and then use props.title and props.description
+  return <article>
+    <h1>{title}</h1>
+    <h2>{description}</h2>
+  </article>
+} 
+
+export default CourseGoal;
+````
+
+### Children (inside the props object)
+
+````ts
+import { ReactNode } from "react"; // from package.json  @types/react
+
+type CourseGoalProps = {
+  title: string;
+  description: string;
+  children: ReactNode
+}
+
+const CourseGoal = ({title, description, children}: CourseGoalProps) => { // or (props: CourseGoalProps) and then use props.title and props.description
+  return <article>
+    <h1>{title}</h1>
+    <h2>{description}</h2>
+    {children}
+  </article>
+} 
+
+export default CourseGoal;
+````
+
+````ts
+import { type ReactNode } from "react"; // good practice to add that keyword type, avoids the bundling tool from bundling it
+````
+
+
+
+### Alternative way: PropsWithChildren
+
+````ts
+import { type PropsWithChildren } from "react";
+
+type CourseGoalProps = PropsWithChildren<{
+  title: string;
+  description: string;
+}>
+````
+
+### Key prop: no need to type it
+
+All React components (built-in components and also your custom components) do accept a special `key` prop which is used by React to track specific component instances.
+
+For example, the `key` prop should always be set when outputting a list of components.
+
+This `key` prop can be set on custom components even if you didn't specify it in your props type!
+
+For example, the following component code will work:
+
+````ts
+type UserProps = {
+  name: string; // no need to add the key prop.
+};
+
+function User({ name }: UserProps) {
+  return <li>User: {name}</li>;
+}
+
+function App() {
+  const users = [{ name: 'John' }, { name: 'Mary' }, { name: 'Luke' }];
+
+  return (
+    <>
+      <ul>
+        {users.map((user, index) => (
+          <User key={user} name={user.name} /> // when adding the key prop, TS doesn't complain
+        ))}
+      </ul>
+    </>
+  );
+}
+````
+
+
+
+### Alternative syntax for typing props in functional components
+
+````ts
+import { type PropsWithChildren, type FC } from "react"; // good practice to add that keyword type, avoids the bundling tool from bundling it
+
+type CourseGoalProps = PropsWithChildren<{
+  title: string;
+  description: string;
+}>
+
+const CourseGoal: 👉FC<CourseGoalProps> = ({title, description, children}) => {
+````
+
+### React shortcut when passing props
+
+````ts
+const Header = ({img, children}: HeaderProps) => {
+  return <header>
+    {children}
+    <img 👉{...img}/> // when the object keys match the names of the props I need here: eg src and alt
+    // under the hood:
+    <img alt={alt} src={src}/>
+  </header>
+}
+````
+
+Props are passed as al
+
+````ts
+import CourseGoal from "./components/CourseGoal";
+import goalsImg from './assets/goals.jpg' // goalsImage is just a path
+import Header from "./components/Header";
+import { useState } from "react";
+
+type Goal = {
+  title: string;
+  description: string
+  id: number
+}
+
+export default function App() {
+
+  const [goals, setGoals] = useState<Goal[]>([])
+
+  const handleAddGoal = () => {
+    const newGoal: Goal = {
+      title: 'hello',
+      description: 'world',
+      id: Math.random()
+    }
+
+    setGoals(prevGoals => [...prevGoals, newGoal])
+  }
+
+  const Goals = goals.map(({title, description, id}) => (
+    <CourseGoal title={title} description={description} key={id}/>
+  ))
+  return (
+  <main>
+    <Header img={{src: goalsImg, alt: 'My goals'}}>
+        Welcome to my goals app
+    </Header>
+    <button onClick={handleAddGoal}>Add goal</button>
+    {Goals}
+  </main>
+  )
+}
 ````
 
