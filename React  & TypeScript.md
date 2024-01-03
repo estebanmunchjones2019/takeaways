@@ -544,7 +544,7 @@ function App() {
 ### Alternative syntax for typing props in functional components
 
 ````ts
-import { type PropsWithChildren, type FC } from "react"; // good practice to add that keyword type, avoids the bundling tool from bundling it
+import { type PropsWithChildren, type FC } from "react"; // good practice to add that keyword type (decorator), avoids the bundling tool from bundling it
 
 type CourseGoalProps = PropsWithChildren<{
   title: string;
@@ -607,6 +607,143 @@ export default function App() {
     {Goals}
   </main>
   )
+}
+````
+
+
+
+### Exporting types: avoiding type duplication
+
+````ts
+export type SomeType {}
+
+import { type SomeType } from './someFile'
+````
+
+
+
+### Handling and typing events
+
+````tsx
+// handleSubmit needs FormEvent to be manually typed
+import { type 👉FormEvent } from 'react'
+
+export default SomeComponent = () => {
+    function handleSubmit(event: FormEvent){
+        event.preventDefault()
+        etc
+	}
+    
+    return (
+        <form onSubmit={handleSubmit}> 
+    
+        </form>
+    ) 
+}
+
+
+// if defined inline onSubmit={(event) => etc} // TS can infer it, because the fn is only used as an event handler and not somewhere else in the code
+<form onSubmit={(event) => event.preventDefault()}> // the type is infered in this case
+    
+<form>
+    
+````
+
+### Working with generic event types (FormEvent):
+
+````tsx
+// a FormEvent can have multiple sources, but we can tell the generic type that is has been triggered by the HTML
+// if we want to access propr of the event object, then we need to tell TS which thing generated that object
+import { type 👉FormEvent } from 'react'
+
+export default SomeComponent = () => {
+    function handleSubmit(event: FormEvent<👉HTMLForElement>){ // HTMLForElement added on tsconfig.json -> lib -> DOM
+        event.preventDefault()
+        const formData = new FormData(event.currentTarget) // 👉without passing the type above, this throws an error as the FormEvent might not have that currentTarget prop
+        // I use currentTarget instead of current because React will not always add that prop
+        // extract the input values here
+	}
+    
+    return (
+        <form onSubmit={handleSubmit}> 
+    
+        </form>
+    ) 
+}
+// HTMLFormElement is available thanks to the tsconfig.json lib part DOM
+````
+
+To get inputs from a form there 3 ways in React:
+
+1. each input has a state and has two way data binding (update on every stroke)
+2. Using the event and grabbing them after the submit button is clicked
+3. using refs to access the DOM after the submit button is clicked
+
+### Using useRef to get the input values to access the DOM
+
+````tsx
+export default SomeComponent = () => {
+	const title = useRef<👉HTMLInputElement>(null); // HTMLInputElement allows for title.current!.👉value access
+	const description = useRef<HTMLInputElement>(👉null); // null allows for <input ref={title} // ref can't be undefined, but it can be null
+    function handleSubmit(event: FormEvent<HTMLForElement>){
+        event.preventDefault()
+        // hey TS title.current! means will NOT be null when this code runs, trust me
+        const enteredTitle = title.current👉!.value // React will add this .current prop
+        const enteredDesc = description.current!.value
+	}
+    
+    return (
+        <form onSubmit={handleSubmit}> 
+    
+        </form>
+    ) 
+}
+````
+
+
+
+🚀Pro tip: long TS error messages? the cause is the most nested error
+
+
+
+### Storing a React component in a variable
+
+````tsx
+let warningBox: ReactNode (this can be undefined, which JSX accepts whitout complaining)
+
+if (goals.length > 4) {
+	warningBox = <InfoBox mode="warning">Hey, too many goals here!</InfoBox>
+}
+
+return (
+	{warningBox}
+	// some more JSX here
+)
+````
+
+### React components with flexible props 
+
+````tsx
+
+type ComponentProps = {
+	children: ReactNode;
+	mode?👈: 'hard' | 'soft' // when hovered 'hard' | 'soft' | undefined
+    // or 
+	mode: 'hard' | 'soft' | undefined 
+}
+````
+
+### What if I want to be passed only when other one is passed and has certain value?
+
+````
+// just use unions
+
+type ComponentProps = {
+	children: ReactNode;
+	mode: 'hint' | 'warning'
+	severity?: 'low' | 'medium' | 'high'
+} | {
+	children: ReactNode
 }
 ````
 
