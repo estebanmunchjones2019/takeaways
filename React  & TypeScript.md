@@ -657,7 +657,7 @@ export default SomeComponent = () => {
 import { type 👉FormEvent } from 'react'
 
 export default SomeComponent = () => {
-    function handleSubmit(event: FormEvent<👉HTMLForElement>){ // HTMLForElement added on tsconfig.json -> lib -> DOM
+    function handleSubmit(event: FormEvent<👉HTMLFormElement>){ // HTMLForElement added on tsconfig.json -> lib -> DOM
         event.preventDefault()
         const formData = new FormData(event.currentTarget) // 👉without passing the type above, this throws an error as the FormEvent might not have that currentTarget prop
         // I use currentTarget instead of current because React will not always add that prop
@@ -727,23 +727,489 @@ return (
 
 type ComponentProps = {
 	children: ReactNode;
-	mode?👈: 'hard' | 'soft' // when hovered 'hard' | 'soft' | undefined
+	severity?👈: 'low' | 'medium' | 'high' // when hovered 'hard' | 'soft' | undefined
     // or 
-	mode: 'hard' | 'soft' | undefined 
+	severity: 'low' | 'medium' | 'high' | undefined 
 }
 ````
 
-### What if I want to be passed only when other one is passed and has certain value?
+### What if I want to props be mandatory only when other one is passed and has certain value?
 
+#### Discriminated unions:
+
+````ts
+// e.g severity is mandatory when the mode is 'warning'
+type InfoBoxProps = {
+    mode: 'hint'
+}
+
+type WarninBoxProps = {
+    mode: 'warning', 
+    severity: 'low' | 'medium' | 'high' // I make this a required prop when mode is warning
+}
+
+type ComponentProps = InfoBoxProps | WarninBoxProps
 ````
-// just use unions
 
-type ComponentProps = {
-	children: ReactNode;
-	mode: 'hint' | 'warning'
-	severity?: 'low' | 'medium' | 'high'
-} | {
-	children: ReactNode
+````tsx
+const Component = ({mode, severity ❌}: ComponentProps) // I CANT destructure an optional prop
+
+const Component = (props: ComponentProps) => {
+    const {mode} = props
+	if (mode === 'hint'){
+        return someJSX
+    }
+    const {severity} = props; // 💡 TS is smart enough to know that at this point, mode is 'warning' and severity is a passed prop
 }
 ````
+
+
+
+### Input wrapper component
+
+This component has additional html around the input, that I don't want to repeat each time:
+
+````tsx
+import { ComponentPropsWithoutRef } from "react";
+
+type InputProps = {
+  label: string;
+  id: string
+} & ComponentPropsWithoutRef<'input'>
+
+export default function Input({label, id, 👉...otherProps}: InputProps) { // 💡I grab all the rest of props with `...someName`
+  return (
+    <p>
+      <label htmlFor={id}>{label}</label>
+      <input id={id} 👉{...otherProps}></input> 
+      {/* // I pass the remaining props to the input */}
+    </p>
+  )
+}
+````
+
+
+
+### Button wrapper component
+
+````tsx
+import { type ComponentPropsWithoutRef, type ReactNode } from "react";
+
+type ButtonProps = {
+  el: 'button',
+} & ComponentPropsWithoutRef<'button'>
+
+type AnchorProps = {
+  el: 'anchor',
+} & ComponentPropsWithoutRef<'a'>
+
+export default function Button({el, ...props ❌}: AnchorProps | ButtonProps) { // destructuring props here is ambiguos to TS
+  if (el === 'button'){
+    return (
+      <button {...props}></button>
+    )
+  }
+  return (
+    <a {...props}></a>
+  )
+}
+````
+
+
+
+````tsx
+
+export default function Button(props: AnchorProps | ButtonProps) { // I grab all the rest of props with ...someName
+  if (props.el === 'button'){
+    const { el, ...otherProps } = props //✅ destructure remaining props inside if checks, so TS knows which type of the union I'm working with
+    return (
+      <button {...otherProps}/>
+    )
+  }
+  const { el, ...otherProps } = props
+
+  return (
+    <a {...otherProps}></a>
+  )
+}
+````
+
+### Infering anchor or button from html props (href)
+
+````tsx
+import { type ComponentPropsWithoutRef } from "react";
+
+type ButtonProps =  ComponentPropsWithoutRef<'button'>
+
+type AnchorProps =  ComponentPropsWithoutRef<'a'>
+
+export default function Button(props: AnchorProps | ButtonProps) { // if href is present, then render an anchor element
+  if (props.href ❌){
+    return (
+      <a {...props}></a>
+    )
+  }
+  return (
+    <button {...props}></button>
+  )
+}
+````
+
+### Type predicate to the rescue!
+
+Partial solution:
+
+````tsx
+import { type ComponentPropsWithoutRef } from "react";
+
+type ButtonProps =  ComponentPropsWithoutRef<'button'>
+
+type AnchorProps =  ComponentPropsWithoutRef<'a'>
+
+// TS inferes that the fn returns a boolean, but it doesn't know which type made that fn return true (or false)
+// hey TS, if this function returns true, it means that the prop arg passed is of the type AnchorProps
+const isAnchorProps = (props: ButtonProps | AnchorProps): 👉props is AnchorProps => {
+  return 'href' in props
+}
+
+export default function Button(props: AnchorProps | ButtonProps) { // I grab all the rest of props with ...someName
+  if (isAnchorProps(props)){
+    return (
+      <a {...props}></a>
+    )
+  }
+  return (
+    <button {...props}></button>
+  )
+}
+````
+
+````tsx
+// ❌downside: I can mix props of anchor and button html elements when rendering Button component
+// 🚨 mixing props of both object types is allowed by default.
+import Button from "./components/Button";
+import Input from "./components/Input";
+
+function App() {
+  return (
+    <>
+      <h1>Let's get started!</h1>
+      <Input id="name" label="name"></Input>
+      <Input id="age" label="age" type="number"></Input>
+      <Button target="" 👈 an achor prop here, allowed>Submit</Button>
+      <Button href="https://google.com" disabled👈 (a button prop here allowed (no TS error 😬))>A link</Button>
+    </>
+  )
+ 
+}
+
+export default App;
+
+````
+
+
+
+We can make the types a little bit more specific:
+
+````tsx
+import { type ComponentPropsWithoutRef } from "react";
+
+type ButtonProps =  ComponentPropsWithoutRef<'button'> & { href?: never}
+
+type AnchorProps =  ComponentPropsWithoutRef<'a'> & { href?: string} 
+
+const isAnchorProps = (props: ButtonProps | AnchorProps): props is AnchorProps => {
+  return 'href' in props
+}
+
+export default function Button(props: AnchorProps | ButtonProps) { // I grab all the rest of props with ...someName
+  if (isAnchorProps(props)){
+    return (
+      <a {...props}></a>
+    )
+  }
+  return (
+    <button {...props}></button>
+  )
+}
+````
+
+````tsx
+import Button from "./components/Button";
+import Input from "./components/Input";
+
+function App() {
+  return (
+    <>
+      <h1>Let's get started!</h1>
+      <Input id="name" label="name"></Input>
+      <Input id="age" label="age" type="number"></Input>
+      <Button target="" no error here, I can still mix things up>Submit</Button> 
+      <Button href="https://google.com" disabled ❌ error here (nice!)>A link</Button>
+    </>
+  )
+ 
+}
+
+export default App;
+````
+
+### TS limitations:
+
+Cons: if I don't pass an href prop, it could be any type (anchor or button)
+
+Pro:I if pass an href prop, it is a anchor type for sure.
+
+### Polymorphic component
+
+A component that wraps a component but it doesn't know which one in advanced
+
+why building a container:
+
+- reuse styling
+- reuse logic
+- reuse JSX
+
+a not very useful wrapper:
+
+````tsx
+import {  ElementType } from "react";
+
+type ContainerProps = {
+  as: ElementType // it could be input, CustomComponent, etc
+}
+
+export default function Container({as: Component}: ContainerProps) { // I grab all the rest of props with ...someName
+  return (
+    <Component></Component>
+  )
+}
+````
+
+````tsx
+// parent component
+<Container as="button"></Container> // an html element
+<Container as={Button}></Container> // a React component
+````
+
+Using generic to pass props to the as Component or html tag
+
+````tsx
+import {  ComponentPropsWithoutRef, ElementType, ReactNode } from "react";
+
+type ContainerProps<T extends 👉ElementType> = { 
+  as?: ElementType; // it could be input, CustomComponent, etc (name of html tag or Component)
+  children: ReactNode // JSX code or text
+} & ComponentPropsWithoutRef<T> // T needs to be of type 👉ElementType
+
+// I convert the Container component to a generic function, to understand the type from the arguments, and pass it to the generic type ContainerProps
+export default function Container<C extends ElementType>({as: Component = 'div', children, ...props}: ContainerProps<C>) { // I grab all the rest of props with ...someName
+  return (
+    <Component {...props}>{children}</Component>
+  )
+}
+````
+
+
+
+### Examples
+
+````tsx
+// Example: A Button component that has an icon and text
+// The icon is passed via a prop, which is a function that returns JSX code
+import type { ComponentPropsWithoutRef, ElementType, ReactNode } from 'react';
+
+type IconButtonProps = {
+  icon: ElementType;
+  onClick: () => void;
+  children: ReactNode;
+} & ComponentPropsWithoutRef<'button'>;
+
+export function IconButton({
+  // icon is aliased to Icon because it should be used like a custom component name
+  icon: Icon,
+  children,
+  ...otherProps
+}: IconButtonProps) {
+  return (
+    <button {...otherProps}>
+      <span>
+        <Icon />
+      </span>
+      <span>{children}</span>
+    </button>
+  );
+}
+
+// Example Usage:
+
+function HeartIcon() {
+  return <span>❤️</span>;
+}
+
+export function Demo() {
+  return (
+    <IconButton icon={HeartIcon} onClick={() => console.log('Button clicked!')}>
+      Like
+    </IconButton>
+  );
+}
+````
+
+````tsx
+
+// Example: A Card component that has multiple "slots" for content
+// Main slot => children prop
+// Actions slot => actions prop
+
+import { ReactNode } from 'react';
+
+type CardProps = {
+  title: string;
+  children: ReactNode;
+  // "actions" is like an extra "slot" of this component
+  // It's the same type as the children prop, since we expect JSX code as a prop value
+  actions: ReactNode;
+};
+
+export function Card({ title, children, actions }: CardProps) {
+  return (
+    <section>
+      <h2>{title}</h2>
+      {children}
+      {actions}
+    </section>
+  );
+}
+
+// Example Usage:
+export function Demo() {
+  return (
+    <Card
+      title="My Card"
+      actions={
+        <button onClick={() => console.log('Button clicked!')}>
+          Click Me!
+        </button>
+      }
+    >
+      <p>Some content</p>
+    </Card>
+  );
+}
+````
+
+````tsx
+// Example: A Generic List Component
+// This reusable component can be used to render a list of items of any type. The type of the items is passed via a generic type parameter.
+
+import { type ReactNode } from 'react';
+
+type ListProps<T> = {
+  items: T[];
+  renderItem: (item: T) => ReactNode;
+};
+
+export function List<T>({ items, renderItem }: ListProps<T>) {
+  return <ul>{items.map(renderItem)}</ul>;
+}
+
+// Example Usage:
+
+export function Demo() {
+  const users = [
+    { id: 'u1', name: 'Max' },
+    { id: 'u2', name: 'Manuel' },
+  ];
+
+  const hobbies = ['Sports', 'Reading', 'Cooking'];
+
+  return (
+    <main>
+      <section>
+        <h2>Users</h2>
+        <List
+          items={users}
+          renderItem={(user) => <li key={user.id}>{user.name}</li>}
+        />
+      </section>
+      <section>
+        <h2>Hobbies</h2>
+        <List
+          items={hobbies}
+          renderItem={(hobby) => <li key={hobby}>{hobby}</li>}
+        />
+      </section>
+    </main>
+  );
+}
+````
+
+
+
+### Passing references to components
+
+````tsx
+import { ComponentPropsWithoutRef } from "react";
+
+type InputProps = {
+  label: string;
+  id: string;
+  ref: ❌ // doesn't work, TS complaints
+} & ComponentPropsWithoutRef<'input'>
+````
+
+````tsx
+
+import { ComponentPropsWithRef } from "react";
+
+type InputProps = {
+  label: string;
+  id: string
+} & ComponentPropsWithRef<'input'> // ❌ it doesn't work, TS doesn't complain but there's a JS error at runtime
+````
+
+````ts
+import { type ComponentPropsWithoutRef, forwardRef } from "react"; // forwardRef is a real react fn, not a type
+
+type InputProps = {
+  label: string;
+  id: string
+} & ComponentPropsWithoutRef<'input'>
+
+// once I pass one type to the forwardRef generic fn, I need to pass the second, and then I can omit if inside the inner fn
+const Input = 👉forwardRef<HTMLInputElement, InputProps>(function ({label, id, ...props}, ref) { // I can ommit ({label, id, ...props}, ref)👉: InputProps
+  return (
+    <p>
+      <label htmlFor={id}>{label}</label>
+      <input id={id} {...props} ref={ref}></input> 
+    </p>
+  )
+})
+
+export default Input
+````
+
+````tsx
+import { useRef } from "react";
+import Button from "./components/Button";
+import Container from "./components/Container";
+import Input from "./components/Input";
+
+function App() {
+
+  const inputRef = useRef<HTMLInputElement>(null)
+  return (
+    <>
+      <Input id="name" label="name" 👉ref={inputRef}></Input>
+    </>
+  )
+}
+
+export default App;
+````
+
+
+
+### A form component
 
