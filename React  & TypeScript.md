@@ -1432,3 +1432,325 @@ function handleSave(data: unknown) {
 }
 ```
 
+### Advanced type -safe state with Context and useReducer
+
+first issue: convince TS that the already initialised context is not null
+
+How NOT ❌ to fix it:
+
+````tsx
+// ConsumerComponent.tsx
+const timersCtx = useContext(TimersContext)!👈; // I don't want to repeat this for every consumer component ❌
+````
+
+OR, use a type guard
+
+````tsx
+// ConsumerComponent.tsx
+
+const timersCtx = useContext(TimersContext); 
+
+if (timersCtx === null) throw Error('this should never happen') // I don't want to repeat this for every consumer component ❌
+````
+
+How to fix it ✅:
+
+We can build a custom hook that returns the context already applying the type guard:
+
+````tsx
+import { ReactNode, createContext, useContext } from "react";
+
+type TimersContextProviderProps = {
+  children: ReactNode
+}
+
+type Timer = {
+  name: string;
+  duration: number
+}
+
+type TimersState = {
+  isRunning: boolean;
+  timers: Timer[]
+}
+
+export type TimersContextValue = TimersState & {
+  // methods to  change the state 
+  addTimer: (data: Timer) => void;
+  startTimers: () => void;
+  stopTimers: () => void;
+}
+
+// when creating the context, I initialise it with null (and add it in a union type)
+const TimersContext = createContext<TimersContextValue | 👉null>(null)
+
+// 👉I export a custom hook with a type guard (so the consumers are assured the context is never null)
+👉 export const useTimersContext = () => {
+  const timersContext = useContext(TimersContext)
+  if (timersContext === null) throw Error('timersContext is null, this should never happpen')
+  return timersContext;
+}
+
+const TimersContextProvider = ({children}: TimersContextProviderProps) => {
+  // when providint the context, I give it some value different than null
+  const ctx = {
+    isRunning: false,
+    timers: [],
+    addTimer(data){},
+    startTimers(){},
+    stopTimers(){}
+  }
+  return <TimersContext.Provider value={ctx}>{children}</TimersContext.Provider>
+}
+
+// I export a wrapper component to provide the context👇
+export default TimersContextProvider
+````
+
+````tsx
+
+import AddTimer from './components/AddTimer.tsx';
+import Header from './components/Header.tsx';
+import Timers from './components/Timers.tsx';
+import TimersContextProvider from './store/timers-context.tsx';
+
+function App() {
+  return (
+   👉 <TimersContextProvider>
+      <Header />
+      <main>
+        <AddTimer />
+        <Timers />
+      </main>
+    </TimersContextProvider>
+  );
+}
+
+export default App;
+````
+
+````tsx
+
+import { useTimersContext } from '../store/timers-context.tsx';
+import Button from './UI/Button.tsx';
+
+export default function Header() {
+  const {isRunning} = 👉useTimersContext() // neat! 😎
+
+  return (
+    <header>
+      <h1>ReactTimer</h1>
+
+      <Button>{isRunning ? 'Stop Timers' : 'Start Timers'}</Button>
+    </header>
+  );
+}
+````
+
+### useReducer()
+
+is an fn called automatically by React when an action is dispatched. React will pass the current state and the action that wants to change the state
+
+How to not set the action type:
+````tsx
+type Action = {
+  type: 'ADD_TIMER' | 'START_TIMERS' | 'STOP_TIMERS',
+  // payload types could be different for future types, and I
+  payload?: Timer
+}
+
+const timersReducer = (state: TimersState, action: Action): TimersState => {
+  debugger;
+  switch (action.type) {
+    case "ADD_TIMER":
+      const updatedTimers = [...state.timers]
+      updatedTimers.push(action.payload!👈❌)
+      return {
+        ...state,
+        timers: updatedTimers
+      }
+    case "START_TIMERS":
+          // I can also access action.payload here
+          // action.payload
+      return {
+        ...state,
+        isRunning: true
+      }
+    case "STOP_TIMERS":
+      return {
+        ...state,
+        isRunning: false
+      }
+  }
+}
+````
+
+
+
+The fix ✅: use discriminated unions:
+````tsx
+type Action = {
+  type: 'ADD_TIMER',
+  payload: Timer
+} | {
+  type: | 'START_TIMERS' | 'STOP_TIMERS'
+}
+
+const timersReducer = (state: TimersState, action: Action): TimersState => {
+  debugger;
+  switch (action.type) {
+    case "ADD_TIMER":
+      const updatedTimers = [...state.timers]
+      updatedTimers.push(action.payload✅)
+      return {
+        ...state,
+        timers: updatedTimers
+      }
+    case "START_TIMERS":
+          // I can also access action.payload here
+          // action.payload ❌ I get a TS error
+      return {
+        ...state,
+        isRunning: true
+      }
+    case "STOP_TIMERS":
+      return {
+        ...state,
+        isRunning: false
+      }
+  }
+}
+````
+
+Full code of context and useReducer:
+
+````tsx
+import { ReactNode, createContext, useContext, useReducer } from "react";
+
+type TimersContextProviderProps = {
+  children: ReactNode
+}
+
+export type Timer = {
+  name: string;
+  duration: number
+}
+
+type TimersState = {
+  isRunning: boolean;
+  timers: Timer[]
+}
+
+// discriminated union here 👇
+type Action = {
+  type: 'ADD_TIMER',
+  payload: Timer
+} | {
+  type: | 'START_TIMERS' | 'STOP_TIMERS'
+}
+
+export type TimersContextValue = TimersState & {
+  addTimer: (data: Timer) => void;
+  startTimers: () => void;
+  stopTimers: () => void;
+}
+
+// when creating the context, I initialise it with null
+const TimersContext = createContext<TimersContextValue | null>(null)
+
+export const useTimersContext = () => {
+  const timersContext = useContext(TimersContext)
+  // 💡 write the guard one, reuse this custom hook multiple times
+  if (timersContext === null) throw Error('timersContext is null, this should never happpen')
+  return timersContext;
+}
+
+const initialState: TimersState = {
+  isRunning: false,
+  timers: []
+}
+
+const timersReducer = (state: TimersState, action: Action): TimersState => {
+  switch (action.type) {
+    case "ADD_TIMER":
+      return {
+        ...state,
+        timers: [
+          ...state.timers,
+          action.payload
+        ]
+      }
+    case "START_TIMERS":
+      return {
+        ...state,
+        isRunning: true
+      }
+    case "STOP_TIMERS":
+      return {
+        ...state,
+        isRunning: false
+      }
+  }
+}
+
+
+
+const TimersContextProvider = ({children}: TimersContextProviderProps) => {
+  // when providint the context, I give it some value different than null
+  
+  // 💡 I keep global state inside this wrapper component
+  const [timersState, dispatch] = useReducer(timersReducer, initialState)
+
+  console.log('timersState', timersState)
+
+ // this is a brand new object everytime this wrapper component re-renders (state changes, or new children passed to it)
+  const ctx = {
+    ...timersState, // 👈 I pass the updated state via context
+    addTimer(data: Timer){
+      dispatch({
+        type:'ADD_TIMER',
+        payload: data
+      })
+    },
+    startTimers(){
+      dispatch({
+        type:'START_TIMERS'
+      })
+    },
+    stopTimers(){
+      dispatch({
+        type:'STOP_TIMERS'
+      })
+    }
+  }
+  return <TimersContext.Provider value={ctx}>{children}</TimersContext.Provider>
+}
+
+export default TimersContextProvider
+````
+
+````tsx
+// read and mutate the global state
+import { useTimersContext } from '../store/timers-context.tsx';
+import Button from './UI/Button.tsx';
+
+export default function Header() {
+  const {isRunning, startTimers, stopTimers} = useTimersContext()
+
+  return (
+    <header>
+      <h1>ReactTimer</h1>
+
+      <Button onClick={isRunning ? stopTimers : startTimers}>{isRunning ? 'Stop Timers' : 'Start Timers'}</Button>
+    </header>
+  );
+}
+````
+
+
+
+### sideEffects, useEffect and data fetching
+
+problem: setInterval called outside useEffect with no dep array will yield and infinite loop
+
+problem: if the component is unmounted, there will be fns running every x ammount of ms, even if the component doesnt need it
