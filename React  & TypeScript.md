@@ -1213,3 +1213,222 @@ export default App;
 
 ### A form component
 
+Using `unknown` for an object which I don't know the shape off.
+
+````tsx
+import { ComponentPropsWithoutRef, FormEvent } from "react";
+
+type FormProps = ComponentPropsWithoutRef<'form'> & {
+  onSave: (formData: 👉unknown) => void; // formData is an object that could have different keys depending on which fields are passed as children
+}
+
+
+// once I pass one type to the forwardRef generic fn, I need to pass the second, and then I can omit if inside the inner fn
+const Form = ({children, onSave, ...props}: FormProps) => {
+  const submitHandler = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const formData = new FormData(event.currentTarget) // formData.get('fieldName') clunky ❌
+    const simpleFormData = Object.fromEntries(formData) // simpleFormData.fieldName better ✅
+    onSave(simpleFormData)
+  }
+  
+  return (
+    <form {...props} onSubmit={submitHandler}>
+      {children}
+    </form>
+  )
+}
+
+export default Form
+````
+
+
+
+And we can cast the type when we DO know what the type will be for that `unknown` variable.
+
+````tsx
+
+import { FormEvent, useRef } from "react";
+import Button from "./components/Button";
+import Container from "./components/Container";
+import Input from "./components/Input";
+import Form from "./components/Form";
+
+function App() {
+
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // I know the fields passed as children to <Form>, so I can type the argument unknown
+  // all picked up input values are strings
+  const onSave = (formData: unknown) => {
+    debugger;
+    // I assign it to new variable and cast the type (convince TS about it)
+    const extractedData = formData 👉as { name: string; age: string}
+    console.log(extractedData)
+  }
+
+  return (
+    <>
+      <h1>Let's get started!</h1>
+      <Form onSave={onSave}>
+        <Input id="name" label="name"></Input>
+        <Input id="age" label="age" type="number"></Input>
+        <Button type="submit" target="">Submit</Button>
+      </Form>
+      <Button href="https://google.com">A link</Button>
+      <Container as="button">Click me first</Container>
+      <Container as={Button} onClick={() => console.log('clicked')}>Click me</Container>
+    </>
+  )
+ 
+}
+
+export default App;
+````
+
+The App.tsx component knows which input fields are rendered, that's were we cast
+
+### Exposing component APIs (functions) via useImperativeHandle hook
+
+The easy way of clearing the form:
+
+````tsx
+import { ComponentPropsWithoutRef, FormEvent } from "react";
+
+type FormProps = ComponentPropsWithoutRef<'form'> & {
+  onSave: (formData: unknown) => void; // formData cis an object that could have different keys depending on which fields are passed as children
+}
+
+
+// once I pass one type to the forwardRef generic fn, I need to pass the second, and then I can omit if inside the inner fn
+const Form = ({children, onSave, ...props}: FormProps) => { // I can ommit ({label, id, ...props}, ref)👉: InputProps
+  const submitHandler = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const formData = new FormData(event.currentTarget) // formData.get('fieldName') clunky ❌
+    const simpleFormData = Object.fromEntries(formData) // simpleFormData.fieldName better ✅
+    onSave(simpleFormData)
+    event.currentTarget?.👉reset()
+  }
+  
+  return (
+    <form {...props} onSubmit={submitHandler}>
+      {children}
+    </form>
+  )
+}
+
+export default Form
+````
+
+The more difficult way to do it by exposing a fn (API):
+summary: an object with methods is passed to the parent component via refs.
+
+````tsx
+import { FormEvent, useRef } from "react";
+import Button from "./components/Button";
+import Container from "./components/Container";
+import Input from "./components/Input";
+import Form, { type FormHandle } from "./components/Form";
+
+function App() {
+
+  // this is an object with the `clear` method
+  const customForm = useRef<FormHandle>(null)
+
+  const onSave = (formData: unknown) => {
+    const extractedData = formData as { name: string; age: string}
+      console.log(extractedData)
+      customForm.current?.clear()
+  }
+
+  return (
+    <>
+      <h1>Let's get started!</h1>
+      <Form onSave={onSave} ref={customForm}>
+        <Input id="name" label="name"></Input>
+        <Input id="age" label="age" type="number"></Input>
+        <Button type="submit" target="">Submit</Button>
+      </Form>
+    </>
+  )
+ 
+}
+
+export default App;
+````
+
+````tsx
+import { forwardRef, ComponentPropsWithoutRef, FormEvent, useImperativeHandle, useRef } from "react";
+
+export type FormHandle = {
+  clear: () => void
+}
+
+type FormProps = ComponentPropsWithoutRef<'form'> & {
+  onSave: (formData: unknown) => void; // formData cis an object that could have different keys depending on which fields are passed as children
+}
+
+// the first type is the type of the reference passed up to the parent component
+const Form = forwardRef<👉FormHandle, FormProps>(({children, onSave,...props}, ref) => { // I can ommit ({label, id, ...props}, ref)👉: InputProps
+
+  // I want to access the form HTML element to clear the form  
+  const form = useRef<HTMLFormElement>(null)
+
+  useImperativeHandle(ref, () => {
+    // 👉this returned object becomes the ref that the parent component gets
+    return 👉{
+      // I access the DOM via another ref here attached to the <form> element
+      clear() { form.current?.reset() }
+    }
+  })
+
+  const submitHandler = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const formData = new FormData(event.currentTarget) // formData.get('fieldName') clunky ❌
+    const simpleFormData = Object.fromEntries(formData) // simpleFormData.fieldName better ✅
+    onSave(simpleFormData)
+  }
+  
+  return (
+    <form {...props} onSubmit={submitHandler} ref={form}>
+      {children}
+    </form>
+  )
+})
+
+export default Form
+````
+
+###  
+
+### Alternative: Avoiding Type Casting with "as"
+
+In the previous lecture, we used *"Type Casting"* (also called *"Type Assertion"*) via TypeScript's `as` keyword to *"tell"* TypeScript that a value is of a specific type.
+
+This is a technique that makes sense when working with data where TypeScript has no chance of inferring the type where you on the other hand know the exact type.
+
+If you're not 100% sure about the type of value you'll be dealing with at runtime (i.e., if there are multiple possible value types) or if you want to be extra safe, you can also use a combination of *"Type Guards"* to narrow down the type until TypeScript is able to infer the final type.
+
+Here's the code from the previous lecture, now adjusted to use *"Type Guards"* for *"Type Narrowing"*:
+
+```tsx
+function handleSave(data: unknown) {
+  // const extractedData = data as { name: string; age: string };
+    // type guard here 👇
+  if (
+    !data ||
+    typeof data !== 'object' ||
+    !('name' in data) ||
+    !('age' in data)
+  ) {
+      return;
+  }
+
+  // at this point, TypeScript knows that data MUST BE an object 
+  // with a name and age property
+  // otherwise, the previous if statement would have returned
+  console.log(data); // 👈 at this point, TS knows exactly that data is an object with name and age property
+  customForm.current?.clear();
+}
+```
+
