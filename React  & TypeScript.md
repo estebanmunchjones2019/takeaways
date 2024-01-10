@@ -1753,4 +1753,288 @@ export default function Header() {
 
 problem: setInterval called outside useEffect with no dep array will yield and infinite loop
 
-problem: if the component is unmounted, there will be fns running every x ammount of ms, even if the component doesnt need it
+````tsx
+import Container from './UI/Container.tsx';
+import { Timer as TimerProps } from '../store/timers-context.tsx'
+import { useState } from 'react';
+
+const step = 50;
+
+export default function Timer({name, duration}: TimerProps) {
+  const [remainingTime, setRemainingTime] = useState(duration)
+
+  console.log('Timer component runs')
+
+  // infinte loop! ❌  
+  setInterval(() => {
+    setRemainingTime(remainingTime - step)
+  }, step)
+
+  return (
+    <Container as="article">
+      <h2>{name}</h2>
+      <progress max={duration} value={remainingTime}></progress>
+      <p>{duration}</p>
+    </Container>
+  );
+}
+````
+
+
+
+problem: the interval is not cleared
+
+if the component is unmounted, there will be fns running every x ammount of ms, even if the component doesnt need it
+
+````tsx
+import Container from './UI/Container.tsx';
+import { Timer as TimerProps } from '../store/timers-context.tsx'
+import { useEffect, useState } from 'react';
+
+const step = 50;
+
+export default function Timer({name, duration}: TimerProps) {
+  const [remainingTime, setRemainingTime] = useState(duration * 1000)
+
+  console.log('Timer component runs with remainingTime: ', remainingTime)
+
+  // the setInterval will keep running after the component is unmounted
+  // Memory leak! ❌ 
+  useEffect(() => {
+    setInterval(() => {
+      console.log('setInterval callback runs')
+      debugger
+      setRemainingTime(remainingTime => remainingTime- step)
+    }, step)
+  }, [])
+
+  return (
+    <Container as="article">
+      <h2>{name}</h2>
+      <progress max={duration} value={remainingTime / 1000}></progress>
+      <p>{(remainingTime / 1000).toFixed(2)}</p>
+    </Container>
+  );
+}
+````
+
+
+
+solution 1: try to clearInterval inside the component: the interval is not defined
+
+````tsx
+
+import Container from './UI/Container.tsx';
+import { Timer as TimerProps } from '../store/timers-context.tsx'
+import { useEffect, useState } from 'react';
+
+const step = 50;
+
+export default function Timer({name, duration}: TimerProps) {
+  const [remainingTime, setRemainingTime] = useState(duration * 1000)
+
+  console.log('Timer component runs with remainingTime: ', remainingTime)
+
+  if (remainingTime <= 0) {
+    clearInterval(interval) // ❌interval variable not defined here 
+  }
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      console.log('setInterval callback runs')
+      debugger
+      setRemainingTime(remainingTime => {
+        if (remainingTime <= 0) remainingTime
+        return remainingTime - step
+      })
+    }, step)
+  }, [])
+
+  return (
+    <Container as="article">
+      <h2>{name}</h2>
+      <progress max={duration} value={remainingTime / 1000}></progress>
+      <p>{(remainingTime / 1000).toFixed(2)}</p>
+    </Container>
+  );
+}
+````
+
+solution 2: create a let variable inside the component: the variable is re-created each time the component re renders
+
+````tsx
+import Container from './UI/Container.tsx';
+import { Timer as TimerProps } from '../store/timers-context.tsx'
+import { useEffect, useState } from 'react';
+
+const step = 50;
+
+export default function Timer({name, duration}: TimerProps) {
+  const [remainingTime, setRemainingTime] = useState(duration * 1000)
+
+  console.log('Timer component runs with remainingTime: ', remainingTime)
+
+  let interval: number; // ❌ variable recreated each time the component re renders
+
+  if (remainingTime <= 0) {
+    clearInterval(interval)
+  }
+
+  useEffect(() => {
+    interval = setInterval(() => {
+      console.log('setInterval callback runs')
+      debugger
+      setRemainingTime(remainingTime => {
+        if (remainingTime <= 0) remainingTime
+        return remainingTime - step
+      })
+    }, step)
+  }, [])
+
+  return (
+    <Container as="article">
+      <h2>{name}</h2>
+      <progress max={duration} value={remainingTime / 1000}></progress>
+      <p>{(remainingTime / 1000).toFixed(2)}</p>
+    </Container>
+  );
+}
+````
+
+solution 3: create a let variable outside the component: the variable is shared accross all Timer instances
+
+````tsx
+import Container from './UI/Container.tsx';
+import { Timer as TimerProps } from '../store/timers-context.tsx'
+import { useEffect, useState } from 'react';
+
+const step = 50;
+
+let interval: number; // ❌ variable shared for all Timer instances, only one timer will be cleared if many Timer components rendered on the page
+
+export default function Timer({name, duration}: TimerProps) {
+  const [remainingTime, setRemainingTime] = useState(duration * 1000)
+
+  console.log('Timer component runs with remainingTime: ', remainingTime)
+
+  if (remainingTime <= 0) {
+    clearInterval(interval)
+  }
+
+  useEffect(() => {
+    interval = setInterval(() => {
+      console.log('setInterval callback runs')
+      debugger
+      setRemainingTime(remainingTime => {
+        if (remainingTime <= 0) remainingTime
+        return remainingTime - step
+      })
+    }, step)
+  }, [])
+
+  return (
+    <Container as="article">
+      <h2>{name}</h2>
+      <progress max={duration} value={remainingTime / 1000}></progress>
+      <p>{(remainingTime / 1000).toFixed(2)}</p>
+    </Container>
+  );
+}
+````
+
+
+
+#### solution 4: using a ref (keep a variable that is not state that survives re renders)
+
+With references, we can:
+
+- access the DOM
+- pass an object with methods to a parent component
+- store a value that is kept on re-renders
+
+````tsx
+export default function Timer({name, duration}: TimerProps) {
+  const [remainingTime, setRemainingTime] = useState(duration * 1000)
+  const interval = useRef<number👈>(null)
+
+  console.log('Timer component runs with remainingTime: ', remainingTime)
+
+  // clear the interval when the timer reaches 0
+  if (remainingTime <= 0) {
+    clearInterval(interval)
+  }
+
+  useEffect(() => {
+    interval.current👈 = setInterval(() => { // I get a TS error ❌ there: Cannot assign to 'current' because it is a read-only property.ts(2540)
+````
+
+The fix is to add useRef<number | null👈>(null)
+
+💡I useRef<number | null>(null) I need the union here, but wasn't needed when accessing the DOM because the ref prop assures that is never null (inferred from there)
+
+Problem: React in stirct mode re-renders twice (for debugging purposes), so two intervals are set, and when unmounted, the intervals keep running in the background
+
+````tsx
+  useEffect(() => {
+    interval.current = setInterval(() => {
+      console.log('setInterval callback runs')
+      setRemainingTime(remainingTime => {
+        if (remainingTime <= 0) remainingTime
+        return remainingTime - step
+      })
+    }, step)
+    return () => clearInterval(interval.current) // ❌ this  interval.current could have been changed by another hook  
+  }, [])
+````
+
+The fix: use a variable inside the hook:
+
+````tsx
+import Container from './UI/Container.tsx';
+import { Timer as TimerProps, useTimersContext } from '../store/timers-context.tsx'
+import { useEffect, useRef, useState } from 'react';
+
+const step = 50;
+
+export default function Timer({name, duration}: TimerProps) {
+  const [remainingTime, setRemainingTime] = useState(duration * 1000)
+  const interval = useRef<number | null>(null)
+  const { isRunning } =  useTimersContext()
+
+  console.log('Timer component runs with remainingTime: ', remainingTime)
+
+  // clear the interval when the timer reaches 0
+  if (remainingTime <= 0 && interval.current) {
+    clearInterval(interval.current)
+  }
+
+  useEffect(() => {
+    let timer: number; // ✅ a variable was added there
+    if (isRunning){
+      timer = setInterval(() => {
+        console.log('setInterval callback runs')
+        setRemainingTime(remainingTime => {
+          if (remainingTime <= 0) remainingTime
+          return remainingTime - step
+        })
+      }, step)
+      interval.current = timer;
+    } else if (interval.current){
+       // clean up the interval when stopped manually
+      clearInterval(interval.current)
+    }
+    // clean up function when unmounting or when this hooks re-runs
+    return () => clearInterval(timer) // 👈 So I'm 100% sure this variable wasn't changed by other hook
+  }
+  , [isRunning])
+
+  return (
+    <Container as="article">
+      <h2>{name}</h2>
+      <progress max={duration} value={remainingTime / 1000}></progress>
+      <p>{(remainingTime / 1000).toFixed(2)}</p>
+    </Container>
+  );
+}
+````
+
