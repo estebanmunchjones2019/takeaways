@@ -2044,6 +2044,89 @@ export default function Timer({name, duration}: TimerProps) {
 
 TODO: code the whole get helper fn, catch errors and add loading state
 
+````ts
+// async fns wrap the returned value into a promise
+const get = async (url: string) => {
+  const response = await fetch(url)
+
+  // the fetch api doesn't throw an error when the response code is 400ish or 500ish unfortunately
+  if (!response.ok) throw Error('Response with code 400ish or 500ish')
+
+  const data = await response.json() as unknown // 👈 first casting here
+  return data
+}
+
+export default get;
+````
+
+````tsx
+import { ReactNode, useEffect, useState } from "react";
+import BlogPosts, { BlogPost } from "./components/BlogPosts";
+import get from "./utils/get";
+
+type BlogPostResponse = {
+  id: number;
+  title: string;
+  body: string;
+  userId: number
+}
+
+function App() {
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>()
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string>()
+
+  useEffect(() => {
+    (async () => {
+      setIsLoading(true)
+      try {
+        const blogPostsResponse= await get('https://jsonplaceholder.typicode.com/posts') as BlogPostResponse[] // 👈 second casting here
+        const blogPosts = blogPostsResponse.map(({id, title, body}) => {
+          return {
+            id,
+            title,
+            text: body,
+          }
+        })
+
+        setBlogPosts(blogPosts)
+      } catch(error) {
+		// option 1: casting
+         // setError((error as Error).message)
+		// option 2: ty
+         if (error instanceof Error) {
+            setError(error.message)
+         } 
+      }
+      setIsLoading(false)
+    })()
+  }, [])
+
+  // as blogPosts can be undefined, I need to do this workaround ❌
+  let content: ReactNode;
+    
+  if (blogPosts) {
+    content = <BlogPosts posts={blogPosts}></BlogPosts>
+  }
+
+  if (isLoading) {
+    content = <p>Loading...</p>
+  }
+
+  return (
+    <>
+      <h1>Data Fetching!</h1>
+      {content}
+      {error && <p>{error}</p>}
+    </>
+  );
+}
+
+export default App;
+````
+
+
+
 TODO: show casting
 
 TODO: explain how to address the type of the error: casting or type narrowing with an if check
