@@ -2093,7 +2093,7 @@ function App() {
       } catch(error) {
 		// option 1: casting
          // setError((error as Error).message)
-		// option 2: ty
+		// option 2: type narrowing
          if (error instanceof Error) {
             setError(error.message)
          } 
@@ -2312,3 +2312,25 @@ const data = await get('https://jsonplaceholder.typicode.com/posts', z.array(raw
 
 data[0].userId; // works => TypeScript knows that userId will exist on the returned data
 ```
+
+
+
+### Redux
+
+in the reducers, I can mutate the state, as a new state object will be returned behind the scenes
+
+when using useReducer, I need to return a new object manually
+
+
+
+show usage of custom useReducer hook to add type safety when working with thunks
+````
+import { configureStore } from '@reduxjs/toolkit'
+
+import { cartSlice } from '/cart' 
+````
+
+
+
+TODO: clarify getting typeof a js value and use in TS
+
