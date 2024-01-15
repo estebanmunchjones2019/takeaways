@@ -2317,20 +2317,210 @@ data[0].userId; // works => TypeScript knows that userId will exist on the retur
 
 ### Redux
 
-in the reducers, I can mutate the state, as a new state object will be returned behind the scenes
+In the reducers, I can mutate the state, as a new state object will be returned behind the scenes
 
 when using useReducer, I need to return a new object manually
 
+````ts
+// store.ts
 
-
-show usage of custom useReducer hook to add type safety when working with thunks
-````
 import { configureStore } from '@reduxjs/toolkit'
 
-import { cartSlice } from '/cart' 
+import { cartSlice } from './cart-slice'
+
+👉 export const store = configureStore({
+  reducer: {
+    cart: cartSlice.reducer
+  }
+})
+
+// workaround to get the type for a dispatch fn call
+export type AppDispatch = typeof store.dispatch
+
+// problem: store.getState is a method that returns the type I'm interested in ❌
+/* here RootState is a function type, not what I want
+type RootState = () => {
+    cart: cartState;
+}
+ */
+// export type RootState = typeof store.getState
+
+
+
+// solution: extract the type of the return type of a function type using the built in TS type ReturnType
+export type RootState = ReturnType<typeof store.getState>
+/*
+type RootState = {
+    cart: cartState;
+}
+ */
 ````
 
+````ts
+// cart-slice.ts
 
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
-TODO: clarify getting typeof a js value and use in TS
+export type CartItem = {
+  id: string;
+  title: string;
+  price: number;
+  quantity: number;
+}
+
+type cartState = {
+  items: CartItem[]
+}
+
+const initialState: cartState = {
+  items: []
+}
+
+// no need to define the types of the actions in a big switch statements in a reducer fn, like when using useReducer
+export const cartSlice = createSlice({
+  name: 'cart',
+  initialState,
+  reducers: {
+    // the addToCart action type is automatically created by redux toolkit
+    // the reducer fn will be executed by redux
+    addToCart(state, action: PayloadAction<{ id: string, title: string, price: number}>){
+      const itemIndex = state.items.findIndex(item => item.id === action.payload.id)
+      if (itemIndex >= 0){
+        // we can mutate the state directly and a new object will be returned as the state in the redux machine
+        state.items[itemIndex].quantity++
+      } else {
+        state.items.push({...action.payload, quantity: 1})
+      }
+    },
+    removeFromCart(state, action: PayloadAction<string>){
+      const itemIndex = state.items.findIndex(item => item.id === action.payload)
+      if (itemIndex) {
+        if (state.items[itemIndex].quantity === 1) {
+          state.items.splice(itemIndex, 1)
+        } else {
+          state.items[itemIndex].quantity--
+        }
+      }
+    }
+  }
+})
+
+// there are not pointer to the above reducers, but fns to create action objects and then be passed to redux toolkit when calling dispatch(action object) in a react component
+export const { addToCart, removeFromCart} = cartSlice.actions
+
+/* addToCart({
+  id: 'efagarg',
+  title: 'scarf',
+  price: 10
+})
+
+// will return
+{
+  type: 'addToCart',
+  payload: {
+    id: 'efagarg',
+    title: 'scarf',
+    price: 10
+  }
+}
+*/
+````
+
+````tsx
+import { Provider } from 'react-redux';
+
+import { store } from './store/store.ts'
+import Header from './components/Header.tsx';
+import Shop from './components/Shop.tsx';
+import Product from './components/Product.tsx';
+import { DUMMY_PRODUCTS } from './dummy-products.ts';
+
+function App() {
+  return (
+    <Provider 👉 store={store}>
+      <Header />
+      <Shop>
+        {DUMMY_PRODUCTS.map((product) => (
+          <li key={product.id}>
+            <Product {...product} />
+          </li>
+        ))}
+      </Shop>
+    </Provider>
+  );
+  
+}
+
+export default App;
+````
+
+````ts
+// hooks.ts
+import { useDispatch, useSelector, TypedUseSelectorHook } from "react-redux";
+import { AppDispatch, RootState } from "../store/store";
+
+type DispatchHook = () => AppDispatch
+
+// we store the hooks into new variables, but typed this time
+export const useAppDispatch: DispatchHook = useDispatch
+export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector
+````
+
+````tsx
+import { useAppDispatch, useAppSelector } from "../hooks/hooks";
+import { CartItem, addToCart, removeFromCart } from "../store/cart-slice";
+
+export default function CartItems() {
+
+  const cartItems = 👉 useAppSelector(state => state.cart.items)
+  const dispatch = 👉 useAppDispatch()
+
+  const handleAddToCart = ({id, title, price}: CartItem) => {
+    dispatch(👉addToCart({
+      id,
+      title,
+      price
+    }))
+  }
+
+  const handleRemoveFromCart = (id: string) => {
+    dispatch(removeFromCart(id))
+  }
+
+  const totalPrice = cartItems.reduce((value, item) =>  value + item.quantity * item.price, 0)
+  const formattedTotalPrice = totalPrice.toFixed(2)
+
+  return (
+    <div id="cart">
+      {cartItems.length === 0 && <p>No items in cart!</p>}
+
+      <ul id="cart-items">
+          {cartItems.map((item) => {
+            const formattedPrice = `$${item.price.toFixed(2)}`;
+
+            return (
+              <li key={item.id}>
+                <div>
+                  <span>{item.title}</span>
+                  <span> ({formattedPrice})</span>
+                </div>
+                <div className="cart-item-actions">
+                  <button onClick={() => handleRemoveFromCart(item.id)}>
+                    -
+                  </button>
+                  <span>{item.quantity}</span>
+                  <button onClick={() => handleAddToCart(item)}>+</button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+
+      <p id="cart-total-price">
+        Cart Total: <strong>{formattedTotalPrice}</strong>
+      </p>
+    </div>
+  );
+}
+````
 
