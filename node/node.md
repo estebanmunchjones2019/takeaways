@@ -2430,18 +2430,145 @@ Product.belongsToMany(Cart, { through: CartItem });
 // cart item has (id, quantity, cartId, productId) fields
 ````
 
+A connecting table called CartItem was used to connect Cart and Product tables
+
+💡 otherwise, if we couldn't have multiple rows in the Cart table, for each product id in the table, as the Cart id can't be repeated on rows (primary key, unique)
+
+A  cart has been added after adding the single dummy user in app.js:
+
+````js
+// app.js
+
+(async () => {
+    try {
+        const connection = await mysql.createConnection({ 
+            host: 'localhost',
+            user: 'root',
+            port: 3306, 
+            password: '11qq22WW'
+        });
+        await connection.query(`CREATE DATABASE IF NOT EXISTS \`node-complete\`;`);
+        // dont use force in prod, it drops the db upon relationship changes!
+        const result = await sequelize.sync({ force: true });
+        // const result = await sequelize.sync();
+
+        // let's make sure there's at least one user in the DB so I can add products then
+        let user = await User.findByPk(1);
+        if (!user){
+            user = await User.create({
+                name: 'Max',
+                email: 'test@test.com'
+            })
+        }
+        const cart = await user.getCart() // 👈
+        debugger;
+        if (!cart) {
+            await user.createCart() // 👈
+        }
+        // console.log(result)
+        app.listen(3000);
+    } catch (error){
+        console.log(error)
+    }
+})()
+````
+
+````js
+// controllers/shop.js
+
+exports.getCart = async (req, res, next) => {
+  try {
+    const cart = await req.user.getCart()
+    const cartProducts = await cart.getProducts()
+    res.render('shop/cart', {
+      path: '/cart',
+      pageTitle: 'Your Cart',
+      products: cartProducts
+    });
+  } catch(error){
+    console.log(error)
+  }
+};
+````
+
+⚠️ Important: to access the quantity of a product in a cart, which is stored in the connectiong cartItems table, sequelize gives us that data in the product object
+
+````js
+product.cartItem.quantity
+````
+
+````js
+// controllers/shop.js
+exports.postCart = async (req, res, next) => {
+  try {
+    const prodId = req.body.productId;
+    const cart = await req.user.getCart()
+    const products = await cart.getProducts({where: {id: prodId}})
+    const product = products?.[0]
+    // if the products is already in the cart, I just bump up the quantity by 1
+    if (product){
+      // ⚠️ to update the quantity in the cartItem table, I just add the product with the updated quantity value
+     await cart.👉addProduct(product, {
+      through: {
+        quantity: product.cartItem.quantity + 1
+      }
+     }) 
+		// if the product is not in the cart, quantity will be one
+    } else {
+      const fetchedProduct = await Product.findByPk(prodId)
+
+      await cart.addProduct(fetchedProduct, {
+        through: {
+          quantity: 1
+        }
+      })
+    }
+    res.redirect('/cart');
+    } catch(error){
+      console.log(error)
+    }
+};
+````
+
+When adding to different products to the cart, this is how **cartItem** table looks like:
+
+| Id   | Quantity | cartId | productId |
+| ---- | -------- | ------ | --------- |
+| 1    | 2        | 1      | 1         |
+| 2    | 1        | 1      | 2         |
+
+
+
+Deleting a product in the cart:
+
+````js
+// controllers/shop.js
+
+exports.postCartDeleteProduct = async(req, res, next) => {
+  const prodId = req.body.productId;
+  try {
+    const cart = await req.user.getCart()
+    const products = await cart.getProducts({where: {id: prodId}})
+    const product = products?.[0]
+    if (product){
+      await product.cartItem.destroy()
+    }
+    res.redirect('/cart')
+  } catch(error){
+    console.log(error)
+  }
+};
+````
 
 
 
 
-a connecting table called CartItem was used to connect Cart and Product tables
 
-// todo show how a cart has been added after adding the single user in app.js
 
-// todo add postCart controller.
-CartIem is never used directly to add things from it or read, so far, just a a table that contains data of two tables (a connecting table)
 
-### 
+
+
+
 
 ### GraphQL
 
