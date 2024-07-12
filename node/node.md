@@ -13,8 +13,6 @@ Type ".help" for more information.
 
 Read, and Evaluate the input, Print the output, and Loop to wait for new inputs
 
-
-
 ### Basics
 
 The event loop keeps the process (loop) running until there are no event listeners registered
@@ -25,14 +23,12 @@ JS runs on a single thread, althoug it can use multiple threads on the OS to per
 const http = require('http');
 
 cont server = http.createServer((req,res)=>{
-	console.log(req);
-	process.exit(); // this will stop the loop
+    console.log(req);
+    process.exit(); // this will stop the loop
 })
 
 server.listen(3000);
 ```
-
-
 
 Remember to redirect the user to a different route after they submitted a POST request, otherwise there's an infinite loop of POST requests, as when the same url loads, and there had been a POST request, a new POST request is triggered automatically!
 
@@ -73,11 +69,11 @@ const server = http.createServer((req, res) => {
       // this is a synchronous (blocking) fn
       fs.writeFileSync('message.txt', message);
       // res.setHeader(302, 'Location', '/'); // also works
-    	res.statusCode = 302;
-    	// let's redirect to avoid an infinite POST requests loop
-    	res.setHeader('Location', '/');
-    	// let's return to stop the fn execution
-    	return res.end();
+        res.statusCode = 302;
+        // let's redirect to avoid an infinite POST requests loop
+        res.setHeader('Location', '/');
+        // let's return to stop the fn execution
+        return res.end();
     });
   }
   // try to set the headers here1️⃣! 
@@ -91,8 +87,6 @@ const server = http.createServer((req, res) => {
 
 server.listen(3000); // start the process (Node will start to listen to http requests from now on)
 ```
-
-
 
 ![](./images/event-loop.png)
 
@@ -112,19 +106,19 @@ let's not block the thread witn synchronous tasks! code writen below won't run f
 
 sync tasks are like stopping for drinking mate tea in the middle of the motorway. Let's do it in the car park instead!
 
-````js
+```js
 req.on('end', () => {
       const parsedBody = Buffer.concat(body).toString();
       const message = parsedBody.split('=')[1];
-      
+
       // this is a synchronous (blocking) fn ❌
       // this could block other users from getting their files written an getting the responses in the end 😦
       fs.writeFileSync('message.txt', message);
-    	res.statusCode = 302;
-    	res.setHeader('Location', '/');
-    	return res.end();
+        res.statusCode = 302;
+        res.setHeader('Location', '/');
+        return res.end();
 });
-````
+```
 
 ```js
 // let's fix it!
@@ -136,86 +130,84 @@ req.on('end', () => {
           // handler error
         }
         res.statusCode = 302;
-    	  res.setHeader('Location', '/');
-    	  return res.end();
-      });	
+          res.setHeader('Location', '/');
+          return res.end();
+      });    
 });
 ```
 
 So, we'r registering a callback for the 'end' event coming from the request, and when we run the callback, that callback registers another callback that will run when the file has been written. Kind of nested callbacks.
 
-
-
 ### Let's export things
 
 1. let's export single things
-
-   ````js
+   
+   ```js
    // routes.js
    
    const routes = (req, res) => {
-   	if (req.url === '/'){ 
-   	}
-   	// etc
+       if (req.url === '/'){ 
+       }
+       // etc
    }
    
    👉 module.exports = routes;
-   ````
-
+   ```
+   
    `module` is a global node object, that has an exports prop and can be set to anything (string, object, function reference, etc)
-
+   
    when we import things, node will check what's the key of that object and return it
-
-   ````js
+   
+   ```js
    // app.js
    const routes = require('./routes');
-   ````
+   ```
 
 2. Let's export things in an object:
-
-   ````js
+   
+   ```js
    // routes.js
    👉 module.exports = {
-   	routes,
-   	message: 'hello world'
+       routes,
+       message: 'hello world'
    }
-   ````
-
+   ```
+   
    ```js
    // app.js
    const { routes, message} = require('./routes');
    ```
 
 3. Let's export things in an object, second way:
-
-   ````js
+   
+   ```js
    // routes.js
    👉 module.exports.routes = routes;
    👉 module.exports.message = 'hello world'
-   ````
+   ```
 
 4. Let's export things in an object, third way:
-
+   
    we'r just omitting the `module` word.
-
-   ````js
+   
+   ```js
    // routes.js
    👉 export.routes = routes;
    👉 export.message = 'hello world'
-   ````
+   ```
 
 ### Assignment - Basics
 
-````js
+```js
 res.write('welcome!'); // rendered as <body><pre>welcome<pre></body>
 res.end();
-````
+```
 
-````js
+```js
 res.writeHead(200, {'Content-type': 'text/html'}); 
 res.write('welcome!'); // rendered as <body>welcome</body>
 res.end();
-````
+```
 
 #### If statements
 
@@ -225,7 +217,7 @@ we catch exact matches (express catches all routes that start with `/` if we do 
 const routes = (req, res) => {
     const url = req.url;
     const method = req.method;
-  
+
   // e.g I enter `/users` second block runs
   // e.g I enter '/' first block runs, even removing first return. So it's an exact match👇
 
@@ -242,8 +234,8 @@ const routes = (req, res) => {
     }
     if (url === '/users' && method === 'GET'){
         res.writeHead(200, {'Content-type': 'text/html'});
-      	// better way, as 200 is the default already
-      	// 💡 res.setHeader('Content-type', 'text/html')
+          // better way, as 200 is the default already
+          // 💡 res.setHeader('Content-type', 'text/html')
         res.write('<ul><li>John</li></ul>');
         return res.end();
     }
@@ -251,7 +243,7 @@ const routes = (req, res) => {
         const chunks = [];
 
         req.on('data', (chunk) => {
-          	// each chunk is a buffer
+              // each chunk is a buffer
             chunks.push(chunk);
         })
 
@@ -261,26 +253,24 @@ const routes = (req, res) => {
             console.log(parsedBody.split('=')[1]);
         })
         res.writeHead(302, {'Location': '/'}); // redirect to avoid infinite POST req loop
-    		// OR more verbose way
-      	// res.statusCode = 200;
-      	// res.setHeader('Location', '/');
-    
+            // OR more verbose way
+          // res.statusCode = 200;
+          // res.setHeader('Location', '/');
+
         return res.end();
     }
     res.writeHead(404, {'Content-type': 'text/html'});
     res.write('<h1>page not found');
     return res.end();
-    
+
 }
 
 module.exports = routes;
 ```
 
-
-
 ### Improved dev workflow and debuging
 
-````json
+```json
 // package.json
 
 {
@@ -301,7 +291,7 @@ module.exports = routes;
     "graphql": "^15.8.0"
   }
 }
-````
+```
 
 make sure `nodemon` is installed as part of the app, not just globally, as the app needs to contain all the necessary packages to run.
 
@@ -316,19 +306,17 @@ No needed to separate the dependancies, it's just nice to see what's used in pro
 
 e.g Nodemon won't be used in prod, as we don't want the server to start and we won't be making changes to the code
 
-````bash
+```bash
 // npm i nodemon OR npm i nodemon --save-dev + NOT having nodemon installed:
 
 nodemon app.js // throws error, because nodemon is not installed globally, hence, not a command we can run from the terminal🚨
-````
+```
 
 but, we can run it with an npm script, e.g `npm start`
 
-````js
+```js
 npm start // will look for nodemon LOCALLY
-````
-
-
+```
 
 ### Node debugger VSCode
 
@@ -338,7 +326,7 @@ Install nodemon globally for the next step (debugger will use nodemon to restart
 
 How to restart the debugger? VSCode -> Debug icon -> Create a launch.json file:
 
-````json
+```json
 {
     // Use IntelliSense to learn about possible attributes.
     // Hover to view descriptions of existing attributes.
@@ -363,7 +351,7 @@ How to restart the debugger? VSCode -> Debug icon -> Create a launch.json file:
         }
     ]
 }
-````
+```
 
 💡When using the debugger, we don't need to have the server running using `npm start` or ` nodemon app.js`, the debugger will start the server for us with nodemon!
 
@@ -371,13 +359,11 @@ How to restart the debugger? VSCode -> Debug icon -> Create a launch.json file:
 
 💡use the Debug console to access variables and test some methods on them. To change the value of variables, just use the Variables section of the debugger and double click and edit the values
 
-
-
 ### Express.js
 
 framework for funeling requests into middlewares, with clean and elegant code.
 
-`````js
+```js
 // basic setup
 
 const express = require('express');
@@ -387,9 +373,9 @@ const app = express()
 const server = http.createServer(app); // we can pass app as a middleware
 
 server.listen(3000);
-`````
+```
 
-````js
+```js
 // improved setup
 const express = require('express');
 
@@ -400,9 +386,7 @@ const app = express();
 app.listen(3000)
 
 // the browser gets an error cannot GET, as there are no middlewares registered at all
-````
-
-
+```
 
 #### Express under the hood
 
@@ -415,9 +399,7 @@ from node_modules:
 declare function e(): core.Express;
 ```
 
-
-
-````js
+```js
 export interface Application<
     LocalsObj extends Record<string, any> = Record<string, any>
 > extends EventEmitter, IRouter, Express.Application {
@@ -445,33 +427,29 @@ export interface Application<
      *    https.createServer({ ... }, app).listen(443);
      */
     listen(port: number, hostname: string, backlog: number, callback?: () => void): http.Server;
-````
+```
 
 from GitHub:
 
-````js
+```js
 // https://github.com/expressjs/express/blob/master/lib/application.js
 app.listen = function listen() {
   var server = http.createServer(this);
   return server.listen.apply(server, arguments);
 };
+```
 
-````
-
-````js
+```js
 // how send() will set the `Content-type` header automatically for us! 💡
 res.send = function send(body) {
-	...
-	switch (typeof chunk) {
+    ...
+    switch (typeof chunk) {
     // string defaulting to html
     case 'string':
       if (!this.get('Content-Type')) {
         👉this.type('html');
       }
-
-````
-
-
+```
 
 #### Let's start logging things on node
 
@@ -486,30 +464,26 @@ app.use((req, res) => { // registering the first middleware
     const url = req.url;
     const method = req.method;
     console.log(url, method); // / GET
-  	// the browser keeps loading, never gets a response
+      // the browser keeps loading, never gets a response
 })
 
 app.listen(3000)
 ```
 
-
-
 #### Sending our first response!
 
-````js
+```js
 app.use((req, res) => {
     const url = req.url;
     const method = req.method;
     console.log(url, method);
     res.send('hello from middleware #1')
 })
-````
-
-
+```
 
 #### Adding one more middleware
 
-`````js
+```js
 app.use((req, res, next) => {
     const url = req.url;
     const method = req.method;
@@ -527,9 +501,7 @@ app.use((req, res) => {
     console.log(url, method);
     res.send('hello from middleware #2')
 })
-`````
-
-
+```
 
 ```js
 app.use((req, res, next) => {
@@ -561,11 +533,9 @@ hello from middleware #1
 hello from middleware #2
 ```
 
-
-
 ### Don't send the response and execute next()
 
-````js
+```js
 app.use((req, res, next) => {
     const url = req.url;
     const method = req.method;
@@ -586,9 +556,7 @@ app.use((req, res) => {
 // node error
 // Error [ERR_HTTP_HEADERS_SENT]: Cannot set headers after they are sent to the client
 // the error doesn't crash the app though
-````
-
-
+```
 
 ```js
 // let's set some headers, so the content type is not set by express automatically
@@ -599,25 +567,19 @@ app.use((req, res) => {
 // the browser gets pitch black and prints that JSON, and the response headers confirm that (application/json)
 ```
 
-
-
 #### Overload ??
 
 hovering over `app.use()` , VSCode says (+8 overloads) , which means that there are 8 +1 ways to use this fn passing optional params and combinations
 
-
-
 #### Handling different routes
 
-````js
+```js
 app.use((req, res) => {})
 // same as
 app.use('/', (req, res) => {})
 
 // requests to `/` or `/posts` will trigger it. Mnemotechnique: all paths that start with `/`, in other words, all paths
-````
-
-
+```
 
 ```js
 // more narrowed down paths first
@@ -629,14 +591,12 @@ app.use('/posts',(req, res) => { // runs just for paths starting with`/posts`. e
 // fallbacks or less restrictive paths at the botton
 // app.use((req, res) => {}) or the code below is the same
 app.use('/',(req, res) => { // runs for all routes `/`, `/banana`, but not `/posts`,
-  	// as a I didn't call `next()`` on the first middleware (it would have thrown an error anyway)
+      // as a I didn't call `next()`` on the first middleware (it would have thrown an error anyway)
     res.send('Welcome to my site!')
 })
 
 app.listen(3000)
 ```
-
-
 
 #### Assigment: Express.js
 
@@ -644,20 +604,16 @@ app.listen(3000)
 
 ⚠️ when publishing a new npm package, don't name it the same as an internal node module (e.g 'fs')! users won't be able to use the package at all when they require it! 😅
 
-
-
 #### Redirection made easy
 
-````js
+```js
 res.status(302);
 res.header('Location', '/success')
 res.send();
 
 // or
 res.redirect('/success'); ✅
-````
-
-
+```
 
 #### Req.body is undefined!!
 
@@ -673,7 +629,7 @@ So it's better to install it as a dependency, to future proof our code
 npm i body-parser
 ```
 
-````js
+```js
 const bodyParser = require('body-parser');
 
 // enough to parse input fields passed to the BE
@@ -684,9 +640,7 @@ app.post('/product', (req, res) => {
     console.log(req.body?.productName); // 'jumper'
     res.redirect('/success');
 })
-````
-
-
+```
 
 #### App router
 
@@ -694,7 +648,7 @@ let's not clutter app.js file with all the middlewares
 
 let's move the middlewares to different folders:
 
-````js
+```js
 // routes/admin.js
 const express = require('express')
 
@@ -711,7 +665,7 @@ router.post('/product', (req, res) => {
 
 
 module.exports = router;
-````
+```
 
 ```js
 // routes/shop.js
@@ -753,11 +707,9 @@ The usage of router is cleaner than creating the app with all the middlewares in
 
 App.use('/something') are START WITH (runs for `/something`, and  `/something/2` , etc)👈
 
-
-
 #### 404 page
 
-````js
+```js
 app.use(shopRouter, adminRouter);
 
 app.use((req, res) => {
@@ -765,9 +717,7 @@ app.use((req, res) => {
 })
 
 app.listen(3000)
-````
-
-
+```
 
 #### Filtering paths
 
@@ -791,10 +741,7 @@ router.post('/add-product', (req, res) => {
     console.log(req.body?.productName);
     res.redirect('/');
 })
-
 ```
-
-
 
 #### Returning html from files
 
@@ -824,8 +771,6 @@ router.get('/add-product',(req, res) => {
     res.sendFile(path.join(__dirname, '..', 'views', 'admin.html'))
 })
 ```
-
-
 
 #### A better way to return a path to files
 
@@ -868,7 +813,7 @@ I'd like express to say: OK, for public assets, I'll allow the users to get stat
 
 we can give `Read` access to that public folder when the browser requests some of the static assets there
 
-````html
+```html
 // views/shop.html
 
 <!DOCTYPE html>
@@ -884,18 +829,16 @@ we can give `Read` access to that public folder when the browser requests some o
     <h1>Welcome to my shop</h1>
 </body>
 </html>
-````
+```
 
-
-
-````js
+```js
 // routes/shop.js
 const rootDir = require('../utils/path')
 
 router.get('/', (req, res) => {
     👉res.sendFile(path.join(rootDir, 'views', 'shop.html'));
 })
-````
+```
 
 ```js
 // app.js
@@ -912,8 +855,6 @@ app.use(express.static('public'));
     color: red;
 }
 ```
-
-
 
 ### Understanding validation
 
@@ -939,7 +880,7 @@ Custom messages can be added with `withMessage`
 
 #### Custom validators
 
-````js
+```js
 // /admin/add-product
 router.post('/add-product', check('productName').notEmpty().withMessage('Hey, this field can\'t be empty').👉custom(( value, {req}) => {
     if (value === 'bananas'){
@@ -954,87 +895,81 @@ router.post('/add-product', check('productName').notEmpty().withMessage('Hey, th
     console.log(req.body?.productName);
     res.redirect('/');
 })
-````
+```
 
 💡We an use `body()` to tell the library to just check inside the body
 
 ```
-	body('password') // default message for validator1 and 2
-	.validator1().withMessage('Password is invalid') // ❌
-	.validator2().withMessage('Password is invalid') // Dont repeat yourself!❌
+    body('password') // default message for validator1 and 2
+    .validator1().withMessage('Password is invalid') // ❌
+    .validator2().withMessage('Password is invalid') // Dont repeat yourself!❌
 ```
 
 use this second argument of body() or check() or etc to set up a global message for all validators used inside body or check
 
-````
+```
 [ // 💡I can use an array for all the fields checked, neater
-	body('password', 👉'Password is invalid') // default message for validator1 and 2
-	.validator1()
-	.validator2(),
-	
-	body('user')
-	.validator3()
+    body('password', 👉'Password is invalid') // default message for validator1 and 2
+    .validator1()
+    .validator2(),
+
+    body('user')
+    .validator3()
 ]
-````
-
-
+```
 
 TODO:
 
 show example of matching password (e.g matching product etc)
 
-````js
+```js
 // matching password example
 [ 
-	body('password', 👉'Password is invalid') // default message for validator1 and 2
-	.validator1()
-	.validator2(),
-	
-	body('confirmPassword')
-	.custom((value, { req}) => {
+    body('password', 👉'Password is invalid') // default message for validator1 and 2
+    .validator1()
+    .validator2(),
+
+    body('confirmPassword')
+    .custom((value, { req}) => {
     if(value !== req.body.password) {
       throw new Error('Passwords need to match!')
     }
     return true;
   })
 ]
-````
-
-
+```
 
 ### Keeping user input
 
 Max keeps the form state by retrieving the body inside the POST request, and then populating the EJS templates with those values in the form.
 
-````js
+```js
 // controller
 res.render('auth/signup', {
-	errorMessage: errors.array()[0].msg
-	oldInput: {
-		email,
-		password
-	}
+    errorMessage: errors.array()[0].msg
+    oldInput: {
+        email,
+        password
+    }
 })
-````
+```
 
 ```js
 // signup.ejs
 <input value="<%= oldInput.email %>"
 ```
 
-
-
 ### adding conditional classes (red border for failed fields)
 
 ```js
 // controller
 res.render('auth/signup', {
-	errorMessage: errors.array()[0].msg
-	oldInput: {
-		email,
-		password
-	},
-	validationErrors: errors.array()
+    errorMessage: errors.array()[0].msg
+    oldInput: {
+        email,
+        password
+    },
+    validationErrors: errors.array()
 })
 ```
 
@@ -1049,21 +984,19 @@ is the email already taken?
 
 ```js
 [
-	check('email')
-	.custom((value, {req}) => {
-		// I'm returning a promise here
-		// every then block return a promise implicitly
-		👉return User.findOne({ email: value}).then(userDoc => {
-			if(userDoc){
-				return Promise.reject('email already taken')
-			}
-			// no need to return true or resolve, express-validator will treat it as valid
-		})
-	})
+    check('email')
+    .custom((value, {req}) => {
+        // I'm returning a promise here
+        // every then block return a promise implicitly
+        👉return User.findOne({ email: value}).then(userDoc => {
+            if(userDoc){
+                return Promise.reject('email already taken')
+            }
+            // no need to return true or resolve, express-validator will treat it as valid
+        })
+    })
 ]
 ```
-
-
 
 #### another example, now using async/await
 
@@ -1088,12 +1021,12 @@ router.post('/add-product', [
         return true;
     })
     👉.custom(async (value, {req}) => {
-  			// I don't return a promise, I just await and throw the error or true myself
+              // I don't return a promise, I just await and throw the error or true myself
         const userDoc = await productFindOne(value);
-  			if(userDoc){
-					throw new Error('this product already exists, please add a brand new one')
-				}
-  			return true;
+              if(userDoc){
+                    throw new Error('this product already exists, please add a brand new one')
+                }
+              return true;
     })
 ],(req, res) => {
     const {errors} = validationResult(req);
@@ -1104,8 +1037,6 @@ router.post('/add-product', [
     res.redirect('/');
 })
 ```
-
-
 
 That way, if the form had errors, the user has the error message and the form keeps the state
 
@@ -1121,12 +1052,10 @@ we can remove empty spaces, to uppercase, in other words, normalize data by chan
 
 💡We'r actualing modifying req.body.email and so on!
 
-````js
+```js
 body('productName')
 .trim(); // changes req.body.producName by removing white spacing!
-````
-
-
+```
 
 ### error handling
 
@@ -1134,20 +1063,19 @@ Express-validate catches thrown errors (like inside the custom validator)
 
 we'll set in place an outer error catching at the express level (?)
 
-````js
-
+```js
 // /admin/add-product //validation middleware
 router.post('/add-product', check('productName').notEmpty().withMessage('Hey, this field can\'t be empty').👉custom(( value, {req}) => {
     if (value === 'bananas'){
         👉throw new Error('bananas are not allowed to be added, sorry')
-        
+
  // resolver       
 // this is the right hand side of the slide (directly handle error)
 const {errors} = validationResult(req);
     if (errors.length > 0){
         res.json('some error here');
     }   
-````
+```
 
 **errors bubble up** and should be catch by the express handler. 
 
@@ -1161,9 +1089,9 @@ for async code (reading files, sending requests):
 asyncFn.then().catch(error => // catch error here)
 
 try {
-	await asyncFn
+    await asyncFn
 } catch(error){
-	// catch the error here
+    // catch the error here
   console.log(error); // ❌ not very useful
 }
 ```
@@ -1174,34 +1102,32 @@ console.loging things is not that useful when things go wrong (e.g technical iss
 
 it's better to throw errors and let the express error handling middlaware do its magic!
 
-````js
+```js
 connectToDB.then().catch(error){console.log(error)} // ❌
 connectToDB.then().catch(error){next(new Error(error))} // ✅ at the top level of a middleware
 connectToDB.then().catch(error){throw new Error(error)} // ✅ if we have a catch block somewhere up e.g express-validator custom validator
 connectToDB.then().catch(error){res.redirect('/500')}// ✅ redirect the user
-````
+```
 
 when setting up props inside `req` or `res`, make sure to check the added value is not `undefined`!!
 
 #### 👉Make sure to not set req.something to `undefined`, please do the proper checks before doing that👈
 
-````js
+```js
 if (!user){
-	return next();
+    return next();
 }
 req.user = user;
 next();
-````
-
-
+```
 
 ### handling errors option #1
 
-````js
+```js
 // controller
 .catch(error => {
   // a technical error was caught here, e.g lost internet connection
-	res.redirect('/500');
+    res.redirect('/500');
 })
 
 // top level app
@@ -1209,38 +1135,34 @@ app.use('/500', render500pageFn);
 
 // render500pageFn
 (req, res) => res.render('500', {//some variables for the template if needed})
-````
-
-
+```
 
 ### handling errors option #2 error middleware
 
 having a lot of `res.redirect('/500')` is repeating ourselves!
 
-````js
+```js
 // controller
 // async code
 .catch(err => {
   // a technical error was caught here, e.g lost internet connection
-	const error = new Error(err);
-	error.httpStatusCode = 500;
-	next(error);
+    const error = new Error(err);
+    error.httpStatusCode = 500;
+    next(error);
 })
 
 // 🚨 express will skip all middlewares in the chain till it reaches an error handling middleware
-````
+```
 
-````js
+```js
 app.use((error, req, res, next) => {
-	// we can have more complex logic here
+    // we can have more complex logic here
   // like adding a client facing message depending on the status code, etc
-	res.status(error.httpStatusCode).send(error.message)
+    res.status(error.httpStatusCode).send(error.message)
 })
-````
+```
 
-
-
-````js
+```js
 // 👉in these 2 cases the express error handler middleware is executed!
 
 // async code
@@ -1251,13 +1173,11 @@ app.use((error, req, res, next) => {
 
 // sync code
 throw new Error(error) // ✅
-````
-
-
+```
 
 concrete example:
 
-````js
+```js
 // middleware
 (req, res, next) => {
     const {errors} = validationResult(req);
@@ -1270,7 +1190,7 @@ concrete example:
     }   
     console.log(req.body?.productName);
     res.redirect('/');
-````
+```
 
 ```js
 app.use((req, res) => {
@@ -1284,8 +1204,6 @@ app.use((req, res) => {
 ```
 
 #### To recap, inside express-validator validators, we want to throw a new error inside custom validators, but then, in the middleware (controller), we want to call next(error); not throw it!
-
-
 
 ### Dynamic content and templates
 
@@ -1314,15 +1232,15 @@ npm i ejs pug express-handlebars
 
 Configuring the rendering engine:
 
-````js
+```js
 app.set('view engine', 'ejs')
-````
+```
 
 configuring the location of the views
 
-````js
+```js
 app.set('views', 'views') // this is the default, the second param is the folder name containing the views
-````
+```
 
 editing the template files doesn't make nodemon to restart the app, they template files get picked up on the flight on each new request
 
@@ -1334,7 +1252,7 @@ Rendering a view
 
 ```
 res.render('viewFileName', {
-	param1: 'someValue' // this can be referenced inside the template
+    param1: 'someValue' // this can be referenced inside the template
 })
 ```
 
@@ -1354,8 +1272,6 @@ block // keyword to define placeholders in the layout, and for passing data in t
 extends // to use the layout
 ```
 
-
-
 Making a link active depending on the page. The anchor is inside a layout, re-used in many pages. 
 
 Solution: easy, we pass a path to the view:
@@ -1364,16 +1280,15 @@ Solution: easy, we pass a path to the view:
 res.render('shop', { path: '/'})
 ```
 
-````js
+```js
 // html
 a(href="/", class=(path==='/' ? 'active' : ''))
-````
-
-
+```
 
 ### Handlebars
 
 pug was a built in engine in express, but handlebars is not, so we need:
+
 ```js
 const handleBars = require('express-handlebars')
 
@@ -1382,15 +1297,11 @@ app.engine('handlebars👈', handlebars()); // first arg could be any name, be s
 app.set('view engine', 'handlebars'👈)
 ```
 
-````
+```
 // someView.handlebars👈
 
 // the extension of the file matches our chosen name for the engine!
-````
-
-
-
-
+```
 
 I had to do:
 
@@ -1409,13 +1320,11 @@ Layouts:
 
 it needs some extra config, re-view the videos again if needed
 
-
-
 ### EJS
 
 the best option. Doesn't support layouts but there's a work around, called `partials`
 
-````js
+```js
 <%= someVariable %>
 <%  some JS logic here %>
 
@@ -1424,9 +1333,7 @@ the best option. Doesn't support layouts but there's a work around, called `part
 <% } %>
 
 // like PHP alternative syntax
-````
-
-
+```
 
 Partials workaround:
 
@@ -1435,8 +1342,6 @@ this feature is also supported by Pug and Handlebars
 we put repeated HTML into separate handlebars files and then we include them in the templates
 
 identical to PHP
-
-
 
 ### MVC
 
@@ -1448,49 +1353,47 @@ Controller(middlewares that interact with data (DB) and render views with some d
 
 Examples:
 
-````js
+```js
 // controllers/product.js // all middlewares related to the product model
 const Product = require('../models/product')
 
 exports.getAddProduct = (req, res, next) => {
-	res.render('add-product', { //some data})
+    res.render('add-product', { //some data})
 }
 
 exports.postAddProduct = (req, res, next) => {
-	const product = new Product(req.body.title)
-	product.save();
-	res.redirect('/')
+    const product = new Product(req.body.title)
+    product.save();
+    res.redirect('/')
 }
 
 exports.getProducts = (req, res, next) => {
-	const products = Product.fetchAll();
-	res.render('shop', { products, etc})
+    const products = Product.fetchAll();
+    res.render('shop', { products, etc})
 }
-````
+```
 
-
-
-````
+```
 // views/xxx.ejs
 <h1>Some Html in ejs format in this file<h1>
-````
+```
 
 ```js
 // model
 const products = [];
 
 class Product {
-	constructor(title){
-		this.title = title
-	}
-	
-	save(){
-		products.push(this)
-	}
-	
-	fetchAll(){
-		return products;
-	}
+    constructor(title){
+        this.title = title
+    }
+
+    save(){
+        products.push(this)
+    }
+
+    fetchAll(){
+        return products;
+    }
 }
 ```
 
@@ -1499,21 +1402,18 @@ class Product {
 const { getProducts } = require('./controllers/product')
 
 router.get('/', getProducts)
-
 ```
-
-
 
 ### Using a JSON file as storage!
 
-````js
+```js
 fs.writeFile
 fs.readFile
 
 are not promised based, they just register a callback to be executed when done
 callback hell alert!
 the code looks ugly 🤢
-````
+```
 
 ```js
 // /models/product.js
@@ -1573,7 +1473,7 @@ exports.getProducts = (req, res, next) => {
 };
 ```
 
-````js
+```js
 // // /models/product.js async/await with fsPromises 🤙
 const path = require('path');
 const fsPromises = require('fs').promises;
@@ -1609,9 +1509,9 @@ module.exports = class Product {
     return products;
   }
 };
-````
+```
 
-`````js
+```js
 // controllers/product.js
 exports.getProducts = async (req, res, next) => {
   const products = await Product.fetchAll()
@@ -1624,9 +1524,7 @@ exports.getProducts = async (req, res, next) => {
     productCSS: true
   });
 };
-`````
-
-
+```
 
 ### Dynamic routes and advanced models
 
@@ -1634,7 +1532,7 @@ Takeaway: routes and controllers where separate by who's is using them: clients 
 
 // paste code of Cart model 
 
-````
+```
 const fs = require('fs');
 const path = require('path');
 
@@ -1645,8 +1543,8 @@ const p = path.join(
 );
 
 module.exports = class Cart {
-	// 💡(no need to instantiate it, as we'r not pushing carts to somewhere, we have only one cart at the moment, living in a json file)
-	
+    // 💡(no need to instantiate it, as we'r not pushing carts to somewhere, we have only one cart at the moment, living in a json file)
+
   👉static addProduct(id, productPrice) {
     // Fetch the previous cart
     fs.readFile(p, (err, fileContent) => {
@@ -1677,13 +1575,13 @@ module.exports = class Cart {
     });
   }
 };
-````
+```
 
 #### 💡look at the pattern of `let` + `if` blocks 👆
 
 // paste code of edit product route and controller
 
-`````
+```
 // controllers/shop.js
 exports.postCart = (req, res, next) => {
   const prodId = req.body.productId;
@@ -1692,25 +1590,26 @@ exports.postCart = (req, res, next) => {
   });
   res.redirect('/cart');
 };
-`````
+```
 
-````
+```
 // routes/shop.js
 router.post('/cart', shopController.postCart);
-````
+```
 
 Caveat: variables inside loops EJS are not passed to template parts, they need to be passed in the include part as an object:
-````
+
+```
 <% if (prods.length > 0) { %>
   <div class="card__actions">
     <a href="/products/<%= product.id %>" class="btn">Details</a>
     <%- include('../includes/add-to-cart.ejs', 👉{product: product}) %>
   </div>
-````
+```
 
 Picking up dynamic segments:
 
-````
+```
 // routes/shop.js
 // we define the name of the param here:
 router.get('/products/👉:productId', shopController.getProduct);
@@ -1727,7 +1626,7 @@ exports.getProduct = (req, res, next) => {
     });
   });
 };
-````
+```
 
 // paste how to pick up query params (after ?), called optional data, useful for tracking users and filter state
 
@@ -1736,7 +1635,7 @@ exports.getProduct = (req, res, next) => {
 router.get('/edit-product/:productId', adminController.getEditProduct);
 ```
 
-````
+```
 // controllers/admin.js
 
 // I'm expecting to have 👉 `?editMode=true` in the url
@@ -1759,7 +1658,7 @@ exports.getEditProduct = (req, res, next) => {
     });
   });
 };
-````
+```
 
 👆this is a dummy example, as the route already looks at /edit-product, so there's no need for a query param check to verify I want to render the edit product form in editing mode (the form is reused for adding a new product)
 
@@ -1767,19 +1666,19 @@ exports.getEditProduct = (req, res, next) => {
 
 🛠 to improve: redirect to /cart after removing a product in the cart should be after an await statement 
 
-````js
+```js
 exports.postDeleteProduct = (req, res, next) => {
   const prodId = req.body.productId;
   Product.deleteById(prodId);
   res.redirect('/admin/products'); // ❌ this should happen after an await
 };
-````
+```
 
 💡 interesting approach of passing null as the id for new product and checking that on the save mode to actually save the new product or update an existing one (with an this.id value set already)
 
-````js
+```js
 Class Product {
-	  save() {
+      save() {
     getProductsFromFile(products => {
       if (this.id) { // update product in the DB
         const existingProductIndex = products.findIndex(
@@ -1800,16 +1699,14 @@ Class Product {
     });
   }
 }
-````
-
-
+```
 
 ### SQL vs NoSQL
 
 Disadvantages:
 SQL:
 
--  handling a lot of reads at the same time.
+- handling a lot of reads at the same time.
 - horizontal scaling is more difficult
 
 NoSQL:
@@ -1833,8 +1730,6 @@ NoSQL:
 
 We can have an app with both DBs, to make use of their strong points
 
-
-
 ### Installing mysql
 
 we need the `Community server` and the `Workbench` installed on the laptop 
@@ -1852,7 +1747,7 @@ Installing the workbench
 2. Add a schema
 3. add a table
 4. add records to the table
-5.  Steps 2 to 4 can be done in JS, when the app boots or when we want to seed the db
+5. Steps 2 to 4 can be done in JS, when the app boots or when we want to seed the db
 
 When creating the products table:
 
@@ -1863,16 +1758,14 @@ So, we need **software in the laptop** that receives SQL queries and then intera
 
 We also need an **npm package to connect to the the server** as well, so we can pass the queries from JS land:
 
-````
+```
 npm i mysql2
-````
+```
 
 There are two ways to connect to the server:
 
 1. We have one connection open at a time and we close it when done. INEFICIENT ❌
 2. Create a connection Pool (pool of connections). BEST ✅
-
-
 
 Each query needs its own connection, that is one from the pool, so we can run multiple queries at the same time (e.g 2 users signing up at the same time).
 
@@ -1880,38 +1773,34 @@ The pool finished when the app shuts down (a rest server never shuts down, unles
 
 Inside the workbench, the schemas represent databases
 
-````js
+```js
 // util/database.js
 
 const mysql = require('mysql2')
 
 const pool = mysql.createPool({
-	host: 'localhost',
-	user: 'root',
-	database: 'node-complete' // this is a `schema` in the workbench
-	password: 'nodecomplete'
+    host: 'localhost',
+    user: 'root',
+    database: 'node-complete' // this is a `schema` in the workbench
+    password: 'nodecomplete'
 })
 
 module.exports = pool.promise(); // I export the pool with promise based apis
-````
-
-
+```
 
 👉Promises are JS objects that can resolve or reject, or have a pending state. We can await the the resolved value and catch the rejected value
 
 ```js
 try {
-	const result = await someFnReturningAPromise();
-	// we can react to the resolve value
+    const result = await someFnReturningAPromise();
+    // we can react to the resolve value
 } catch(error){
-	// we can react to the reject value
+    // we can react to the reject value
 }
 
 // OR
 someFnReturningAPromise().then(data => {}).catch(error => {})
 ```
-
-
 
 📣I gave up working with MySqlWorkbench 😞 as the course is outdated and don't want to spend time reading the docs 🤓
 
@@ -1932,19 +1821,17 @@ class Product {
     }
   }
 }
-
-
 ```
 
 ```js
 // /controllers/shop.js
 export.getIndex = async (req, res) => {
-	const products = await Product.fetchAll()
-	res.render('shop/index', {
-		products,
-		pageTitle: 'Shop',
-		path: '/'
-	})
+    const products = await Product.fetchAll()
+    res.render('shop/index', {
+        products,
+        pageTitle: 'Shop',
+        path: '/'
+    })
 }
 ```
 
@@ -1954,16 +1841,16 @@ use the ? Marks, so the mysql2 package escapes any hidden SQL commands hidden in
 
 Nice UI thing: redirect after awaiting saving to the DB
 
-````js
+```js
 // /models/product.js
 
 class Product {
    async save() {
     try {
-			const result = await db.execute(
-			'INSERT INTO products (title, price, description, imageUrl) VALUES (?, ?, ?, ?)', 
-			[this.title, this.price, this.description, this.imageUrl])
-			return result;
+            const result = await db.execute(
+            'INSERT INTO products (title, price, description, imageUrl) VALUES (?, ?, ?, ?)', 
+            [this.title, this.price, this.description, this.imageUrl])
+            return result;
     } catch(error){
       // let's log the error so we can see things in the server logs
       console.log(error)
@@ -1972,7 +1859,7 @@ class Product {
     }
   }
 }
-````
+```
 
 ```js
 // controllers/admin.js
@@ -1993,8 +1880,6 @@ exports.postAddProduct = async(req, res, next) => {
 };
 ```
 
-
-
 ### Sequelize
 
 let's use an abstraction on top of the SQL queries, to make life easier! 🌴
@@ -2005,11 +1890,11 @@ It's an **ORM** (Object Relational Mapping) library
 
 we still need `mysql2` installed in the project
 
-``` bash
+```bash
 npm i sequelize
 ```
 
-````js
+```js
 // utils/database.js
 
 const { Sequelize } = require('sequelize');
@@ -2018,15 +1903,13 @@ const sequelize = new Sequelize('node-complete', 'root', 'nodecomplete', {
     //`dialect: 'mysql'` that is a specific type of SQL database, like MariaDB and so on.
     // They differ slightly and the ORM needs to know which type of DB flavour is talking to.
     dialect: 'mysql' 
-    
+
     // No need to set host to `localhost`, that's done by default
 })
 
 // the exported object contains the connection pool and a configured sequelized env (much more niceties inside!, like field types, etc)
 module.exports = sequelize;
-````
-
-
+```
 
 Creating a model (database)
 
@@ -2065,13 +1948,11 @@ const Product = sequelize.define('product', {
 module.exports = Product;
 ```
 
-
-
 Syncing JS Definitions to the DB
 
 when the apps starts, it needs to make sure that there are tables in the DBs that can be mapped to the JS objects we have (Product, etc), and that the relations we defined in JS are present in the mysql world in the DB
 
-````js
+```js
 const path = require('path');
 
 const express = require('express');
@@ -2119,9 +2000,7 @@ app.use(errorController.get404);
         console.log(error)
     }
 })()
-````
-
-
+```
 
 How to see the created Database and tables?
 
@@ -2129,13 +2008,11 @@ Go to WorkbenchMySql ->localhost:3306 sign (enter 11qq22WW as the password)
 
 and then, there should be a  `node-complete` db + `products` table with all the fields!! 🎉
 
-
-
 ### Adding a product to the table
 
 We can use Product.create to write directly to the DB,  or Product.build (which just returns the product object) and we then manually save it
 
-````js
+```js
 // controllers/admin.js
 
 const Product = require('../models/product');
@@ -2162,15 +2039,13 @@ exports.postAddProduct = async(req, res, next) => {
        res.status(500).send('<h1>The item was not saved!!</h1>')
   }
 };
-````
+```
 
 this is a breeze! 😌
 
-
-
 ### Let's fetch all the products
 
-````js
+```js
 // controllers/shop.js
 
 const Product = require('../models/product');
@@ -2189,29 +2064,501 @@ exports.getProducts = async (req, res, next) => {
     // maybe send the user an error message`Oops,someting went wrong`
   }
 };
+
+exports.getProduct = (req, res, next) => {
+  const prodId = req.params.productId;
+  // Product.findAll({ where: { id: prodId } })
+  //   .then(products => {
+  //     res.render('shop/product-detail', {
+  //       product: products[0],
+  //       pageTitle: products[0].title,
+  //       path: '/products'
+  //     });
+  //   })
+  //   .catch(err => console.log(err));
+  Product.findById(prodId)
+    .then(product => {
+      res.render('shop/product-detail', {
+        product: product,
+        pageTitle: product.title,
+        path: '/products'
+      });
+    })
+    .catch(err => console.log(err));
+};
+```
+
+### Editing a product
+
+paste code here:
+
+```js
+// then version (return inside a then to avoid nested then blocks)
+exports.getEditProduct = (req, res, next) => {
+  const editMode = req.query.edit;
+  if (!editMode) {
+    return res.redirect('/');
+  }
+  const prodId = req.params.productId;
+  Product.findByPk(prodId)
+    .then(product => {
+      if (!product) {
+        // 👇 I can return to not nest then blocks, so just a top level one
+        return res.redirect('/');
+      }
+      res.render('admin/edit-product', {
+        pageTitle: 'Edit Product',
+        path: '/admin/edit-product',
+        editing: editMode,
+        product: product
+      });
+    })
+    .catch(err => console.log(err));
+};
+```
+
+the approach used is useful when we have fields in the product record that we don't won't to change (e.g a field that the edit page doesn't show).
+
+### Delete a product
+
+show 2 options
+
+```js
+// Option 1: query and then destroy() (then version)
+exports.postDeleteProduct = (req, res, next) => {
+  const prodId = req.body.productId;
+  Product.findByPk(prodId)
+    .then(product => {
+      return product.destroy();
+    })
+    .then(result => {
+      console.log('DESTROYED PRODUCT');
+      res.redirect('/admin/products');
+    })
+    .catch(err => console.log(err));
+};
+
+// Option 2: destroy where id: prodId (async await version)
+exports.postDeleteProduct = async (req, res, next) => {
+  const prodId = req.body.productId;
+  try {
+    await Product.destroy({where: {
+      id: prodId
+    }})
+    console.log('DESTROYED PRODUCT');
+    res.redirect('/admin/products');
+  } catch(error){
+    console.log(error)
+  }
+};
+```
+
+### Associations
+
+![](./images/associations.png)
+
+💡a Product belongs to a user than created it (a product is only related to one user), and a user can have many products that he/she created
+
+```js
+// app.js
+const Product = require('./models/product');
+const User = require('./models/user');
+
+// we define relationships before connecting to the DB👇
+Product.belongsTo(User, { constraints: true, onDelete: 'CASCADE' });
+
+// optional 👇
+User.hasMany(Product);
+
+(async () => {
+    try {
+        const connection = await mysql.createConnection({ 
+            host: 'localhost',
+            user: 'root',
+            port: 3306, 
+            password: '11qq22WW'
+        });
+        await connection.query(`CREATE DATABASE IF NOT EXISTS \`node-complete\`;`);
+        // 🚨 dont use force in prod, it drops the db upon relationship changes, or when nodemon starts again!
+        // const result = await sequelize.sync({ force: true🚨});
+        const result = await sequelize.sync();
+        // console.log(result)
+        app.listen(3000);
+    } catch (error){
+        console.log(error)
+    }
+})()
+```
+
+There will be a new `userId` column in the Product schema in the DB
+
+So we first need to add a user, and then a product
+
+We'r gonna have just one dummy user that doesn't authenticate
+
+### Creating and managing users
+
+Pro tip 😎 : if there are more than one return inside a then block, make sure they return the same thing (object, etc), 
+
+```js
+somePromise.then(someResolvedValue => {
+	 if () {
+ 			return 'hello' // 👈 string
+   } else
+    return 'world' // 👈 string
+   }
+}).then(string => etc).catch()
+```
+
+We dont need to to return Promise.resolve(user), as things returned inside then blocks are wrapped in promises
+
+````js
+somePromise.then(someResolvedValue => {
+	// do something
+	return otherValue; // this is wrapped in a promise because we'r in a then block
+}).then(someValue => etc).catch()
+````
+
+We associated all products created to the only dummy user we have in the DB (see app.js where the req.user) prop is populated
+
+`````js
+// app.js
+
+// 💡this middleware fn will run on incoming requests, after the code that sets up the single dummy user when starting the app
+app.use(async (req, res, next) =>{
+    // user is a sequelize object, with methods and so on
+    try {
+      	// lets find the dummy user sequelize object and attach it to the req object
+        const user = await User.findByPk(1)
+        if (user){
+            req.user = user;
+        }
+        next()
+    } catch(errror){
+        console.log(error)
+    }
+})
+
+Product.belongsTo(User, { constraints: true, onDelete: 'CASCADE' });
+
+// optional 👇
+User.hasMany(Product);
+
+  (async () => {
+    try {
+        const connection = await mysql.createConnection({ 
+            host: 'localhost',
+            user: 'root',
+            port: 3306, 
+            password: '11qq22WW'
+        });
+        await connection.query(`CREATE DATABASE IF NOT EXISTS \`node-complete\`;`);
+        // dont use force in prod, it drops the db upon relationship changes!
+        // const result = await sequelize.sync({ force: true });
+        const result = await sequelize.sync();
+
+        // let's make sure there's at least one user in the DB when requests are handled, so I can add products then created by that single user
+        const user = await User.findByPk(1);
+        if (!user){
+          	// single dummy user creation here
+            await User.create({
+                name: 'Max',
+                email: 'test@test.com'
+            })
+        }
+        // console.log(result)
+        app.listen(3000);
+    } catch (error){
+        console.log(error)
+    }
+})()
+`````
+
+
+
+product creation passing userId field:
+
+`````js
+// not the best way ❌
+  try {
+    const result = await Product.create({
+      title: title,
+      price: price,
+      imageUrl: imageUrl,
+      description: description,
+      userId: req.user.id //👈 😬  cumbersome
+    })
+  
+    console.log('Created Product');
+    res.redirect('/admin/products');
+  } catch(error){
+    console.log(err);
+  }
+`````
+
+
+
+paste alternative to above with magic association:
+
+`````js
+// the best way ✅
+try {
+    const result = await req.user.createProduct({ // 👈
+      title: title,
+      price: price,
+      imageUrl: imageUrl,
+      description: description,
+    })
+  
+    console.log('Created Product');
+    res.redirect('/admin/products');
+  } catch(error){
+    console.log(err);
+  }
+`````
+
+req.user.getProducts for the admin section of edit product and the admin products
+
+`````js
+// original code: users could edit products they didnt created
+👉Product.findByPk(prodId)
+    .then(product => {
+      if (!product) {
+        return res.redirect('/');
+      }
+      res.render('admin/edit-product', {
+        pageTitle: 'Edit Product',
+        path: '/admin/edit-product',
+        editing: editMode,
+        product: product
+      });
+    })
+    .catch(err => console.log(err));
+// new code: user can only edit products they created
+const products = await 👉req.user.getProducts({where: { id: prodId}})
+  const product = products[0]
+  if (!product) res.redirect('/');
+  res.render('admin/edit-product', {
+    pageTitle: 'Edit Product',
+    path: '/admin/edit-product',
+    editing: editMode,
+    product: product
+  });
+`````
+
+````js
+// get admin products controller
+exports.getProducts = async (req, res, next) => {
+  try {
+    const products = await req.user.getProducts() // 👈
+    res.render('admin/products', {
+      prods: products,
+      pageTitle: 'Admin Products',
+      path: '/admin/products'
+    });
+  } catch(error){
+    console.log(error)
+  }
+};
 ````
 
 
 
+### one to many and many to many setup
+
+A cart belongs to a single user
+
+A cart belongs to many products (a cart contains multiple products)
+
+A product belongs to many carts (a product could be added to multiple carts)
+
+A many to many relationship needs a connecting table: 
+
+````js
+// models/cart.js
+
+const Sequelize = require('sequelize');
+
+const sequelize = require('../util/database');
+
+// a cart contains the cart id and the user id (added by sequelize automatically upon creation)
+const Cart = sequelize.define('cart', {
+  id: {
+    type: Sequelize.INTEGER,
+    autoIncrement: true,
+    allowNull: false,
+    primaryKey: true
+  }
+});
+
+module.exports = Cart;
+
+````
+
+````js
+// models/cart-item.js
+const Sequelize = require('sequelize');
+
+const sequelize = require('../util/database');
+
+// a cart item has an id, a product id (added by sequelize) and a cart id (added by sequelize as well)
+const CartItem = sequelize.define('cartItem', {
+  id: {
+    type: Sequelize.INTEGER,
+    autoIncrement: true,
+    allowNull: false,
+    primaryKey: true
+  },
+  quantity: Sequelize.INTEGER
+});
+
+module.exports = CartItem;
+
+````
+
+````js
+// app.js
+User.hasOne(Cart);
+// optional 👇
+Cart.belongsTo(User);
+
+// many to many relationship here, via a connecting table (CartItem) that connects one primary key with two foreign keys
+Cart.belongsToMany(Product, { through: CartItem });
+Product.belongsToMany(Cart, { through: CartItem });
+
+// cart table has (id, userId) fields
+// cart item has (id, quantity, cartId, productId) fields
+````
+
+A connecting table called CartItem was used to connect Cart and Product tables
+
+💡 otherwise, if we couldn't have multiple rows in the Cart table, for each product id in the table, as the Cart id can't be repeated on rows (primary key, unique)
+
+A  cart has been added after adding the single dummy user in app.js:
+
+````js
+// app.js
+
+(async () => {
+    try {
+        const connection = await mysql.createConnection({ 
+            host: 'localhost',
+            user: 'root',
+            port: 3306, 
+            password: '11qq22WW'
+        });
+        await connection.query(`CREATE DATABASE IF NOT EXISTS \`node-complete\`;`);
+        // dont use force in prod, it drops the db upon relationship changes!
+        const result = await sequelize.sync({ force: true });
+        // const result = await sequelize.sync();
+
+        // let's make sure there's at least one user in the DB so I can add products then
+        let user = await User.findByPk(1);
+        if (!user){
+            user = await User.create({
+                name: 'Max',
+                email: 'test@test.com'
+            })
+        }
+        const cart = await user.getCart() // 👈
+        debugger;
+        if (!cart) {
+            await user.createCart() // 👈
+        }
+        // console.log(result)
+        app.listen(3000);
+    } catch (error){
+        console.log(error)
+    }
+})()
+````
+
+````js
+// controllers/shop.js
+
+exports.getCart = async (req, res, next) => {
+  try {
+    const cart = await req.user.getCart()
+    const cartProducts = await cart.getProducts()
+    res.render('shop/cart', {
+      path: '/cart',
+      pageTitle: 'Your Cart',
+      products: cartProducts
+    });
+  } catch(error){
+    console.log(error)
+  }
+};
+````
+
+⚠️ Important: to access the quantity of a product in a cart, which is stored in the connectiong cartItems table, sequelize gives us that data in the product object
+
+````js
+product.cartItem.quantity
+````
+
+````js
+// controllers/shop.js
+exports.postCart = async (req, res, next) => {
+  try {
+    const prodId = req.body.productId;
+    const cart = await req.user.getCart()
+    const products = await cart.getProducts({where: {id: prodId}})
+    const product = products?.[0]
+    // if the products is already in the cart, I just bump up the quantity by 1
+    if (product){
+      // ⚠️ to update the quantity in the cartItem table, I just add the product with the updated quantity value
+     await cart.👉addProduct(product, {
+      through: {
+        quantity: product.cartItem.quantity + 1
+      }
+     }) 
+		// if the product is not in the cart, quantity will be one
+    } else {
+      const fetchedProduct = await Product.findByPk(prodId)
+
+      await cart.addProduct(fetchedProduct, {
+        through: {
+          quantity: 1
+        }
+      })
+    }
+    res.redirect('/cart');
+    } catch(error){
+      console.log(error)
+    }
+};
+````
+
+When adding to different products to the cart, this is how **cartItem** table looks like:
+
+| Id   | Quantity | cartId | productId |
+| ---- | -------- | ------ | --------- |
+| 1    | 2        | 1      | 1         |
+| 2    | 1        | 1      | 2         |
 
 
 
+Deleting a product in the cart:
 
- 
+````js
+// controllers/shop.js
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+exports.postCartDeleteProduct = async(req, res, next) => {
+  const prodId = req.body.productId;
+  try {
+    const cart = await req.user.getCart()
+    const products = await cart.getProducts({where: {id: prodId}})
+    const product = products?.[0]
+    if (product){
+      await product.cartItem.destroy()
+    }
+    res.redirect('/cart')
+  } catch(error){
+    console.log(error)
+  }
+};
+````
 
 
 
@@ -2233,7 +2580,7 @@ what if the FE needs different fields of a post in different pages?
 
 Disadvantage: a lot of work in the BE! unflexible endpoints
 
-#### Solution 2: use query params `?slim=true`. 
+#### Solution 2: use query params `?slim=true`.
 
 Needs a lot of documentation for the FE engineers to figure out which query params they can use. Messy code
 
@@ -2249,16 +2596,16 @@ it's a single endpoint POST request to `backendUrl/qraphql` endpoint (/graphql i
 
 Parts of the query expression:
 
-````
+```
 {
-	query {
-		users {
-			name,
-			phone
-		}
-	}
+    query {
+        users {
+            name,
+            phone
+        }
+    }
 }
-````
+```
 
 #### Operation types:
 
@@ -2274,8 +2621,6 @@ Parts of the query expression:
 
 - name/phone
 
-
-
 ### Backend structure
 
 - Type Definition (Posts, Comments)
@@ -2288,18 +2633,16 @@ Parts of the query expression:
 
 **Resolvers** are like **controllers**  in REST endpoints
 
-
-
 ### Convert REST server into GraphQL server
 
 1) get rid of express routes. From now on, there will be a single endpoint /graphql
 
 2) Install graphql packages:
-
+   
    ```bash
    npm i graphql express-graphql
    ```
-
+   
    Note: express-graphql has been deprecated, please use this instead:
    https://github.com/graphql/graphql-http#migrating-express-grpahql
 
@@ -2307,26 +2650,26 @@ Express-graphql is more vanilla. **Apollo server** is a more robust solution tha
 
 3. Create a this structure
 
-````
+```
 /graphql (or any name)
-	resolvers.js (logic)
-	schema.js (endpoints, what can be queried, mutated, or subscribed to)
-````
+    resolvers.js (logic)
+    schema.js (endpoints, what can be queried, mutated, or subscribed to)
+```
 
 4. Schema.js
-
-   ````js
+   
+   ```js
    const {buildSchema} = require('graphql');
    
    // backticks are used to write multiline a multiline string
    module.exports = buildSchema(`
-   	// type name can be anything (this is like TS)
-   	type RootQuery {
-   		greetingMessage: String!
-   	}
-   	schema { //👈
-   		query:👈 RootQuery
-   	}
+       // type name can be anything (this is like TS)
+       type RootQuery {
+           greetingMessage: String!
+       }
+       schema { //👈
+           query:👈 RootQuery
+       }
    `);
    
    // OR
@@ -2342,32 +2685,31 @@ Express-graphql is more vanilla. **Apollo server** is a more robust solution tha
        news: News
      }
    `);
-   ````
-
+   ```
+   
    Bang operator makes a field of the the type required (not null). e.g String!
 
 5. Resolvers.js
-
-   ````js
+   
+   ```js
    module.exports = {
-     	// the fn name should match the field
+         // the fn name should match the field
        greetingMessage() {
            return 'Hello world!';
        }
    }
-   ````
+   ```
 
 6. Let's expose the Graphql server to the world!
-
+   
    Make sure imports are not named imports! (I spent hours debugging this)
-
-   ````js
+   
+   ```js
    const express = require('express');
    const { graphqlHTTP } = require('express-graphql');
    const schema = require('./graphql/schema');
    const root = require('./graphql/resolvers')
-   
-   
+   ```
    
    const app = express();
    app.use('/graphql', graphqlHTTP({
@@ -2378,16 +2720,12 @@ Express-graphql is more vanilla. **Apollo server** is a more robust solution tha
    app.listen(4000);
    console.log('Running a GraphQL API server at http://localhost:4000/graphql');
    
-   
-   
    // OR using the new package
    var express = require('express');
    // var { graphqlHTTP } = require('express-graphql');
    const { createHandler } = require('graphql-http/lib/use/express')
    const schema = require('./graphql/schema');
    const root = require('./graphql/resolvers')
-   
-   
    
    var app = express();
    app.all('/graphql', createHandler({
@@ -2396,43 +2734,41 @@ Express-graphql is more vanilla. **Apollo server** is a more robust solution tha
    }));
    app.listen(4000);
    console.log('Running a GraphQL API server at http://localhost:4000/graphql');
-   ````
 
+```
 7. Then query `news` like this:
 
-   Using Postman:
+Using Postman:
 
-   ```json
-   // POST request to /graphql
-   // body as raw JSON
-   {
-   	"query" {
-   		news {
-   			title
-   		}
-   	}
-   }
-   
-   // OR
-   {
-   	"query" {
-   		hello
-   	}
-   }
-   ```
+```json
+// POST request to /graphql
+// body as raw JSON
+{
+    "query" {
+        news {
+            title
+        }
+    }
+}
 
-   OR just use the graphiql FE!
+// OR
+{
+    "query" {
+        hello
+    }
+}
+```
 
-   ```json
-   { news 
-   	{ title }
-   }
-   
-   // OR
-   { hello }
-   ```
+OR just use the graphiql FE!
 
-   
+```json
+{ news 
+    { title }
+}
+
+// OR
+{ hello }
+```
 
 #### 💡Pro tip: using await inside a fn, makes that fn return a promise under the hood!
 
@@ -2446,63 +2782,61 @@ const { buildSchema } = require('graphql');
 // Construct a schema, using GraphQL schema language
 module.exports = buildSchema(`
   type News {
-    title: String!,
-    body: String
+ title: String!,
+ body: String
   }
   type Query {
-    hello: String,
-    news: News
+ hello: String,
+ news: News
   }
 
   type Post {
-    id: ID!,
-    title: String,
-    body: String,
-    tags: [String]
-    }
+ id: ID!,
+ title: String,
+ body: String,
+ tags: [String]
+ }
 
-    input PostInput {
-        title: String,
-        body: String,
-        tags: [String]
-    }
-    
+ input PostInput {
+     title: String,
+     body: String,
+     tags: [String]
+ }
+
   type Mutation {
-    addPost(post👈: PostInput): Post
+ addPost(post👈: PostInput): Post
   }
 `);
 ```
 
-````js
+```js
 module.exports = {
-    hello: () => {
-      return 'Hello world!';
-    },
-    news: () => {
-        return {
-            title: 'title here',
-            body: null
-        }
-    },
-    addPost: ({post👈}, req) => { // the destructured variable needs to match `post`
-        post.id = (Math.random()*10000).toFixed(0);
-        posts.push(post);
-        return post;
-    }
- 		// OR
-  	addPost: (args, req) => {
-      	const post = args.post;
-      	// OR const {post} = args
-        post.id = (Math.random()*10000).toFixed(0);
-        posts.push(post);
-        return post;
-    }
+ hello: () => {
+   return 'Hello world!';
+ },
+ news: () => {
+     return {
+         title: 'title here',
+         body: null
+     }
+ },
+ addPost: ({post👈}, req) => { // the destructured variable needs to match `post`
+     post.id = (Math.random()*10000).toFixed(0);
+     posts.push(post);
+     return post;
+ }
+      // OR
+   addPost: (args, req) => {
+       const post = args.post;
+       // OR const {post} = args
+     post.id = (Math.random()*10000).toFixed(0);
+     posts.push(post);
+     return post;
+ }
   };
-````
+```
 
-
-
-````json
+```json
 // graphiql
 mutation {
   addPost(post👈: { // input here
@@ -2515,11 +2849,11 @@ mutation {
     title
   } 
 }
-````
+```
 
 in the Network tab, I've got:
 
-````json
+```json
 Request Payload:
 
 query:
@@ -2569,15 +2903,13 @@ query:
   }
 
 variables:null
-````
+```
 
 ```json
 // Request reponse
 
 {"data":{"addPost":{"id":"6003","title":"hello"}}}
 ```
-
-
 
 ### Validation
 
@@ -2587,19 +2919,19 @@ But I don't want to have the same validation for all requests that come via my /
 
 the resolvers get the mutation input values,  so we can check values there:
 
-````bash
+```bash
 npm i validator
-````
+```
 
-​	
+​    
 
 💡 I can safely throw Errors as there's a try and catch block provided by graphqlHTTP middleware 
 
-````js
+```js
 addPost: ({post}, req) => {
     const errors = [];
     if (!validator.isLength(post.title, {min: 4})){
-      	// I could have pushed just strings to the array
+          // I could have pushed just strings to the array
         errors.push({message: 'title too short'})
     }
     if (!validator.isLength(post.body, {max: 10})){
@@ -2615,7 +2947,7 @@ addPost: ({post}, req) => {
     posts.push(post);
     return post;
 }
-````
+```
 
 Simpler code here:
 
@@ -2640,7 +2972,7 @@ addPost: ({post}, req) => {
 
 ### what the response look like?
 
-````json
+```json
 // res body:
 {
   "errors": [
@@ -2661,11 +2993,11 @@ addPost: ({post}, req) => {
     "addPost": null
   }
 }
-````
+```
 
 The status code is 200, and this is always the case for a graphql response.
 
-````js
+```js
 // resolvers.js
 addPost: ({post}, req) => {
     const errors = [];
@@ -2708,9 +3040,9 @@ addPost: ({post}, req) => {
         posts.push(post);
         return post;
     }
-````
+```
 
-````js
+```js
 // index.js
 app.all('/graphql', graphqlHTTP({
   schema,
@@ -2728,9 +3060,7 @@ app.all('/graphql', graphqlHTTP({
     }
   }
 }));
-````
-
-
+```
 
 ```json
 // response, WOW!
@@ -2772,15 +3102,13 @@ app.all('/graphql', graphqlHTTP({
 }
 ```
 
-
-
 ### Connecting the FE to BE
 
 we can use fetch to make queries to the backend, no need for a special library so far.
 
 Response codes from a graphql server are 200 or 500
 
-````js
+```js
 // FE
 (async()=> {
     try {
@@ -2789,7 +3117,7 @@ Response codes from a graphql server are 200 or 500
             headers: {
                 'Content-type': 'application/json'
             },
-          	// 💡 body is just and object { query: `some query here`}
+              // 💡 body is just and object { query: `some query here`}
             body: JSON.stringify({
                 query: `
                     mutation { addPost(post: 
@@ -2806,9 +3134,9 @@ Response codes from a graphql server are 200 or 500
             })
         });
         const data = await res.json();
-      	// responses are always 200, so we need to throw our errors
-      	// fetch doesn't even throw error on its own when codes are not 200
-      	// that's why axios is handier
+          // responses are always 200, so we need to throw our errors
+          // fetch doesn't even throw error on its own when codes are not 200
+          // that's why axios is handier
         if (data.errors && data.errors[0].status === 422){
             throw new Error(data.errors[0].data[0].message);
         }
@@ -2820,9 +3148,7 @@ Response codes from a graphql server are 200 or 500
         console.log(error.message);
     }
 })()
-````
-
-
+```
 
 This didn't happen on my project:
 
@@ -2832,29 +3158,27 @@ Error: method not allowed. How to fix it?
 
 let's make OPTIONS request to bypass the `graphqlHTTP` middlaware
 
-````js
+```js
 // Max's fix
 app.use('*', (req, res, next) => {
-	// sends the response with a 200 status code to the FE
-	if (req.method === 'OPTIONS') res.status(200);
+    // sends the response with a 200 status code to the FE
+    if (req.method === 'OPTIONS') res.status(200);
 });
 
 // graphqlHTTP code here
-````
-
-
+```
 
 ### Login using graphql
 
 I'm not persisting, deleting or changing data on databases, so I need to use a query with args (not a mutation):
 
-````js
+```js
 //schema.js
 var { buildSchema } = require('graphql');
 
 // Construct a schema, using GraphQL schema language
 module.exports = buildSchema(`
-	input LoginData {
+    input LoginData {
     email: String!,
     password: String!
   }
@@ -2865,17 +3189,17 @@ module.exports = buildSchema(`
     login(loginData: LoginData): AuthData
   }
 `)
-````
+```
 
-````js
+```js
 // resolvers.js
    login: async({loginData}) => {
         const data = await getTokenAndID(loginData.email, loginData.password);
         return data;
     }
-````
+```
 
-````json
+```json
 // query in the FE
 { login ( loginData: { email: "a@a.com", password: "123456"}) 
   {
@@ -2893,13 +3217,11 @@ module.exports = buildSchema(`
     }
   }
 }
-````
-
-
+```
 
 ### Let's add a post when the user is authenticated
 
-````js
+```js
 // auth.js
 const jwtVerify = (token)=>{
     if (token === 'asdfghjkl'){
@@ -2939,7 +3261,7 @@ module.exports = (req, res, next) => {
     // if the token matches a hardcoded string, req.isAuth = true
     // else req.isAuth = false
 }
-````
+```
 
 ```js
 // index.js
@@ -2958,7 +3280,7 @@ addPost: ({post}, req) => {
             throw error;
         }
         const errors = [];
-  			...
+              ...
 ```
 
 ```js
@@ -2988,8 +3310,6 @@ mutation {
 }
 ```
 
-
-
 ### Getting posts with pagination
 
 ```js
@@ -3008,7 +3328,7 @@ posts: ({page, perPage}, req) => {
 },
 ```
 
-````js
+```js
 // schemas.js
 `type PostData {
     posts: [Post]!,
@@ -3022,9 +3342,9 @@ posts: ({page, perPage}, req) => {
     👉 posts(page: Int!, perPage: Int!): PostData
   }
 `
-````
+```
 
-````js
+```js
 // Postman
 body -> graphql option selected
 
@@ -3052,9 +3372,7 @@ body -> graphql option selected
             "totalPosts": 4
         }
     }
-````
-
-
+```
 
 ### Uploading images
 
@@ -3077,34 +3395,34 @@ const savePostRes = await fetch('localhost:3000/graphql', {
   method: 'POST',
   body: {
     query: JSON.Stringify(`
-		mutation { 
-			savePost(postData: {
+        mutation { 
+            savePost(postData: {
         title: 'hello',
         body: 'world',
         👉imageUrl,
-      	}) {
-        	_id
-      	}
-		}
-	`)},
-	headers: {
-		'Content-type': 'application/json'
-	}
+          }) {
+            _id
+          }
+        }
+    `)},
+    headers: {
+        'Content-type': 'application/json'
+    }
 })
 ```
 
-````js
+```js
 // BE
 
 // I use multer upstream, to save the file to get the file from the req and save it to the fs
 
 app.put('/post-image', (req, res, next) => {
-	// happy path
-	res.status(200).json({message: 'image saved!', imageUrl: req.file.path})
+    // happy path
+    res.status(200).json({message: 'image saved!', imageUrl: req.file.path})
 })
 
 app.all('/graphql', ()...)
-````
+```
 
 we can mix rest and graphql endpoints in our express server, as graphql is just one of the routes.
 
@@ -3112,20 +3430,18 @@ we can mix rest and graphql endpoints in our express server, as graphql is just 
 
 ```js
 return {
-	...post
-	_id: post._id.toISOString()
+    ...post
+    _id: post._id.toISOString()
 }
 ```
 
-
-
 ### Let's not interpolate variables inside the query string in the FE
 
-````js
+```js
 // FE
 body: JSON.Stringify({
   query: `
-  	mutation {
+      mutation {
     addPost(post: {
       title: "${state.title}", // 👈❌
       body: "${state.body}"
@@ -3136,14 +3452,12 @@ body: JSON.Stringify({
     }
   `,
 })
+```
 
-````
-
-````js
-
+```js
 body: JSON.Stringify({
   query: `
-  	mutation AddPost($title: String!, $body: String) {
+      mutation AddPost($title: String!, $body: String) {
     addPost(post: {
       title: $title, // 👈✅
       body: $body
@@ -3154,19 +3468,17 @@ body: JSON.Stringify({
     }
   `,
   variables: {
-  	title: "hello world",
-  	body: "body here!"
+      title: "hello world",
+      body: "body here!"
   }
 })
-````
+```
 
-
-
-````js
+```js
 body: JSON.Stringify({
   query: `
-  	// AddPost could be name whatever
-  	mutation AddPost($title: String!, $body: String) { // e.g String! types need to match the shema definition
+      // AddPost could be name whatever
+      mutation AddPost($title: String!, $body: String) { // e.g String! types need to match the shema definition
     addPost(post: {
       title: $title, // 👈✅
       body: $body
@@ -3177,13 +3489,14 @@ body: JSON.Stringify({
     }
   `,
    variables: {
-  	title: "hello world",
-  	body: "body here!"
+      title: "hello world",
+      body: "body here!"
   }
 })
-````
+```
 
 I tried Postman, and it worked as expected:
+
 ```JSON
 // body raw JSON
 {
@@ -3195,7 +3508,7 @@ I tried Postman, and it worked as expected:
 }
 ```
 
-````JSON
+```JSON
 // res
 {
     "data": {
@@ -3211,13 +3524,13 @@ I tried Postman, and it worked as expected:
         }
     }
 }
-````
+```
 
 #### How to send the variables using the `graphql` instead of  `raw JSON`??
 
 Easy, there's a separate input for that https://learning.postman.com/docs/sending-requests/graphql/graphql/#:~:text=Sending%20GraphQL%20queries%20in%20the%20request%20body,-Open%20a%20new&text=Select%20POST%20from%20the%20request,both%20queries%20and%20variables%20separately.
 
-````javascript
+```javascript
 // query box
 query Posts($page: Int!, $perPage: Int!) {
     posts(page: $page, perPage: $perPage) {
@@ -3227,7 +3540,7 @@ query Posts($page: Int!, $perPage: Int!) {
         totalPosts
     }
 }
-````
+```
 
 ```js
 // graphql variables box
@@ -3237,14 +3550,15 @@ query Posts($page: Int!, $perPage: Int!) {
   }
 ```
 
-
-
 How to send the variables using graphiql?
 
-````js
+```js
 // localhost:4000/graphql -> shows the the graphiql interface
 same as Postman!
-````
+```
 
 There's a `Query variables` box!
 
+```
+
+```
