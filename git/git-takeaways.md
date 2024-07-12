@@ -2093,3 +2093,41 @@ https://stackoverflow.com/questions/4858047/gitignore-and-the-following-untracke
 git clean  -d  -f .  
 ```
 
+
+```
+
+¡Guía de cómo deshacer el último commit con git!
+
+Si no has hecho push:
+
+• Para conservar cambios: git reset –soft HEAD~1
+• Para descartar cambios: git reset –hard HEAD~1
+
+• Para modificar el commit (mensaje o agregar cambios):
+git commit –amend -m “Nuevo mensaje”
+
+Si ya has hecho push:
+
+• git revert para crear un nuevo commit que deshace los cambios. Si hay conflictos, prepárate para resolverlos.
+
+• git log para obtener el hash del commit que deseas revertir.
+
+Más avanzado:
+
+• git rebase -i para modificar tu historial de commits localmente. Puedes reorganizar, combinar, editar o eliminar commits.
+
+• Luego ejecuta git push –force-with-lease
+
+• Precaución: Sólo usa rebase y push forzado en ramas donde seas el único colaborador o en situaciones donde todos los colaboradores estén informados y de acuerdo con reescribir la historia.
+
+Te explico los comandos y parámetros:
+
+git reset: Este comando se utiliza para restablecer el índice y el directorio de trabajo al estado de un commit específico.
+
+–soft: Indica que el reset no debe modificar el índice (staging area) ni el directorio de trabajo, pero sí mueve el HEAD al commit especificado. Los cambios que estaban en el commit revertido se quedan en staging, listos para ser recommitidos si se desea.
+
+–hard: Indica que el reset debe ajustar el índice (staging area) y el directorio de trabajo para reflejar el estado del commit especificado. Cualquier cambio en el directorio de trabajo desde el último commit se perderá.
+
+HEAD~1: Se refiere al commit anterior al último. HEAD es un puntero al último commit de la rama actual, y ~1 mueve ese puntero un commit hacia atrás.
+
+–force-with-lease: Una opción más segura que –force, ya que solo forzará el push si tu copia local está actualizada respecto a los cambios en el remoto. Evita sobrescribir el trabajo de otras personas accidentalmente.
